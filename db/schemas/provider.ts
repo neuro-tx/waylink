@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   pgTable,
   primaryKey,
@@ -7,12 +8,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import {
-  memberRoleEnum,
-  providerStatusEnum,
-  providerTypeEnum,
-} from "./enums";
-import { timestamps } from "./shared";
+import { memberRoleEnum, providerStatusEnum, providerTypeEnum } from "./enums";
+import { location, timestamps } from "./shared";
 import { user } from "./public";
 import { sql } from "drizzle-orm";
 
@@ -29,7 +26,11 @@ export const providers = pgTable(
     logo: text("logo"),
     cover: text("cover"),
     type: providerTypeEnum("type").notNull(),
+    location: uuid("location").references(() => location.id, {
+      onDelete: "cascade",
+    }),
     status: providerStatusEnum("status").default("pending"),
+    isVerified: boolean('is_verified').default(false),
     ...timestamps,
   },
   (t) => [

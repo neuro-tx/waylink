@@ -40,3 +40,10 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "expired",
   "trialing",
 ]);
+
+export const productStatusEnum = pgEnum("product_status", [
+  "draft",
+  "active", 
+  "paused", 
+  "archived",  
+]);
