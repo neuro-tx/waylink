@@ -1,6 +1,5 @@
 import {
   index,
-  numeric,
   pgTable,
   primaryKey,
   text,
@@ -9,7 +8,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import {
-  agreementStatus,
   memberRoleEnum,
   providerStatusEnum,
   providerTypeEnum,
@@ -29,6 +27,7 @@ export const providers = pgTable(
     slug: text("slug").notNull().unique(),
     description: text("description"),
     logo: text("logo"),
+    cover: text("cover"),
     type: providerTypeEnum("type").notNull(),
     status: providerStatusEnum("status").default("pending"),
     ...timestamps,
@@ -59,33 +58,6 @@ export const providerMembers = pgTable(
     uniqueIndex("provider_member_user_idx").on(t.userId),
     index("provider_member_provider_idx").on(t.providerId),
     index("provider_member_user_provider_idx").on(t.userId, t.providerId),
-  ],
-);
-
-export const agreements = pgTable(
-  "agreements",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    providerId: uuid("provider_id")
-      .notNull()
-      .references(() => providers.id, { onDelete: "cascade" }),
-    commissionRate: numeric("commission_rate", {
-      precision: 5,
-      scale: 2,
-    }).default("15.00"),
-    priorityBoost: numeric("priority_boost", {
-      precision: 2,
-      scale: 2,
-    }).default("0.00"),
-    validFrom: timestamp("valid_from").notNull(),
-    validTo: timestamp("valid_to"),
-    status: agreementStatus("status").default("active"),
-    ...timestamps,
-  },
-  (t) => [
-    index("agreement_provider_idx").on(t.providerId),
-    index("agreement_active_idx").on(t.status),
-    index("agreement_validity_idx").on(t.validFrom, t.validTo),
   ],
 );
 

@@ -6,7 +6,7 @@ export const providerStatusEnum = pgEnum("provider_status", [
   "pending",
   "approved",
   "suspended",
-  "inactive"
+  "inactive",
 ]);
 
 export const providerTypeEnum = pgEnum("provider_type", [
@@ -15,15 +15,28 @@ export const providerTypeEnum = pgEnum("provider_type", [
   "experience",
 ]);
 
-export const agreementStatus = pgEnum("agreement_status", [
-  "pending",
-  "active",
-  "expired",
-  "terminated"
-]);
-
 export const memberRoleEnum = pgEnum("member_role", [
   "owner",
-  "manager", 
+  "manager",
   "staff",
+]);
+
+export const planTierEnum = pgEnum("plan_tier", [
+  "free",
+  "basic",
+  "professional",
+  "enterprise",
+]);
+
+export const planBillingCycleEnum = pgEnum("plan_billing_cycle", [
+  "monthly",
+  "yearly",
+]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "active",
+  "past_due",
+  "cancelled",
+  "expired",
+  "trialing",
 ]);
