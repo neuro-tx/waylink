@@ -60,3 +60,31 @@ export const experienceTypeEnum = pgEnum("experience_type", [
   "wildlife",       // Safari, bird watching, animal encounters
   "photography",    // Photo tours, photo workshops
 ]);
+
+export const transportTypeEnum = pgEnum("transport_type", [
+  "bus",           // Long-distance buses, coaches
+  "flight",        // Airplanes
+  "train",         // Railways
+  "ferry",         // Boats, ferries
+  "cruise",        // Multi-day cruise ships
+  "car_rental",    // Rental cars
+  "shuttle",       // Airport/hotel shuttles
+  "taxi",          // Private taxis, ride-hailing
+]);
+
+export const transportClassEnum = pgEnum("transport_class", [
+  "economy",
+  "business",
+  "first_class",
+  "premium_economy",
+  "vip",
+]);
+
+export const seatTypeEnum = pgEnum("seat_type", [
+  "standard",
+  "reclining",
+  "sleeper",
+  "semi_sleeper",
+  "bed",
+  "cabin",
+]);
