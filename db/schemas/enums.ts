@@ -47,3 +47,16 @@ export const productStatusEnum = pgEnum("product_status", [
   "paused", 
   "archived",  
 ]);
+
+export const experienceTypeEnum = pgEnum("experience_type", [
+  "tour",           // City tours, walking tours, sightseeing
+  "adventure",      // Hiking, diving, paragliding, zip-lining
+  "cultural",       // Museums, cooking classes, workshops, traditions
+  "entertainment",  // Shows, concerts, theater, nightlife
+  "food_drink",     // Food tours, wine tasting, culinary experiences
+  "sports",         // Sports activities, games, fitness
+  "wellness",       // Spa, yoga, meditation, wellness retreats
+  "water",          // Snorkeling, boat tours, fishing, surfing
+  "wildlife",       // Safari, bird watching, animal encounters
+  "photography",    // Photo tours, photo workshops
+]);
