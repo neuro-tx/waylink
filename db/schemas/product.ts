@@ -53,7 +53,6 @@ export const productVariants = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
     name: text("name"),
-    price: numeric("price", { precision: 10, scale: 2 }).notNull(),
     startDate: timestamp("start_date").notNull(),
     endDate: timestamp("end_date"),
     capacity: integer("capacity").notNull(),
@@ -164,29 +163,21 @@ export const productStats = pgTable("product_stats", {
   ...timestamps,
 });
 
-// BOOKING (the order/container):
-// {
-//   id,
-//   userId,          // Who booked
-//   providerId,       // Which provider
-//   productId,        // Which product
-//   bookingNumber,    // Human-readable: "WL-2026-00001"
-//   status,           // Overall booking status
-//   totalPrice,       // Total amount
-//   createdAt
-// }
+export const pricing = pgTable("pricing", {
+  id: uuid("id").defaultRandom().primaryKey(),
 
-// BOOKING ITEM (the actual variant details):
-// {
-//   id,
-//   bookingId,        // Links to booking
-//   variantId,        // Which specific date/slot
-//   participants,     // How many people
-//   unitPrice,        // Price per person
-//   totalPrice,       // participants × unitPrice
-//   status            // pending/confirmed
-// }
+  variantId: uuid("variant_id")
+    .notNull()
+    .references(() => productVariants.id, { onDelete: "cascade" })
+    .unique(),
 
-// // So it's like:
-// Booking: "WL-2026-00001" - Desert Safari - $300
-//   └── BookingItem: Feb 15 Morning, 2 people, $150 each = $300
+  adultPrice: numeric("adult_price", { precision: 10, scale: 2 }).notNull(),
+  childPrice: numeric("child_price", { precision: 10, scale: 2 }).notNull(),
+  infantPrice: numeric("infant_price", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0.00"),
+
+  currency: text("currency").default("USD").notNull(),
+
+  ...timestamps,
+});
