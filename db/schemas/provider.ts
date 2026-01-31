@@ -20,25 +20,35 @@ export const providers = pgTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
+
     name: text("name").notNull(),
     slug: text("slug").notNull().unique(),
     description: text("description"),
+
     logo: text("logo"),
     cover: text("cover"),
-    type: providerTypeEnum("type").notNull(),
+
+    serviceType: providerTypeEnum("service_type").notNull(),
+    businessType: text("business_type")
+      .$type<"individual" | "company" | "agency">()
+      .notNull(),
+
     location: uuid("location").references(() => location.id, {
       onDelete: "cascade",
     }),
     status: providerStatusEnum("status").default("pending"),
-    isVerified: boolean('is_verified').default(false),
+    isVerified: boolean("is_verified").default(false),
+    businessPhone: text("business_phone"),
+    businessEmail: text("business_email"),
     ...timestamps,
   },
   (t) => [
     index("provider_name_idx").on(t.name),
+    index("provider_email_idx").on(t.businessEmail),
     uniqueIndex("provider_owner_idx").on(t.ownerId),
     index("provider_status_idx").on(t.status),
-    index("provider_type_idx").on(t.type),
-    uniqueIndex("provider_owner_type_idx").on(t.ownerId, t.type),
+    index("provider_type_idx").on(t.serviceType),
+    uniqueIndex("provider_owner_type_idx").on(t.ownerId, t.serviceType),
   ],
 );
 
@@ -56,7 +66,6 @@ export const providerMembers = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.providerId, t.userId] }),
-    uniqueIndex("provider_member_user_idx").on(t.userId),
     index("provider_member_provider_idx").on(t.providerId),
     index("provider_member_user_provider_idx").on(t.userId, t.providerId),
   ],

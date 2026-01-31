@@ -23,8 +23,8 @@ export const memberRoleEnum = pgEnum("member_role", [
 
 export const planTierEnum = pgEnum("plan_tier", [
   "free",
-  "basic",
-  "professional",
+  "pro",
+  "business",
   "enterprise",
 ]);
 
@@ -35,7 +35,6 @@ export const planBillingCycleEnum = pgEnum("plan_billing_cycle", [
 
 export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "active",
-  "past_due",
   "cancelled",
   "expired",
   "trialing",
@@ -59,6 +58,11 @@ export const experienceTypeEnum = pgEnum("experience_type", [
   "water",          // Snorkeling, boat tours, fishing, surfing
   "wildlife",       // Safari, bird watching, animal encounters
   "photography",    // Photo tours, photo workshops
+  "nature",         // National parks, hikes, eco-trips
+  "shopping",       // Local markets, shopping tours
+  "nightlife",      // Clubs, bars, night events
+  "learning",       // Classes, workshops, educational experiences
+  "seasonal",       // Festivals, seasonal events, holidays
 ]);
 
 export const transportTypeEnum = pgEnum("transport_type", [
@@ -70,6 +74,8 @@ export const transportTypeEnum = pgEnum("transport_type", [
   "car_rental",    // Rental cars
   "shuttle",       // Airport/hotel shuttles
   "taxi",          // Private taxis, ride-hailing
+  "private_van",   // Group transport, minibuses
+  "helicopter",    // Helicopter tours
 ]);
 
 export const transportClassEnum = pgEnum("transport_class", [
@@ -81,10 +87,14 @@ export const transportClassEnum = pgEnum("transport_class", [
 ]);
 
 export const seatTypeEnum = pgEnum("seat_type", [
-  "standard",
-  "reclining",
-  "sleeper",
-  "semi_sleeper",
-  "bed",
-  "cabin",
+  "standard",       // Regular seat
+  "reclining",      // Reclining seat
+  "semi_sleeper",   // Partial bed (bus)
+  "sleeper",        // Full bed (bus/train)
+  "bed",            // Cruise or hostel bed
+  "cabin",          // Private cabin (cruise/train)
+  "premium",        // Extra legroom
+  "vip",            // VIP / luxury seating
+  "window",         // Window preference
+  "aisle",          // Aisle preference
 ]);
