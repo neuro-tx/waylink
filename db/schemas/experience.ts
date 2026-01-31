@@ -1,15 +1,7 @@
-// experiences.ts
-import {
-  pgTable,
-  uuid,
-  text,
-  integer,
-  index,
-  boolean,
-} from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, index } from "drizzle-orm/pg-core";
 import { products } from "./product";
 import { location, timestamps } from "./shared";
-import { experienceTypeEnum } from "./enums";
+import { difficultyLevelEnum, experienceTypeEnum } from "./enums";
 
 export const experiences = pgTable(
   "experiences",
@@ -19,24 +11,30 @@ export const experiences = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: "cascade" })
       .unique(),
+
     experienceType: experienceTypeEnum("experience_type").notNull(),
-    durationDays: integer("duration_days").notNull(),
-    durationHours: integer("duration_hours"),
-    hasRoute: boolean("has_route").notNull().default(false),
+    difficultyLevel: difficultyLevelEnum("difficulty_level"),
+
+    durationCount: integer("duration_count").notNull(),
+    durationUnit: text("duration_unit")
+      .$type<"hours" | "minutes" | "days">()
+      .notNull(),
+
     fromLocationId: uuid("from_location_id").references(() => location.id),
-    toLocationId: uuid("to_location_id").references(() => location.id),
-    maxParticipants: integer("max_participants").notNull(),
+    toLocationId: uuid("to_location_id")
+      .references(() => location.id)
+      .notNull(),
+
     included: text("included").array(),
     notIncluded: text("not_included").array(),
     requirements: text("requirements").array(),
     ageRestriction: text("age_restriction"),
-    meetingPoint: text("meeting_point"),
-    meetingInstructions: text("meeting_instructions"),
     ...timestamps,
   },
   (t) => [
     index("experience_product_idx").on(t.productId),
     index("experience_type_idx").on(t.experienceType),
+    index("experience_difficult_type_idx").on(t.difficultyLevel),
     index("experience_route_idx").on(t.fromLocationId, t.toLocationId),
   ],
 );

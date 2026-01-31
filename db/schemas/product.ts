@@ -34,7 +34,6 @@ export const products = pgTable(
       onDelete: "set null",
     }),
     status: productStatusEnum("status").notNull().default("draft"),
-    tags: text("tags").array(),
     ...timestamps,
   },
   (t) => [
@@ -123,6 +122,8 @@ export const productReviews = pgTable(
     rating: integer("rating").notNull(),
     comment: text("comment"),
     isVerified: boolean("is_verified").notNull().default(false),
+    providerResponse: text("provider_response"),
+    respondedAt: timestamp("responded_at"),
     ...timestamps,
   },
   (t) => [
@@ -162,3 +163,30 @@ export const productStats = pgTable("product_stats", {
 
   ...timestamps,
 });
+
+// BOOKING (the order/container):
+// {
+//   id,
+//   userId,          // Who booked
+//   providerId,       // Which provider
+//   productId,        // Which product
+//   bookingNumber,    // Human-readable: "WL-2026-00001"
+//   status,           // Overall booking status
+//   totalPrice,       // Total amount
+//   createdAt
+// }
+
+// BOOKING ITEM (the actual variant details):
+// {
+//   id,
+//   bookingId,        // Links to booking
+//   variantId,        // Which specific date/slot
+//   participants,     // How many people
+//   unitPrice,        // Price per person
+//   totalPrice,       // participants × unitPrice
+//   status            // pending/confirmed
+// }
+
+// // So it's like:
+// Booking: "WL-2026-00001" - Desert Safari - $300
+//   └── BookingItem: Feb 15 Morning, 2 people, $150 each = $300

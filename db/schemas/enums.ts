@@ -65,6 +65,13 @@ export const experienceTypeEnum = pgEnum("experience_type", [
   "seasonal",       // Festivals, seasonal events, holidays
 ]);
 
+export const difficultyLevelEnum = pgEnum("difficulty_level", [
+  "easy",
+  "moderate",
+  "challenging",
+  "extreme",
+]);
+
 export const transportTypeEnum = pgEnum("transport_type", [
   "bus",           // Long-distance buses, coaches
   "flight",        // Airplanes

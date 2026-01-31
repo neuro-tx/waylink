@@ -7,6 +7,7 @@ import {
   index,
   timestamp,
   numeric,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { products, productVariants } from "./product";
 import { location, timestamps } from "./shared";
@@ -18,7 +19,8 @@ export const transports = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     productId: uuid("product_id")
       .notNull()
-      .references(() => products.id, { onDelete: "cascade" }),
+      .references(() => products.id, { onDelete: "cascade" })
+      .unique(),
 
     transportType: transportTypeEnum("transport_type").notNull(),
     fromLocationId: uuid("from_location_id")
@@ -30,10 +32,6 @@ export const transports = pgTable(
     distance: integer("distance"), // in kilometers
     hasDirectRoute: boolean("has_direct_route").notNull().default(true),
 
-    vehicleModel: text("vehicle_model"),
-    licensePlate: text("license_plate"),
-
-    totalSeats: integer("total_seats").notNull(),
     transportClass: transportClassEnum("transport_class"),
     seatType: seatTypeEnum("seat_type"),
     amenities: text("amenities").array(),
@@ -42,10 +40,6 @@ export const transports = pgTable(
       precision: 10,
       scale: 2,
     }),
-
-    departureTime: timestamp("departure_time").notNull(),
-    arrivalTime: timestamp("arrival_time").notNull(),
-    checkInTime: timestamp("check_in_time"),
 
     importantNotes: text("important_notes").array(),
     ...timestamps,
@@ -63,11 +57,20 @@ export const transportSchedules = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     variantId: uuid("variant_id")
       .notNull()
-      .references(() => productVariants.id, { onDelete: "cascade" }),
-    departureTime: text("departure_time").notNull(),
-    arrivalTime: text("arrival_time").notNull(),
-    duration: integer("duration").notNull(), // in minutes
-    stops: text("stops").array(),
+      .references(() => productVariants.id, { onDelete: "cascade" })
+      .unique(),
+    departureTime: timestamp("departure_time").notNull(),
+    arrivalTime: timestamp("arrival_time").notNull(),
+    duration: integer("duration").notNull(),
+    checkInTime: text("check_in_time"),
+    stops: jsonb("stops").$type<
+      {
+        locationName: string;
+        arrivalTime: string;
+        departureTime: string;
+      }[]
+    >(),
+    ...timestamps,
   },
   (t) => [index("transport_schedule_variant_idx").on(t.variantId)],
 );
