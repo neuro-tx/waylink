@@ -105,3 +105,16 @@ export const seatTypeEnum = pgEnum("seat_type", [
   "window",         // Window preference
   "aisle",          // Aisle preference
 ]);
+
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "booking_confirmed",
+  "booking_cancelled",
+  "booking_completed",
+  "review_received",
+  "provider_approved",
+  "provider_rejected",
+  "provider_suspended",
+  "system_announcement",
+  "system_warning",
+  "promotion",
+]);
