@@ -11,6 +11,7 @@
   "dependencies": {
     "@arcjet/inspect": "^1.0.0",
     "@arcjet/next": "^1.0.0",
+    "@hookform/resolvers": "^5.2.2",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-select": "^2.2.6",
@@ -23,11 +24,13 @@
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.5",
+    "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
