@@ -1,0 +1,86 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 200 200"
+  width="400"
+  height="400"
+>
+  <defs>
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0066FF" stop-opacity="1" />
+      <stop offset="100%" stop-color="#00C9FF" stop-opacity="1" />
+    </linearGradient>
+
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF6B35" stop-opacity="1" />
+      <stop offset="100%" stop-color="#FFB800" stop-opacity="1" />
+    </linearGradient>
+
+    <filter id="iconShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
+      <feOffset dx="0" dy="4" result="offsetblur" />
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.2" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle -->
+  <circle
+    cx="100"
+    cy="100"
+    r="95"
+    fill="white"
+  />
+
+  <!-- Icon mark -->
+  <g transform="translate(55 60)" filter="url(#iconShadow)">
+    <path
+      d="M 0,10 Q 10,0 20,17 Q 30,34 33,55 Q 34,65 43,68"
+      stroke="url(#primaryGrad)"
+      stroke-width="6"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <path
+      d="M 33,55 Q 43,58 50,48 Q 57,38 60,20 Q 61,10 67,7"
+      stroke="url(#accentGrad)"
+      stroke-width="5.5"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      opacity="0.95"
+    />
+
+    <path
+      d="M 60,20 Q 70,24 77,34 Q 84,44 87,62 Q 88,68 93,68"
+      stroke="url(#primaryGrad)"
+      stroke-width="6"
+      fill="none"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Nodes -->
+    <circle cx="0" cy="10" r="4" fill="#0066FF" />
+    <circle cx="33" cy="55" r="5" fill="#00C9FF" />
+    <circle cx="60" cy="20" r="5" fill="#FF6B35" />
+    <circle cx="93" cy="68" r="4" fill="#0066FF" />
+
+    <!-- Center node with glow -->
+    <circle cx="50" cy="48" r="6" fill="#FFB800" opacity="0.9">
+      <animate
+        attributeName="opacity"
+        values="0.9;0.4;0.9"
+        dur="2s"
+        repeatCount="indefinite"
+      />
+    </circle>
+    <circle cx="50" cy="48" r="3" fill="#FFFFFF" />
+  </g>
+</svg>
