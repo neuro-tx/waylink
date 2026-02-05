@@ -36,6 +36,7 @@ export const providers = pgTable(
     location: uuid("location").references(() => location.id, {
       onDelete: "cascade",
     }),
+    address: text("address"),
     status: providerStatusEnum("status").default("pending"),
     isVerified: boolean("is_verified").default(false),
     businessPhone: text("business_phone"),

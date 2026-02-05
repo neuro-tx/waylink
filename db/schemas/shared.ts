@@ -25,7 +25,6 @@ export const location = pgTable(
     latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
     longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
     slug: text("slug").notNull().unique(),
-    address: text("address"),
   },
   (t) => [
     index("location_city_idx").on(t.city),

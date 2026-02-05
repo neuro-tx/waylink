@@ -24,6 +24,7 @@ export const experiences = pgTable(
     toLocationId: uuid("to_location_id")
       .references(() => location.id)
       .notNull(),
+    locationAddress: text("location_address"),
 
     included: text("included").array(),
     notIncluded: text("not_included").array(),

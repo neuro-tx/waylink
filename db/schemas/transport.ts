@@ -41,6 +41,9 @@ export const transports = pgTable(
       scale: 2,
     }),
 
+    departureAddress: text("departure_address"),
+    arrivalAddress: text("arrival_address"),
+
     importantNotes: text("important_notes").array(),
     ...timestamps,
   },

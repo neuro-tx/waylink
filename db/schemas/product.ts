@@ -13,6 +13,7 @@ import { providers } from "./provider";
 import { location, timestamps } from "./shared";
 import { productStatusEnum } from "./enums";
 import { user } from "./public";
+import { SQL, sql } from "drizzle-orm";
 
 export const products = pgTable(
   "products",
@@ -34,6 +35,11 @@ export const products = pgTable(
       onDelete: "set null",
     }),
     status: productStatusEnum("status").notNull().default("draft"),
+    address: text("address"),
+    searchVector: text("search_vector").generatedAlwaysAs(
+      (): SQL =>
+        sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || coalesce(short_description, ''))`,
+    ),
     ...timestamps,
   },
   (t) => [
@@ -42,6 +48,7 @@ export const products = pgTable(
     index("product_status_idx").on(t.status),
     index("product_location_idx").on(t.locationId),
     uniqueIndex("product_slug_provider_idx").on(t.slug, t.providerId),
+    index("product_search_idx").using("gin", t.searchVector),
   ],
 );
 

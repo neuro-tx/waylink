@@ -158,7 +158,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     disabled={isLoading}
                   >
                     <Image
-                      src="/google.svg"
+                      src="/icons/google.svg"
                       alt="google-logo"
                       width={18}
                       height={18}
