@@ -1,0 +1,55 @@
+<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Logo with text - centered -->
+  <defs>
+    <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:oklch(56.347% 0.24089 260.834);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:oklch(77.858% 0.14897 226.048);stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="linkGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:oklch(70.45% 0.19257 39.216);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:oklch(82.714% 0.171 80.526);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon part - Interconnected paths forming a link -->
+  <g transform="translate(10, 15)">
+    <!-- Curved path representing a journey/route -->
+    <path d="M 5 20 Q 15 5, 25 15 T 35 20" 
+          stroke="url(#pathGradient)" 
+          stroke-width="3" 
+          fill="none" 
+          stroke-linecap="round"/>
+    
+    <!-- Second curved path -->
+    <path d="M 10 25 Q 20 35, 30 25 T 40 20" 
+          stroke="url(#linkGradient)" 
+          stroke-width="3" 
+          fill="none" 
+          stroke-linecap="round"/>
+    
+    <!-- Connection nodes (waypoints) -->
+    <circle cx="5" cy="20" r="3" fill="oklch(56.347% 0.24089 260.834)"/>
+    <circle cx="25" cy="15" r="3" fill="oklch(77.858% 0.14897 226.048)"/>
+    <circle cx="35" cy="20" r="3" fill="oklch(70.45% 0.19257 39.216)"/>
+    
+    <!-- Small plane icon suggestion movement -->
+    <path d="M 32 18 L 35 16 L 38 18 L 35 17 Z" 
+          fill="oklch(82.714% 0.171 80.526)"/>
+  </g>
+  
+  <!-- Text - centered vertically -->
+  <text x="65" y="41" 
+        font-family="Arial, sans-serif" 
+        font-size="22" 
+        font-weight="700" 
+        fill="oklch(56.347% 0.24089 260.834)">
+    Way
+  </text>
+  <text x="65" y="41" 
+        font-family="Arial, sans-serif" 
+        font-size="22" 
+        font-weight="700" 
+        fill="oklch(56.347% 0.24089 260.834)">
+    <tspan fill="oklch(70.45% 0.19257 39.216)" dx="45">Link</tspan>
+  </text>
+</svg>
