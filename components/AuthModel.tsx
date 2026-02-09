@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,16 +21,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Mail,
-  Lock,
-  User,
-  Loader2,
-  Github,
-  Plus,
-  Send,
-} from "lucide-react";
+import { Mail, Lock, User, Loader2, Github, Plus, Send } from "lucide-react";
 import Image from "next/image";
+import { tryCatch } from "@/lib/handler";
+import { handleSocialAuth } from "@/lib/main-auth";
 
 // Validation Schemas
 const signInSchema = z.object({
@@ -55,6 +49,8 @@ interface AuthModalProps {
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [githubPending, startGithubTrans] = useTransition();
+  const [GooglePending, startGoogleTrans] = useTransition();
 
   const signInForm = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
@@ -85,11 +81,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     // onClose();
   };
 
-  const handleSocialAuth = async (provider: string) => {
-    setIsLoading(true);
-    setIsLoading(false);
-    // onClose();
-  };
+  function authWithGoogle() {
+    startGoogleTrans(async () => {
+      await tryCatch(() => handleSocialAuth("google"));
+    });
+  }
+
+  function authWithGithub() {
+    startGithubTrans(async () => {
+      await tryCatch(() => handleSocialAuth("github"));
+    });
+  }
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
@@ -153,26 +155,42 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-2 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all group"
-                    onClick={() => handleSocialAuth("google")}
-                    disabled={isLoading}
+                    className="border-2 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all group cursor-pointer"
+                    onClick={() => authWithGoogle()}
+                    disabled={GooglePending || githubPending}
                   >
-                    <Image
-                      src="/icons/google.svg"
-                      alt="google-logo"
-                      width={18}
-                      height={18}
-                    />
+                    {GooglePending ? (
+                      <>
+                        <Loader2 className="animate-spin w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        <Image
+                          src="/icons/google.svg"
+                          alt="google-logo"
+                          width={18}
+                          height={18}
+                        />
+                      </>
+                    )}
                     Continue with Google
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-2 hover:border-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group"
-                    onClick={() => handleSocialAuth("github")}
-                    disabled={isLoading}
+                    className="border-2 hover:border-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group cursor-pointer"
+                    onClick={() => authWithGithub()}
+                    disabled={githubPending || GooglePending}
                   >
-                    <Github className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
+                    {githubPending ? (
+                      <>
+                        <Loader2 className="animate-spin w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        <Github className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
+                      </>
+                    )}
                     Continue with Github
                   </Button>
                 </div>
@@ -245,7 +263,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       type="submit"
                       className="w-full cursor-pointer"
                       variant="outline"
-                      disabled={isLoading}
+                      disabled={isLoading || GooglePending || githubPending}
                     >
                       {isLoading ? (
                         <>
@@ -344,7 +362,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <Button
                       type="submit"
                       className="w-full cursor-pointer"
-                      disabled={isLoading}
+                      disabled={isLoading || GooglePending || githubPending}
                       variant="outline"
                     >
                       {isLoading ? (
