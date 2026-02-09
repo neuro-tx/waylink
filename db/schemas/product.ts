@@ -8,12 +8,19 @@ import {
   timestamp,
   integer,
   boolean,
+  customType,
 } from "drizzle-orm/pg-core";
 import { providers } from "./provider";
 import { location, timestamps } from "./shared";
 import { productStatusEnum } from "./enums";
 import { user } from "./public";
 import { SQL, sql } from "drizzle-orm";
+
+export const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const products = pgTable(
   "products",
@@ -36,9 +43,14 @@ export const products = pgTable(
     }),
     status: productStatusEnum("status").notNull().default("draft"),
     address: text("address"),
-    searchVector: text("search_vector").generatedAlwaysAs(
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
       (): SQL =>
-        sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || coalesce(short_description, ''))`,
+        sql`to_tsvector(
+      'english',
+      coalesce(title, '') || ' ' ||
+      coalesce(description, '') || ' ' ||
+      coalesce(short_description, '')
+    )`,
     ),
     ...timestamps,
   },
