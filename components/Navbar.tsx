@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -15,11 +15,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { User, Bell, LogOut, Heart, Menu, X, BookMarked } from "lucide-react";
+import {
+  User,
+  Bell,
+  LogOut,
+  Heart,
+  Menu,
+  X,
+  BookMarked,
+  Loader,
+} from "lucide-react";
 
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { useAuth } from "./providers/AuthProvider";
 
 const links = {
   navMain: [
@@ -60,8 +70,16 @@ const links = {
 const Navbar = () => {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { user, isAuthenticated, logout, loading, openModal } = useAuth();
 
   const isActive = (route: string) => pathname === route;
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      await logout();
+    });
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-transparent backdrop-blur-xs">
@@ -99,75 +117,96 @@ const Navbar = () => {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setOpen(!open)}
-              variant="ghost"
-              size="icon-sm"
-              className="cursor-pointer md:hidden"
-            >
-              {open ? <X size={20} /> : <Menu size={20} />}
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Mobile menu toggle */}
+              <Button
+                onClick={() => setOpen(!open)}
+                variant="ghost"
+                size="icon-sm"
+                className="cursor-pointer md:hidden"
+              >
+                {open ? <X size={20} /> : <Menu size={20} />}
+              </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary bg-accent">
-                  <Avatar className="size-9 cursor-pointer">
-                    <AvatarImage src="/avatar.jpg" alt="avatar" />
-                    <AvatarFallback className="bg-linear-to-br from-orange-500 to-purple-600 text-white text-sm font-semibold">
-                      AV
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
+              {loading && (
+                <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse md:block" />
+              )}
 
-              <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                {/* User Info  , we will get the data from the session later !! */}
-                <DropdownMenuLabel className="font-normal flex items-center gap-2">
-                  <Avatar className="size-9">
-                    <AvatarImage src="/avatar.jpg" />
-                    <AvatarFallback className="bg-linear-to-br from-orange-500 to-purple-600 text-white text-sm font-semibold">
-                      AV
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <p className="text-sm font-medium">Tarek Fawzy</p>
+              {!loading && !isAuthenticated && (
+                <Button variant="outline" onClick={openModal}>
+                  Login
+                </Button>
+              )}
+            </div>
 
-                    <p className="text-xs text-muted-foreground">
-                      neuro@email.com
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
+            {!loading && isAuthenticated && user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                    <Avatar className="w-9 h-9 cursor-pointer">
+                      <AvatarImage src={user.image} alt={user.name} />
+                      <AvatarFallback className="bg-linear-to-br from-orange-500 to-purple-600 text-white text-sm font-semibold">
+                        {user.name.slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
 
-                <DropdownMenuSeparator />
+                <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                  {/* User Info */}
+                  <DropdownMenuLabel className="font-normal flex items-center gap-2">
+                    <Avatar className="w-9 h-9 cursor-pointer">
+                      <AvatarImage src={user.image} alt={user.name} />
+                      <AvatarFallback className="bg-linear-to-br from-orange-500 to-purple-600 text-white text-sm font-semibold">
+                        {user.name.slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <p className="text-sm font-medium">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
 
-                {/* Menu Links */}
-                {links.dropMenu.map((l) => (
-                  <DropdownMenuItem asChild key={l.href}>
-                    <Link
-                      href={l.href}
-                      className={cn(
-                        "flex items-center gap-2 cursor-pointer font-medium text-muted-foreground",
+                  <DropdownMenuSeparator />
 
-                        isActive(l.href) && "bg-accent",
-                      )}
-                    >
-                      <l.icon className={cn("h-4 w-4", l.color)} />
-                      {l.title}
-                    </Link>
+                  {/* Menu Links */}
+                  {links.dropMenu.map((l) => (
+                    <DropdownMenuItem asChild key={l.href}>
+                      <Link
+                        href={l.href}
+                        className={cn(
+                          "flex items-center gap-2 cursor-pointer font-medium text-muted-foreground",
+                          isActive(l.href) && "bg-accent",
+                        )}
+                      >
+                        <l.icon className={cn("h-4 w-4", l.color)} />
+                        {l.title}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+
+                  <DropdownMenuSeparator />
+
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600 cursor-pointer"
+                    onClick={handleLogout}
+                  >
+                    {isPending ? (
+                      <>
+                        <Loader className="animate-spin w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        <LogOut className="mr-2 h-4 w-4" />
+                      </>
+                    )}
+                    Logout
                   </DropdownMenuItem>
-                ))}
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-600 cursor-pointer"
-                  onClick={() => console.log("Logout")}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
