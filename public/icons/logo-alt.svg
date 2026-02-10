@@ -1,0 +1,37 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Modern Minimalist Icon - Clean geometric design -->
+  <defs>
+    <linearGradient id="modernGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:oklch(56.347% 0.24089 260.834);stop-opacity:1" />
+      <stop offset="50%" style="stop-color:oklch(77.858% 0.14897 226.048);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:oklch(70.45% 0.19257 39.216);stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="modernGradient2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:oklch(82.714% 0.171 80.526);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:oklch(70.45% 0.19257 39.216);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Stylized "W" made of connected paths -->
+  <g transform="translate(8, 16)">
+    <!-- Left path -->
+    <path d="M 0 8 L 8 28 L 16 12" 
+          stroke="url(#modernGradient1)" 
+          stroke-width="5" 
+          fill="none" 
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    
+    <!-- Right path -->
+    <path d="M 16 12 L 24 28 L 32 8 L 40 24 L 48 8" 
+          stroke="url(#modernGradient2)" 
+          stroke-width="5" 
+          fill="none" 
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    
+    <!-- Connection dots -->
+    <circle cx="16" cy="12" r="3" fill="oklch(77.858% 0.14897 226.048)"/>
+    <circle cx="32" cy="8" r="3" fill="oklch(70.45% 0.19257 39.216)"/>
+  </g>
+</svg>

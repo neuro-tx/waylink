@@ -4,10 +4,11 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Plus, LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function NavMain({
   items,
@@ -16,30 +17,31 @@ export function NavMain({
     title: string;
     url: string;
     icon?: LucideIcon;
+    iconColor?: string;
   }[];
 }) {
+  const path = usePathname();
+  const isActive = (url: string) => path === url;
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
-            >
-              <Plus />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <SidebarMenu>
           {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <Link
+              key={item.url}
+              href={item.url}
+              className={cn(
+                "font-medium flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                "transition-all duration-300",
+                isActive(item.url)
+                  ? "bg-blue-10 dark:bg-blue-20 text-background"
+                  : "hover:bg-accent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {item.icon && <item.icon className={cn("w-5 h-5" ,isActive(item.url) ? "text-white": item.iconColor)} />}
+              <span>{item.title}</span>
+            </Link>
           ))}
         </SidebarMenu>
       </SidebarGroupContent>
