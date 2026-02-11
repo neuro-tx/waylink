@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -23,23 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock, User, Loader2, Github, Plus, Send } from "lucide-react";
 import Image from "next/image";
-import { tryCatch } from "@/lib/handler";
-import { handleSocialAuth } from "@/lib/main-auth";
-
-// Validation Schemas
-const signInSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-const signUpSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-type SignInFormData = z.infer<typeof signInSchema>;
-type SignUpFormData = z.infer<typeof signUpSchema>;
+import { handleSocialAuth, signIn, signUp } from "@/lib/main-auth";
+import {
+  signInSchema,
+  signUpSchema,
+  SignInData,
+  SignUpData,
+} from "@/validations";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -48,11 +37,11 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [githubPending, startGithubTrans] = useTransition();
   const [GooglePending, startGoogleTrans] = useTransition();
+  const [isPending, startTransition] = useTransition();
 
-  const signInForm = useForm<SignInFormData>({
+  const signInForm = useForm<SignInData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       email: "",
@@ -60,7 +49,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     },
   });
 
-  const signUpForm = useForm<SignUpFormData>({
+  const signUpForm = useForm<SignUpData>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       name: "",
@@ -69,28 +58,28 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     },
   });
 
-  const onSignIn = async (data: SignInFormData) => {
-    setIsLoading(true);
-    setIsLoading(false);
-    // onClose();
+  const onSignIn = (data: SignInData) => {
+    startTransition(async () => {
+      await signIn(data);
+    });
   };
 
-  const onSignUp = async (data: SignUpFormData) => {
-    setIsLoading(true);
-    setIsLoading(false);
-    // onClose();
+  const onSignUp = (data: SignUpData) => {
+    startTransition(async () => {
+      await signUp(data);
+    });
   };
 
-  function authWithGoogle() {
-    startGoogleTrans(async () => {
-      await tryCatch(() => handleSocialAuth("google"));
-    });
-  }
-
-  function authWithGithub() {
-    startGithubTrans(async () => {
-      await tryCatch(() => handleSocialAuth("github"));
-    });
+  function providerAuth(prov: "google" | "github") {
+    if (prov === "google") {
+      startGoogleTrans(async () => {
+        await handleSocialAuth("google");
+      });
+    } else {
+      startGithubTrans(async () => {
+        await handleSocialAuth("github");
+      });
+    }
   }
 
   const toggleMode = () => {
@@ -156,8 +145,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     type="button"
                     variant="outline"
                     className="border-2 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all group cursor-pointer"
-                    onClick={() => authWithGoogle()}
-                    disabled={GooglePending || githubPending}
+                    onClick={() => providerAuth("google")}
+                    disabled={GooglePending || githubPending || isPending}
                   >
                     {GooglePending ? (
                       <>
@@ -179,8 +168,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     type="button"
                     variant="outline"
                     className="border-2 hover:border-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group cursor-pointer"
-                    onClick={() => authWithGithub()}
-                    disabled={githubPending || GooglePending}
+                    onClick={() => providerAuth("github")}
+                    disabled={githubPending || GooglePending || isPending}
                   >
                     {githubPending ? (
                       <>
@@ -226,7 +215,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             <Input
                               type="email"
                               placeholder="user@example.com"
-                              className="font-mono border-2 focus:border-blue-500 dark:focus:border-blue-400 transition-all"
+                              className="font-mono border-2 focus:border-lime-500 dark:focus:border-lime-400 transition-all"
                               {...field}
                             />
                           </FormControl>
@@ -263,9 +252,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       type="submit"
                       className="w-full cursor-pointer"
                       variant="outline"
-                      disabled={isLoading || GooglePending || githubPending}
+                      disabled={isPending || GooglePending || githubPending}
                     >
-                      {isLoading ? (
+                      {isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Authenticating...
@@ -302,7 +291,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                           <FormControl>
                             <Input
                               placeholder="John Doe"
-                              className="font-mono border-2 focus:border-green-500 dark:focus:border-green-400 transition-all"
+                              className="font-mono border-2 focus:border-lime-500 dark:focus:border-lime-400 transition-all"
                               {...field}
                             />
                           </FormControl>
@@ -326,7 +315,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             <Input
                               type="email"
                               placeholder="user@example.com"
-                              className="font-mono border-2 focus:border-blue-500 dark:focus:border-blue-400 transition-all"
+                              className="font-mono border-2 focus:border-sky-500 dark:focus:border-sky-400 transition-all"
                               {...field}
                             />
                           </FormControl>
@@ -362,10 +351,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <Button
                       type="submit"
                       className="w-full cursor-pointer"
-                      disabled={isLoading || GooglePending || githubPending}
+                      disabled={isPending || GooglePending || githubPending}
                       variant="outline"
                     >
-                      {isLoading ? (
+                      {isPending ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
                           creating account...
@@ -393,7 +382,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         type="button"
                         onClick={toggleMode}
                         className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                        disabled={isLoading}
+                        disabled={isPending}
                       >
                         SIGN_IN
                       </button>
@@ -405,7 +394,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         type="button"
                         onClick={toggleMode}
                         className="text-purple-600 dark:text-purple-400 hover:underline font-semibold"
-                        disabled={isLoading}
+                        disabled={isPending}
                       >
                         CREATE_ACCOUNT
                       </button>
@@ -417,9 +406,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               {/* Status indicator */}
               <div className="mt-4 flex items-center justify-center gap-2 text-xs font-mono text-gray-400">
                 <div
-                  className={`w-2 h-2 rounded-full ${isLoading ? "bg-yellow-500 animate-pulse" : "bg-green-500"}`}
+                  className={`w-2 h-2 rounded-full animate-pulse ${isPending ? "bg-red-500" : "bg-green-500"}`}
                 />
-                <span>STATUS: {isLoading ? "PROCESSING" : "READY"}</span>
+                <span>STATUS: {isPending ? "PROCESSING..." : "READY"}</span>
               </div>
             </div>
           </div>
