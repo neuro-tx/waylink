@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 import {
   User,
   Bell,
@@ -25,11 +23,22 @@ import {
   BookMarked,
   Loader,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useAuth } from "./providers/AuthProvider";
+import { useClickOutside } from "@/hooks/useClickOut";
 
 const links = {
   navMain: [
@@ -70,8 +79,11 @@ const links = {
 const Navbar = () => {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { user, isAuthenticated, logout, loading, openModal } = useAuth();
+  const menuRef = useRef<HTMLElement>(null);
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
   const isActive = (route: string) => pathname === route;
 
@@ -81,8 +93,35 @@ const Navbar = () => {
     });
   };
 
+  useClickOutside(menuRef ,()=> {
+    setOpen(false);
+  } ,[toggleButtonRef])
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-transparent backdrop-blur-xs">
+      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              You’ll be logged out and. You can sign in again anytime.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} disabled={isPending}>
+              {isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Logging out...
+                </span>
+              ) : (
+                "Continue"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="container mx-auto px-3 lg:px-5 xl:px-6 relative">
         <div className="w-full flex h-16 items-center justify-between">
           <Link href="/" className="select-none">
@@ -124,6 +163,7 @@ const Navbar = () => {
                 variant="ghost"
                 size="icon-sm"
                 className="cursor-pointer md:hidden"
+                ref={toggleButtonRef}
               >
                 {open ? <X size={20} /> : <Menu size={20} />}
               </Button>
@@ -191,7 +231,7 @@ const Navbar = () => {
 
                   <DropdownMenuItem
                     className="text-red-600 focus:text-red-600 cursor-pointer"
-                    onClick={handleLogout}
+                    onClick={() => setIsOpen(true)}
                   >
                     {isPending ? (
                       <>
@@ -212,7 +252,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {open && (
-          <nav className="md:hidden border-t p-3 space-y-1.5 animate-in slide-in-from-top-2 shadow-md rounded-lg absolute w-[95%] left-1/2 -translate-x-1/2 border border-slate-300 dark:border-slate-600 bg-background">
+          <nav ref={menuRef} className="md:hidden border-t p-3 space-y-1.5 animate-in slide-in-from-top-3 shadow-md rounded-lg absolute w-[95%] left-1/2 -translate-x-1/2 border border-slate-300 dark:border-slate-600 bg-background transition-all duration-300">
             {links.navMain.map((i) => (
               <Link
                 key={i.href}
