@@ -22,6 +22,7 @@ import {
   X,
   BookMarked,
   Loader,
+  UserPlus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -39,6 +40,8 @@ import { Button } from "./ui/button";
 import { useAuth } from "./providers/AuthProvider";
 import { useClickOutside } from "@/hooks/useClickOut";
 import { useActive } from "@/hooks/useActive";
+import { ThemeToggle } from "./ThemeToggle";
+import { Skeleton } from "./ui/skeleton";
 
 const links = {
   navMain: [
@@ -155,24 +158,28 @@ const Navbar = () => {
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {/* Mobile menu toggle */}
               <Button
                 onClick={() => setOpen(!open)}
-                variant="ghost"
-                size="icon-sm"
+                variant="outline"
+                size="icon"
                 className="cursor-pointer md:hidden"
                 ref={toggleButtonRef}
               >
                 {open ? <X size={20} /> : <Menu size={20} />}
               </Button>
 
-              {loading && (
-                <div className="w-9 h-9 rounded-full bg-gray-200 animate-pulse md:block" />
-              )}
+              {loading && <Skeleton className="w-9 h-9 rounded-md" />}
 
               {!loading && !isAuthenticated && (
-                <Button variant="outline" onClick={openModal}>
-                  Login
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="cursor-pointer"
+                  onClick={openModal}
+                >
+                  <UserPlus />
                 </Button>
               )}
             </div>
@@ -262,7 +269,7 @@ const Navbar = () => {
                 className={cn(
                   "block rounded-lg px-4 py-2 text-sm font-medium transition-all duration-500",
 
-                  isActive(i.href ,i.exact)
+                  isActive(i.href, i.exact)
                     ? "bg-blue-10 dark:bg-blue-20 text-white"
                     : "hover:bg-accent",
                 )}
