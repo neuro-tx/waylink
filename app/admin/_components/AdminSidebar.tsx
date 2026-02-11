@@ -30,6 +30,7 @@ export type AdminNavItem = {
   url: string;
   icon?: LucideIcon;
   iconColor? :string;
+  exact?:boolean;
 };
 
 export const adminNav: AdminNavItem[] = [
@@ -37,7 +38,8 @@ export const adminNav: AdminNavItem[] = [
     title: "Dashboard",
     url: "/admin",
     icon: LayoutDashboard,
-    iconColor:"text-green-500"
+    iconColor:"text-green-500",
+    exact: true
   },
   {
     title: "Trips",

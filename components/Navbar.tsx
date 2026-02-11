@@ -34,15 +34,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { useAuth } from "./providers/AuthProvider";
 import { useClickOutside } from "@/hooks/useClickOut";
+import { useActive } from "@/hooks/useActive";
 
 const links = {
   navMain: [
-    { title: "Explore", href: "/" },
+    { title: "Explore", href: "/", exact: true },
     { title: "Transports", href: "/transport" },
     { title: "Trips", href: "/trips" },
     { title: "Most Rating", href: "/most-rating" },
@@ -77,15 +77,13 @@ const links = {
 };
 
 const Navbar = () => {
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { user, isAuthenticated, logout, loading, openModal } = useAuth();
   const menuRef = useRef<HTMLElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
-
-  const isActive = (route: string) => pathname === route;
+  const isActive = useActive();
 
   const handleLogout = () => {
     startTransition(async () => {
@@ -93,9 +91,9 @@ const Navbar = () => {
     });
   };
 
-  useClickOutside(menuRef ,()=> {
+  useClickOutside(menuRef, () => {
     setOpen(false);
-  } ,[toggleButtonRef])
+  }, [toggleButtonRef]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-transparent backdrop-blur-xs">
@@ -144,7 +142,7 @@ const Navbar = () => {
 
                   "text-muted-foreground hover:text-foreground hover:bg-accent/50",
 
-                  isActive(i.href) && "text-primary bg-accent",
+                  isActive(i.href, i.exact) && "text-primary bg-accent",
                 )}
               >
                 {i.title}
@@ -252,7 +250,10 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {open && (
-          <nav ref={menuRef} className="md:hidden border-t p-3 space-y-1.5 animate-in slide-in-from-top-3 shadow-md rounded-lg absolute w-[95%] left-1/2 -translate-x-1/2 border border-slate-300 dark:border-slate-600 bg-background transition-all duration-300">
+          <nav
+            ref={menuRef}
+            className="md:hidden border-t p-3 space-y-1.5 animate-in slide-in-from-top-3 shadow-md rounded-lg absolute w-[95%] left-1/2 -translate-x-1/2 border border-slate-300 dark:border-slate-600 bg-background transition-all duration-300"
+          >
             {links.navMain.map((i) => (
               <Link
                 key={i.href}
@@ -261,7 +262,7 @@ const Navbar = () => {
                 className={cn(
                   "block rounded-lg px-4 py-2 text-sm font-medium transition-all duration-500",
 
-                  isActive(i.href)
+                  isActive(i.href ,i.exact)
                     ? "bg-blue-10 dark:bg-blue-20 text-white"
                     : "hover:bg-accent",
                 )}
