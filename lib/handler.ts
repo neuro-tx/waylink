@@ -30,8 +30,9 @@ export async function tryCatch<T>(
         {
           status: "empty",
           message: options?.emptyMessage ?? "No data found",
+          data: null
         },
-        { status: 204 },
+        { status: 404 },
       );
     }
 

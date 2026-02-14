@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FerrisWheel, Sparkles, Star } from "lucide-react";
+import { FerrisWheel, Sparkles, Star } from "lucide-react";
 import Image from "next/image";
 import { motion, Variants } from "motion/react";
 import Link from "next/link";
@@ -11,7 +11,7 @@ export default function Hero() {
     <section className="relative min-h-svh flex items-center justify-center overflow-hidden">
       <AmbientBackground />
 
-      <div className="mx-auto relative container px-6 py-24">
+      <div className="mx-auto relative container px-3 md:px-6 lg:px-9 py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div
             initial="hidden"
@@ -66,7 +66,7 @@ export default function Hero() {
 
             <motion.div variants={fadeUp} className="flex gap-4">
               <Button asChild size="lg">
-                <Link href="/most-rating" className="group">
+                <Link href="/most-rating" className="group w-full md:w-fit">
                   <span className="relative flex items-center gap-2">
                     <Star className="w-4 h-4 transition-all duration-300 group-hover:rotate-12 group-hover:scale-0" />
 
@@ -78,9 +78,10 @@ export default function Hero() {
               </Button>
 
               <Button size="lg" variant="outline" asChild>
-                <Link href="/become-provider">
-                <FerrisWheel />
-                Become a Partner</Link>
+                <Link href="/become-provider" className="w-full md:w-fit">
+                  <FerrisWheel />
+                  Become a Partner
+                </Link>
               </Button>
             </motion.div>
           </motion.div>

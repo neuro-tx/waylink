@@ -156,14 +156,21 @@ export default function HeaderNavbar() {
           )}
         >
           <div className="relative flex items-center justify-between gap-6 py-3 lg:gap-0 lg:py-4">
-            <Link href="/" className="flex items-center space-x-2 z-50">
+            <Link
+              href="/"
+              className="flex items-center space-x-2 z-50 shrink-0 select-none"
+            >
               <Image
-                src="/icons/logo.svg"
+                src="/icons/waylink.svg"
                 alt="waylink"
-                width={180}
-                height={70}
+                width={40}
+                height={40}
                 priority
               />
+              <span className="font-bold text-xl">
+                <span className="text-orange-2">Way</span>
+                <span className="text-blue-10">Link</span>
+              </span>
             </Link>
 
             <motion.ul
@@ -196,7 +203,12 @@ export default function HeaderNavbar() {
               <ThemeToggle />
 
               {!loading && !isAuthenticated && (
-                <Button variant="outline" size="sm" onClick={openModal}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openModal}
+                  className="hidden md:flex"
+                >
                   <UserPlus className="h-4 w-4" />
                   Sign In
                 </Button>
@@ -311,6 +323,18 @@ export default function HeaderNavbar() {
                     </Link>
                   </motion.div>
                 ))}
+                <div className="px-2 mt-3">
+                  {!loading && !isAuthenticated && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={openModal}
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Sign In
+                    </Button>
+                  )}
+                </div>
               </motion.div>
             )}
           </div>
