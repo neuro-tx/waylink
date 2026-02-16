@@ -1,7 +1,6 @@
 import {
   eq,
   and,
-  or,
   gt,
   gte,
   lt,
@@ -14,7 +13,11 @@ import {
   isNotNull,
   between,
   SQL,
+  desc,
+  asc,
+  ne
 } from "drizzle-orm";
+import { OrderByClause } from "./analyzer-types";
 
 /**
  * Helper to build Drizzle WHERE conditions from parsed query plan
@@ -30,12 +33,6 @@ export function buildWhereConditions(
   const conditions: SQL[] = [];
 
   for (const [key, value] of Object.entries(whereClause)) {
-    // Skip relation fields (they should be handled separately with joins)
-    if (key.includes(".")) {
-      continue;
-    }
-
-    // Get the column from the table schema
     const column = tableSchema[key];
     if (!column) {
       console.warn(`Column ${key} not found in table schema`);
@@ -92,8 +89,7 @@ function buildCondition(column: any, value: any): SQL | undefined {
           break;
 
         case "ne":
-          // Drizzle doesn't have ne, so we use NOT eq
-          condition = isNull(column); // This is a workaround, you might need custom SQL
+          condition = ne(column ,operatorValue);
           break;
 
         case "gt":
@@ -112,18 +108,13 @@ function buildCondition(column: any, value: any): SQL | undefined {
           condition = lte(column, operatorValue);
           break;
 
+        // make sure to covert the value into array
         case "in":
-          condition = inArray(
-            column,
-            Array.isArray(operatorValue) ? operatorValue : [operatorValue],
-          );
+          condition = inArray(column, arrify(operatorValue));
           break;
 
         case "notIn":
-          condition = notInArray(
-            column,
-            Array.isArray(operatorValue) ? operatorValue : [operatorValue],
-          );
+          condition = notInArray(column, arrify(operatorValue));
           break;
 
         case "like":
@@ -178,14 +169,7 @@ function buildCondition(column: any, value: any): SQL | undefined {
 /**
  * Build ORDER BY clauses from parsed query plan
  */
-export function buildOrderBy(
-  orderByClause: Array<{
-    field: string;
-    direction: "ASC" | "DESC";
-    table?: string;
-  }>,
-  tableSchema: any,
-) {
+export function buildOrderBy(orderByClause: OrderByClause[], tableSchema: any) {
   const orderByClauses = [];
 
   for (const order of orderByClause) {
@@ -200,12 +184,14 @@ export function buildOrderBy(
       continue;
     }
 
-    // Import desc/asc from drizzle-orm
-    const { desc, asc } = require("drizzle-orm");
     orderByClauses.push(
       order.direction === "DESC" ? desc(column) : asc(column),
     );
   }
 
   return orderByClauses;
+}
+
+function arrify<T>(item: T | T[]): T[] {
+  return Array.isArray(item) ? item : [item];
 }

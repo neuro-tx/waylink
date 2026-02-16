@@ -7,7 +7,6 @@ import type {
   QueryAnalyzerResult,
   QueryAnalyzerOptions,
   FilterOperator,
-  JoinInfo,
 } from "./analyzer-types";
 
 /**
@@ -24,13 +23,15 @@ export class QueryAnalyzer {
   // Parsed components
   private whereClause: WhereClause = {};
   private orderByClause: OrderByClause[] = [];
-  private joins: JoinInfo[] = [];
   private selectFields: string[] = [];
   private searchTerm?: string;
+  private includes: string[] = [];
 
   constructor(queryParams: RawQueryParams, options?: QueryAnalyzerOptions) {
     // Convert to URLSearchParams if it's an object
-    if (queryParams instanceof URLSearchParams) {
+    if (typeof queryParams === "string") {
+      this.searchParams = new URL(queryParams).searchParams;
+    } else if (queryParams instanceof URLSearchParams) {
       this.searchParams = queryParams;
     } else {
       this.searchParams = new URLSearchParams();
@@ -60,20 +61,6 @@ export class QueryAnalyzer {
    */
   private getParam(key: string): string | undefined {
     return this.searchParams.get(key) ?? undefined;
-  }
-
-  /**
-   * Get all parameter values for a key
-   */
-  private getAllParams(key: string): string[] {
-    return this.searchParams.getAll(key);
-  }
-
-  /**
-   * Check if a parameter exists
-   */
-  private hasParam(key: string): boolean {
-    return this.searchParams.has(key);
   }
 
   /**
@@ -115,7 +102,6 @@ export class QueryAnalyzer {
         orderBy: this.orderByClause,
         limit: pagination.limit,
         offset: pagination.offset,
-        joins: this.joins.length > 0 ? this.joins : undefined,
         select: this.selectFields.length > 0 ? this.selectFields : undefined,
         search: this.searchTerm
           ? {
@@ -214,9 +200,6 @@ export class QueryAnalyzer {
       );
       return;
     }
-
-    // Mark that we need to join this table
-    this.addJoinIfNotExists(relationName);
 
     // Parse operator if present
     const { fieldName, operator } = this.parseFieldOperator(fieldPath);
@@ -354,9 +337,6 @@ export class QueryAnalyzer {
         return;
       }
 
-      // Mark that we need to join this table
-      this.addJoinIfNotExists(relationName);
-
       this.orderByClause.push({
         field: relFieldName,
         direction,
@@ -455,8 +435,8 @@ export class QueryAnalyzer {
       return;
     }
 
-    const includes = includeParam.split(",").map((i) => i.trim());
-    for (const relationName of includes) {
+    this.includes = includeParam.split(",").map((i) => i.trim());
+    for (const relationName of this.includes) {
       // Check whitelist
       if (
         this.options.allowedRelations.length > 0 &&
@@ -465,8 +445,6 @@ export class QueryAnalyzer {
         this.warnings.push(`Relation ${relationName} is not in allowed list`);
         continue;
       }
-
-      this.addJoinIfNotExists(relationName);
     }
   }
 
@@ -492,24 +470,6 @@ export class QueryAnalyzer {
 
       this.selectFields.push(field);
     }
-  }
-
-  /**
-   * Add join info if not already present
-   */
-  private addJoinIfNotExists(relationName: string): void {
-    if (this.joins.some((j) => j.table === relationName)) {
-      return;
-    }
-
-    // Add basic join info - you'll fill in the details when you use it
-    this.joins.push({
-      table: relationName,
-      alias: relationName,
-      localField: `${relationName}Id`, // Convention: locationId for location table
-      foreignField: "id",
-      type: "LEFT",
-    });
   }
 
   /**

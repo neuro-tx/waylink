@@ -64,9 +64,9 @@ export default function Hero() {
               </div>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="flex gap-4">
+            <motion.div variants={fadeUp} className="flex gap-4 flex-wrap">
               <Button asChild size="lg">
-                <Link href="/most-rating" className="group w-full md:w-fit">
+                <Link href="/most-rating" className="group w-full sm:w-fit">
                   <span className="relative flex items-center gap-2">
                     <Star className="w-4 h-4 transition-all duration-300 group-hover:rotate-12 group-hover:scale-0" />
 
@@ -78,7 +78,7 @@ export default function Hero() {
               </Button>
 
               <Button size="lg" variant="outline" asChild>
-                <Link href="/become-provider" className="w-full md:w-fit">
+                <Link href="/become-provider" className="w-full sm:w-fit">
                   <FerrisWheel />
                   Become a Partner
                 </Link>

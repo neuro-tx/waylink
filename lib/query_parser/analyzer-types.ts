@@ -1,28 +1,18 @@
-// ============================================================================
-// CORE TYPES FOR QUERY ANALYZER
-// ============================================================================
-
-/**
- * Supported filter operators
- */
 export type FilterOperator =
-  | "eq" // equals
-  | "ne" // not equals
-  | "gt" // greater than
-  | "gte" // greater than or equal
-  | "lt" // less than
-  | "lte" // less than or equal
-  | "in" // in array
-  | "notIn" // not in array
-  | "like" // LIKE pattern
-  | "ilike" // case-insensitive LIKE
-  | "between" // between two values
-  | "isNull" // is null
-  | "isNotNull"; // is not null
+  | "eq"
+  | "ne"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte"
+  | "in"
+  | "notIn"
+  | "like"
+  | "ilike"
+  | "between"
+  | "isNull"
+  | "isNotNull";
 
-/**
- * Filter value with operator
- */
 export type FilterValue =
   | string
   | number
@@ -44,29 +34,12 @@ export type WhereClause = {
   NOT?: WhereClause;
 };
 
-/**
- * Sort direction
- */
 export type SortDirection = "ASC" | "DESC" | "asc" | "desc";
 
-/**
- * Order by clause
- */
 export interface OrderByClause {
   field: string;
   direction: SortDirection;
   table?: string; // for joined tables (e.g., "location")
-}
-
-/**
- * Join/Relation information
- */
-export interface JoinInfo {
-  table: string; // related table name (e.g., "location")
-  alias?: string; // alias for the join
-  localField: string; // field in main table (e.g., "locationId")
-  foreignField: string; // field in related table (e.g., "id")
-  type?: "INNER" | "LEFT" | "RIGHT";
 }
 
 /**
@@ -78,7 +51,6 @@ export interface ParsedQuery {
   limit: number;
   offset: number;
   select?: string[]; // fields to select
-  joins?: JoinInfo[]; // tables to join
   search?: {
     // full-text search info
     term: string;
@@ -87,36 +59,24 @@ export interface ParsedQuery {
   };
 }
 
-/**
- * Raw query parameters from URL
- * Can be either URLSearchParams (from Next.js/browser) or a plain object (from Express)
- */
 export type RawQueryParams =
+  | string
   | URLSearchParams
   | Record<string, string | string[] | undefined>;
 
-/**
- * Validation error
- */
 export interface ValidationError {
   field: string;
   message: string;
   value?: any;
 }
 
-/**
- * Query analyzer result
- */
 export interface QueryAnalyzerResult {
   success: boolean;
-  query?: ParsedQuery; // The parsed query plan
+  query?: ParsedQuery;
   errors?: ValidationError[];
   warnings?: string[];
 }
 
-/**
- * Options for the query analyzer
- */
 export interface QueryAnalyzerOptions {
   maxLimit?: number; // Maximum allowed limit (default: 100)
   defaultLimit?: number; // Default limit if not specified (default: 20)

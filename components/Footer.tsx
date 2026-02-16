@@ -127,8 +127,8 @@ export default function Footer() {
             ))}
           </div>
         </div>
-        <div className="mt-12 flex flex-wrap items-end justify-between gap-6 border-t py-6">
-          <span className="text-muted-foreground order-last block text-center text-sm md:order-first">
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-6 border-t py-6">
+          <span className="text-muted-foreground order-last block text-center text-sm sm:order-first">
             © {2026} Way Link, All rights reserved
           </span>
           <div className="order-first flex flex-wrap justify-center gap-6 text-sm md:order-last">
