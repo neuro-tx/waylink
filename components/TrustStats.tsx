@@ -51,14 +51,43 @@ const TrustStats = () => {
   return (
     <section className="relative py-16 overflow-hidden">
       <div className="container mx-auto px-3 md:px-6 lg:px-9">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-100 mb-3">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0, y: -20 },
+            visible: {
+              opacity: 1,
+              y: 0,
+              transition: {
+                duration: 0.6,
+                ease: "easeOut",
+                staggerChildren: 0.15,
+              },
+            },
+          }}
+          className="text-center mb-12"
+        >
+          <motion.h2
+            variants={{
+              hidden: { opacity: 0, y: -10 },
+              visible: { opacity: 1, y: 0 },
+            }}
+            className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-100 mb-3"
+          >
             Trusted by Thousands
-          </h2>
-          <p className="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
+          </motion.h2>
+
+          <motion.p
+            variants={{
+              hidden: { opacity: 0, y: 10 },
+              visible: { opacity: 1, y: 0 },
+            }}
+            className="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto"
+          >
             Join our growing community of travelers and providers worldwide
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
         <motion.div
           className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8"
