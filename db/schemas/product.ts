@@ -8,19 +8,11 @@ import {
   timestamp,
   integer,
   boolean,
-  customType,
 } from "drizzle-orm/pg-core";
 import { providers } from "./provider";
-import { location, timestamps } from "./shared";
-import { productStatusEnum } from "./enums";
+import { productStatusEnum, timestamps, tsvector } from "./enums";
 import { user } from "./public";
 import { SQL, sql } from "drizzle-orm";
-
-export const tsvector = customType<{ data: string }>({
-  dataType() {
-    return "tsvector";
-  },
-});
 
 export const products = pgTable(
   "products",
@@ -30,7 +22,7 @@ export const products = pgTable(
       .notNull()
       .references(() => providers.id, { onDelete: "cascade" }),
     type: text("type")
-      .$type<"experience" | "transport" | "accommodation">()
+      .$type<"experience" | "transport">()
       .notNull(),
     title: text("title").notNull(),
     slug: text("slug").notNull(),
@@ -38,11 +30,7 @@ export const products = pgTable(
     shortDescription: text("short_description"),
     basePrice: numeric("base_price", { precision: 10, scale: 2 }).notNull(),
     currency: text("currency").default("USD"),
-    locationId: uuid("location_id").references(() => location.id, {
-      onDelete: "set null",
-    }),
     status: productStatusEnum("status").notNull().default("draft"),
-    address: text("address"),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       (): SQL =>
         sql`to_tsvector(
@@ -58,7 +46,6 @@ export const products = pgTable(
     index("product_provider_idx").on(t.providerId),
     index("product_type_idx").on(t.type),
     index("product_status_idx").on(t.status),
-    index("product_location_idx").on(t.locationId),
     uniqueIndex("product_slug_provider_idx").on(t.slug, t.providerId),
     index("product_search_idx").using("gin", t.searchVector),
   ],

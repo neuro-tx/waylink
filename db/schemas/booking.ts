@@ -8,9 +8,9 @@ import {
   integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { timestamps } from "./shared";
 import { user } from "./public";
 import { productVariants } from "./product";
+import { timestamps } from "./enums";
 
 export const bookings = pgTable(
   "bookings",

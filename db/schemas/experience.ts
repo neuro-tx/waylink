@@ -1,7 +1,6 @@
 import { pgTable, uuid, text, integer, index } from "drizzle-orm/pg-core";
 import { products } from "./product";
-import { location, timestamps } from "./shared";
-import { difficultyLevelEnum, experienceTypeEnum } from "./enums";
+import { difficultyLevelEnum, experienceTypeEnum, timestamps } from "./enums";
 
 export const experiences = pgTable(
   "experiences",
@@ -20,12 +19,6 @@ export const experiences = pgTable(
       .$type<"hours" | "minutes" | "days">()
       .notNull(),
 
-    fromLocationId: uuid("from_location_id").references(() => location.id),
-    toLocationId: uuid("to_location_id")
-      .references(() => location.id)
-      .notNull(),
-    locationAddress: text("location_address"),
-
     included: text("included").array(),
     notIncluded: text("not_included").array(),
     requirements: text("requirements").array(),
@@ -36,7 +29,6 @@ export const experiences = pgTable(
     index("experience_product_idx").on(t.productId),
     index("experience_type_idx").on(t.experienceType),
     index("experience_difficult_type_idx").on(t.difficultyLevel),
-    index("experience_route_idx").on(t.fromLocationId, t.toLocationId),
   ],
 );
 

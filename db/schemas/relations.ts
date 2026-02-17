@@ -62,10 +62,6 @@ export const providerRelations = relations(providers, ({ one, many }) => ({
   products: many(products),
   members: many(providerMembers),
   invites: many(providerInvites),
-  location: one(location, {
-    fields: [providers.location],
-    references: [location.id],
-  }),
   subscriptions: many(subscriptions),
 }));
 
@@ -134,10 +130,7 @@ export const productRelations = relations(products, ({ one, many }) => ({
     fields: [products.providerId],
     references: [providers.id],
   }),
-  location: one(location, {
-    fields: [products.locationId],
-    references: [location.id],
-  }),
+  locations: many(location),
   experience: one(experiences),
   transport: one(transports),
   wishlistItems: many(wishlistItems),
@@ -199,16 +192,6 @@ export const experienceRelations = relations(experiences, ({ one, many }) => ({
     fields: [experiences.productId],
     references: [products.id],
   }),
-  fromLocation: one(location, {
-    fields: [experiences.fromLocationId],
-    references: [location.id],
-    relationName: "fromLocation",
-  }),
-  toLocation: one(location, {
-    fields: [experiences.toLocationId],
-    references: [location.id],
-    relationName: "toLocation",
-  }),
   itineraries: many(itineraries),
 }));
 
@@ -226,16 +209,6 @@ export const transportRelations = relations(transports, ({ one }) => ({
   product: one(products, {
     fields: [transports.productId],
     references: [products.id],
-  }),
-  fromLocation: one(location, {
-    fields: [transports.fromLocationId],
-    references: [location.id],
-    relationName: "transportFrom",
-  }),
-  toLocation: one(location, {
-    fields: [transports.toLocationId],
-    references: [location.id],
-    relationName: "transportTo",
   }),
 }));
 
@@ -311,11 +284,9 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
 // ============================================
 // LOCATION RELATIONS
 // ============================================
-export const locationRelations = relations(location, ({ many }) => ({
-  providers: many(providers),
-  products: many(products),
-  experiencesFrom: many(experiences, { relationName: "fromLocation" }),
-  experiencesTo: many(experiences, { relationName: "toLocation" }),
-  transportsFrom: many(transports, { relationName: "transportFrom" }),
-  transportsTo: many(transports, { relationName: "transportTo" }),
+export const locationRelations = relations(location, ({ one }) => ({
+  products: one(products, {
+    fields: [location.productId],
+    references: [products.id],
+  }),
 }));

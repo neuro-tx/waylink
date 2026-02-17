@@ -10,8 +10,7 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { products, productVariants } from "./product";
-import { location, timestamps } from "./shared";
-import { transportTypeEnum, transportClassEnum, seatTypeEnum } from "./enums";
+import { transportTypeEnum, transportClassEnum, seatTypeEnum, timestamps } from "./enums";
 
 export const transports = pgTable(
   "transports",
@@ -23,12 +22,6 @@ export const transports = pgTable(
       .unique(),
 
     transportType: transportTypeEnum("transport_type").notNull(),
-    fromLocationId: uuid("from_location_id")
-      .notNull()
-      .references(() => location.id),
-    toLocationId: uuid("to_location_id")
-      .notNull()
-      .references(() => location.id),
     distance: integer("distance"), // in kilometers
     hasDirectRoute: boolean("has_direct_route").notNull().default(true),
 
@@ -50,7 +43,6 @@ export const transports = pgTable(
   (t) => [
     index("transport_product_idx").on(t.productId),
     index("transport_type_idx").on(t.transportType),
-    index("transport_route_idx").on(t.fromLocationId, t.toLocationId),
   ],
 );
 

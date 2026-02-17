@@ -100,7 +100,6 @@ CREATE TABLE "providers" (
 	"cover" text,
 	"service_type" "provider_type" NOT NULL,
 	"business_type" text NOT NULL,
-	"location" uuid,
 	"address" text,
 	"status" "provider_status" DEFAULT 'pending',
 	"is_verified" boolean DEFAULT false,
@@ -113,11 +112,22 @@ CREATE TABLE "providers" (
 --> statement-breakpoint
 CREATE TABLE "locations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"product_id" uuid,
 	"city" text NOT NULL,
 	"country" text NOT NULL,
 	"latitude" numeric(9, 6) NOT NULL,
 	"longitude" numeric(9, 6) NOT NULL,
 	"slug" text NOT NULL,
+	"address" text,
+	"type" text DEFAULT 'start' NOT NULL,
+	"search_vector" "tsvector" GENERATED ALWAYS AS (to_tsvector(
+          'english',
+          coalesce(city, '') || ' ' ||
+          coalesce(country, '') || ' ' ||
+          coalesce(address, '')
+        )) STORED,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "locations_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
@@ -241,9 +251,7 @@ CREATE TABLE "products" (
 	"short_description" text,
 	"base_price" numeric(10, 2) NOT NULL,
 	"currency" text DEFAULT 'USD',
-	"location_id" uuid,
 	"status" "product_status" DEFAULT 'draft' NOT NULL,
-	"address" text,
 	"search_vector" "tsvector" GENERATED ALWAYS AS (to_tsvector(
       'english',
       coalesce(title, '') || ' ' ||
@@ -261,9 +269,6 @@ CREATE TABLE "experiences" (
 	"difficulty_level" "difficulty_level",
 	"duration_count" integer NOT NULL,
 	"duration_unit" text NOT NULL,
-	"from_location_id" uuid,
-	"to_location_id" uuid NOT NULL,
-	"location_address" text,
 	"included" text[],
 	"not_included" text[],
 	"requirements" text[],
@@ -303,8 +308,6 @@ CREATE TABLE "transports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"product_id" uuid NOT NULL,
 	"transport_type" "transport_type" NOT NULL,
-	"from_location_id" uuid NOT NULL,
-	"to_location_id" uuid NOT NULL,
 	"distance" integer,
 	"has_direct_route" boolean DEFAULT true NOT NULL,
 	"transport_class" "transport_class",
@@ -392,7 +395,7 @@ ALTER TABLE "provider_invites" ADD CONSTRAINT "provider_invites_accepted_by_user
 ALTER TABLE "provider_members" ADD CONSTRAINT "provider_members_provider_id_providers_id_fk" FOREIGN KEY ("provider_id") REFERENCES "public"."providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "provider_members" ADD CONSTRAINT "provider_members_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "providers" ADD CONSTRAINT "providers_owner_id_user_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "providers" ADD CONSTRAINT "providers_location_locations_id_fk" FOREIGN KEY ("location") REFERENCES "public"."locations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "locations" ADD CONSTRAINT "locations_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_provider_id_providers_id_fk" FOREIGN KEY ("provider_id") REFERENCES "public"."providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_plan_id_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."plans"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "pricing" ADD CONSTRAINT "pricing_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -403,15 +406,10 @@ ALTER TABLE "product_scores" ADD CONSTRAINT "product_scores_product_id_products_
 ALTER TABLE "product_stats" ADD CONSTRAINT "product_stats_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_variants" ADD CONSTRAINT "product_variants_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "products" ADD CONSTRAINT "products_provider_id_providers_id_fk" FOREIGN KEY ("provider_id") REFERENCES "public"."providers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "products" ADD CONSTRAINT "products_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "experiences" ADD CONSTRAINT "experiences_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "experiences" ADD CONSTRAINT "experiences_from_location_id_locations_id_fk" FOREIGN KEY ("from_location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "experiences" ADD CONSTRAINT "experiences_to_location_id_locations_id_fk" FOREIGN KEY ("to_location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "itineraries" ADD CONSTRAINT "itineraries_experience_id_experiences_id_fk" FOREIGN KEY ("experience_id") REFERENCES "public"."experiences"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transport_schedules" ADD CONSTRAINT "transport_schedules_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "transports" ADD CONSTRAINT "transports_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "transports" ADD CONSTRAINT "transports_from_location_id_locations_id_fk" FOREIGN KEY ("from_location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "transports" ADD CONSTRAINT "transports_to_location_id_locations_id_fk" FOREIGN KEY ("to_location_id") REFERENCES "public"."locations"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "booking_items" ADD CONSTRAINT "booking_items_booking_id_bookings_id_fk" FOREIGN KEY ("booking_id") REFERENCES "public"."bookings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
@@ -437,10 +435,12 @@ CREATE UNIQUE INDEX "provider_owner_idx" ON "providers" USING btree ("owner_id")
 CREATE INDEX "provider_status_idx" ON "providers" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "provider_type_idx" ON "providers" USING btree ("service_type");--> statement-breakpoint
 CREATE UNIQUE INDEX "provider_owner_type_idx" ON "providers" USING btree ("owner_id","service_type");--> statement-breakpoint
-CREATE INDEX "location_city_idx" ON "locations" USING btree ("city");--> statement-breakpoint
-CREATE INDEX "location_country_idx" ON "locations" USING btree ("country");--> statement-breakpoint
-CREATE INDEX "location_coords_idx" ON "locations" USING btree ("latitude","longitude");--> statement-breakpoint
-CREATE UNIQUE INDEX "location_city_country_unique" ON "locations" USING btree ("city","country");--> statement-breakpoint
+CREATE INDEX "loc_city_idx" ON "locations" USING btree ("city");--> statement-breakpoint
+CREATE INDEX "loc_country_idx" ON "locations" USING btree ("country");--> statement-breakpoint
+CREATE INDEX "loc_coords_idx" ON "locations" USING btree ("latitude","longitude");--> statement-breakpoint
+CREATE INDEX "loc_product_idx" ON "locations" USING btree ("product_id");--> statement-breakpoint
+CREATE INDEX "loc_type_idx" ON "locations" USING btree ("type");--> statement-breakpoint
+CREATE INDEX "loc_ts_vectore_idx" ON "locations" USING gin ("search_vector");--> statement-breakpoint
 CREATE INDEX "plan_tier_idx" ON "plans" USING btree ("tier");--> statement-breakpoint
 CREATE UNIQUE INDEX "plan_tier_cycle_idx" ON "plans" USING btree ("tier","billing_cycle");--> statement-breakpoint
 CREATE INDEX "subscription_provider_idx" ON "subscriptions" USING btree ("provider_id");--> statement-breakpoint
@@ -461,19 +461,16 @@ CREATE INDEX "variant_status_idx" ON "product_variants" USING btree ("status");-
 CREATE INDEX "product_provider_idx" ON "products" USING btree ("provider_id");--> statement-breakpoint
 CREATE INDEX "product_type_idx" ON "products" USING btree ("type");--> statement-breakpoint
 CREATE INDEX "product_status_idx" ON "products" USING btree ("status");--> statement-breakpoint
-CREATE INDEX "product_location_idx" ON "products" USING btree ("location_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "product_slug_provider_idx" ON "products" USING btree ("slug","provider_id");--> statement-breakpoint
 CREATE INDEX "product_search_idx" ON "products" USING gin ("search_vector");--> statement-breakpoint
 CREATE INDEX "experience_product_idx" ON "experiences" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "experience_type_idx" ON "experiences" USING btree ("experience_type");--> statement-breakpoint
 CREATE INDEX "experience_difficult_type_idx" ON "experiences" USING btree ("difficulty_level");--> statement-breakpoint
-CREATE INDEX "experience_route_idx" ON "experiences" USING btree ("from_location_id","to_location_id");--> statement-breakpoint
 CREATE INDEX "itinerary_experience_idx" ON "itineraries" USING btree ("experience_id");--> statement-breakpoint
 CREATE INDEX "itinerary_day_idx" ON "itineraries" USING btree ("experience_id","day_number");--> statement-breakpoint
 CREATE INDEX "transport_schedule_variant_idx" ON "transport_schedules" USING btree ("variant_id");--> statement-breakpoint
 CREATE INDEX "transport_product_idx" ON "transports" USING btree ("product_id");--> statement-breakpoint
 CREATE INDEX "transport_type_idx" ON "transports" USING btree ("transport_type");--> statement-breakpoint
-CREATE INDEX "transport_route_idx" ON "transports" USING btree ("from_location_id","to_location_id");--> statement-breakpoint
 CREATE INDEX "line_item_booking_idx" ON "booking_items" USING btree ("booking_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "line_item_booking_passenger_idx" ON "booking_items" USING btree ("booking_id","passenger_type");--> statement-breakpoint
 CREATE INDEX "booking_user_idx" ON "bookings" USING btree ("user_id");--> statement-breakpoint

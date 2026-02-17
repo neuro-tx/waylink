@@ -1,4 +1,4 @@
-import { pgEnum } from "drizzle-orm/pg-core";
+import { customType, pgEnum, timestamp } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("user_role", ["user", "provider", "admin"]);
 
@@ -118,3 +118,17 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "system_warning",
   "promotion",
 ]);
+
+export const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
+export const timestamps = {
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+};

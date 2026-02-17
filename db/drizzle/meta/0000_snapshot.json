@@ -1,5 +1,5 @@
 {
-  "id": "797c40f5-4baf-450b-8051-1f29a283640c",
+  "id": "7a9f1b18-2725-4ef2-be2e-3e53d05244f3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -801,12 +801,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "location": {
-          "name": "location",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "address": {
           "name": "address",
           "type": "text",
@@ -966,19 +960,6 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
-        },
-        "providers_location_locations_id_fk": {
-          "name": "providers_location_locations_id_fk",
-          "tableFrom": "providers",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "location"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1005,6 +986,12 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "city": {
           "name": "city",
@@ -1035,11 +1022,48 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'start'"
+        },
+        "search_vector": {
+          "name": "search_vector",
+          "type": "tsvector",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "to_tsvector(\n          'english',\n          coalesce(city, '') || ' ' ||\n          coalesce(country, '') || ' ' ||\n          coalesce(address, '')\n        )",
+            "type": "stored"
+          }
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
-        "location_city_idx": {
-          "name": "location_city_idx",
+        "loc_city_idx": {
+          "name": "loc_city_idx",
           "columns": [
             {
               "expression": "city",
@@ -1053,8 +1077,8 @@
           "method": "btree",
           "with": {}
         },
-        "location_country_idx": {
-          "name": "location_country_idx",
+        "loc_country_idx": {
+          "name": "loc_country_idx",
           "columns": [
             {
               "expression": "country",
@@ -1068,8 +1092,8 @@
           "method": "btree",
           "with": {}
         },
-        "location_coords_idx": {
-          "name": "location_coords_idx",
+        "loc_coords_idx": {
+          "name": "loc_coords_idx",
           "columns": [
             {
               "expression": "latitude",
@@ -1089,29 +1113,67 @@
           "method": "btree",
           "with": {}
         },
-        "location_city_country_unique": {
-          "name": "location_city_country_unique",
+        "loc_product_idx": {
+          "name": "loc_product_idx",
           "columns": [
             {
-              "expression": "city",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "country",
+              "expression": "product_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "loc_type_idx": {
+          "name": "loc_type_idx",
+          "columns": [
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "loc_ts_vectore_idx": {
+          "name": "loc_ts_vectore_idx",
+          "columns": [
+            {
+              "expression": "search_vector",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "locations_product_id_products_id_fk": {
+          "name": "locations_product_id_products_id_fk",
+          "tableFrom": "locations",
+          "tableTo": "products",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "locations_slug_unique": {
@@ -2264,12 +2326,6 @@
           "notNull": false,
           "default": "'USD'"
         },
-        "location_id": {
-          "name": "location_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status": {
           "name": "status",
           "type": "product_status",
@@ -2277,12 +2333,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "search_vector": {
           "name": "search_vector",
@@ -2355,21 +2405,6 @@
           "method": "btree",
           "with": {}
         },
-        "product_location_idx": {
-          "name": "product_location_idx",
-          "columns": [
-            {
-              "expression": "location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "product_slug_provider_idx": {
           "name": "product_slug_provider_idx",
           "columns": [
@@ -2419,19 +2454,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "products_location_id_locations_id_fk": {
-          "name": "products_location_id_locations_id_fk",
-          "tableFrom": "products",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2483,24 +2505,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "from_location_id": {
-          "name": "from_location_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_location_id": {
-          "name": "to_location_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "location_address": {
-          "name": "location_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "included": {
           "name": "included",
@@ -2586,27 +2590,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "experience_route_idx": {
-          "name": "experience_route_idx",
-          "columns": [
-            {
-              "expression": "from_location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "to_location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -2621,32 +2604,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "experiences_from_location_id_locations_id_fk": {
-          "name": "experiences_from_location_id_locations_id_fk",
-          "tableFrom": "experiences",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "from_location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "experiences_to_location_id_locations_id_fk": {
-          "name": "experiences_to_location_id_locations_id_fk",
-          "tableFrom": "experiences",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "to_location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -2923,18 +2880,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "from_location_id": {
-          "name": "from_location_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "to_location_id": {
-          "name": "to_location_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
         "distance": {
           "name": "distance",
           "type": "integer",
@@ -3043,27 +2988,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "transport_route_idx": {
-          "name": "transport_route_idx",
-          "columns": [
-            {
-              "expression": "from_location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "to_location_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {
@@ -3078,32 +3002,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "transports_from_location_id_locations_id_fk": {
-          "name": "transports_from_location_id_locations_id_fk",
-          "tableFrom": "transports",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "from_location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "transports_to_location_id_locations_id_fk": {
-          "name": "transports_to_location_id_locations_id_fk",
-          "tableFrom": "transports",
-          "tableTo": "locations",
-          "columnsFrom": [
-            "to_location_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },

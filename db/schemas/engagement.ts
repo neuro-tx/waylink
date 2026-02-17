@@ -7,10 +7,9 @@ import {
   boolean,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { timestamps } from "./shared";
 import { user } from "./public";
 import { products } from "./product";
-import { notificationTypeEnum } from "./enums";
+import { notificationTypeEnum, timestamps } from "./enums";
 import { bookings } from "./booking";
 
 export const wishlists = pgTable(

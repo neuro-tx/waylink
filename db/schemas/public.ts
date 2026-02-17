@@ -1,6 +1,5 @@
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
-import { roleEnum } from "./enums";
-import { timestamps } from "./shared";
+import { roleEnum, timestamps } from "./enums";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

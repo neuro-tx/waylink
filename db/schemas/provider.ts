@@ -8,8 +8,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { memberRoleEnum, providerStatusEnum, providerTypeEnum } from "./enums";
-import { location, timestamps } from "./shared";
+import { memberRoleEnum, providerStatusEnum, providerTypeEnum, timestamps } from "./enums";
 import { user } from "./public";
 import { sql } from "drizzle-orm";
 
@@ -33,9 +32,6 @@ export const providers = pgTable(
       .$type<"individual" | "company" | "agency">()
       .notNull(),
 
-    location: uuid("location").references(() => location.id, {
-      onDelete: "cascade",
-    }),
     address: text("address"),
     status: providerStatusEnum("status").default("pending"),
     isVerified: boolean("is_verified").default(false),
