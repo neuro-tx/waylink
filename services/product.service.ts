@@ -6,14 +6,22 @@ import {
   productScores,
   providers,
 } from "@/db/schemas";
-import { desc, eq, getTableColumns, InferSelectModel, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  InferSelectModel,
+  sql,
+} from "drizzle-orm";
 
 type Location = InferSelectModel<typeof location>;
 type Media = InferSelectModel<typeof productMedia>;
 type Provider = InferSelectModel<typeof providers>;
+type Servicetype = "experience" | "transport";
 
-export const getProductsService = async (
-  type: "experience" | "transport",
+const getProducts = async (
+  type: Servicetype,
   limit: number,
   page: number,
   provider?: boolean,
@@ -95,3 +103,30 @@ export const getProductsService = async (
 
   return await query;
 };
+
+const getProductById = async (id: string) => {
+  const conditions = [eq(products.id, id)];
+
+  const result = await db.query.products.findFirst({
+    where: and(...conditions),
+
+    with: {
+      locations: true,
+      media: true,
+      provider: true,
+      reviews: true,
+      variants: {
+        with: {
+          pricing: true,
+          transportSchedule: true,
+        },
+      },
+      experience: true,
+      transport: true,
+    },
+  });
+
+  return result;
+};
+
+export const productSerices = { getProducts, getProductById };

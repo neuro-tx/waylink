@@ -144,7 +144,10 @@ export const productVariantsRelations = relations(
       references: [products.id],
     }),
     bookings: many(bookings),
-    pricing: one(pricing),
+        pricing: one(pricing, {
+      fields: [productVariants.id],
+      references: [pricing.variantId],
+    }),
     transportSchedule: one(transportSchedules, {
       fields: [productVariants.id],
       references: [transportSchedules.variantId],
