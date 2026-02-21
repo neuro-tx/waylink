@@ -4,6 +4,7 @@ import {
   productMedia,
   products,
   productScores,
+  productStats,
   providers,
 } from "@/db/schemas";
 import {
@@ -129,4 +130,72 @@ const getProductById = async (id: string) => {
   return result;
 };
 
-export const productSerices = { getProducts, getProductById };
+const featuredProducts = async (
+  type: Servicetype,
+  limit: number,
+  page: number,
+) => {
+  const offset = (page - 1) * limit;
+  const { searchVector, ...productColumns } = getTableColumns(products);
+  const whereCondition = type ? eq(products.type, type) : undefined;
+
+  const mediaSub = db
+    .select({
+      productId: productMedia.productId,
+      media: sql<Media[]>`json_agg(to_jsonb(${productMedia}))`.as("media"),
+    })
+    .from(productMedia)
+    .groupBy(productMedia.productId)
+    .as("media_sub");
+
+  const locationsSub = db
+    .select({
+      productId: location.productId,
+      locations: sql<Location[]>`json_agg(to_jsonb(${location}))`.as(
+        "locations",
+      ),
+    })
+    .from(location)
+    .groupBy(location.productId)
+    .as("locations_sub");
+
+  const providerSub = db
+    .select({
+      id: providers.id,
+      provider: sql<Provider>`
+      json_build_object(
+        'id', ${providers.id},
+        'name', ${providers.name},
+        'logo', ${providers.logo},
+        'is_verified', ${providers.isVerified}
+      )
+    `.as("provider"),
+    })
+    .from(providers)
+    .as("provider_sub");
+
+  const featuredProds = await db
+    .select({
+      ...productColumns,
+      reviews: productStats.reviewsCount,
+      bookings: productStats.bookingsCount,
+      avgRate: productStats.averageRating,
+      media: mediaSub.media,
+      locations: locationsSub.locations,
+      provider: providerSub.provider,
+    })
+    .from(products)
+    .innerJoin(productScores, eq(products.id, productScores.productId))
+    .leftJoin(productStats, eq(products.id, productStats.productId))
+    .leftJoin(mediaSub, eq(products.id, mediaSub.productId))
+    .leftJoin(locationsSub, eq(products.id, locationsSub.productId))
+    .leftJoin(providerSub, eq(products.providerId, providerSub.id))
+    .where(whereCondition)
+    .orderBy(desc(productScores.finalScore))
+    .limit(limit)
+    .offset(offset);
+
+  return featuredProds;
+};
+
+export const productSerices = { getProducts, getProductById, featuredProducts };

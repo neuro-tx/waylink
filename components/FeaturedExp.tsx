@@ -1,5 +1,5 @@
-import FeaturedGrid from "./FeaturedGrid";
 import { PackageSearch, AlertTriangle } from "lucide-react";
+import { FeaturedProductGrid } from "./FeaturedProdsGrid";
 
 export function FeaturedExp() {
   return (
@@ -21,34 +21,36 @@ export function FeaturedExp() {
           </p>
         </div>
 
-        <FeaturedExpContent />
+        <FeaturedContent type="experience" />
       </div>
     </section>
   );
 }
 
-async function FeaturedExpContent() {
+async function FeaturedContent({
+  type,
+}: {
+  type?: "experience" | "transport";
+}) {
   try {
-    const url = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    const res = await fetch(`${url}/api/product?loc=true`, {
-      next: { revalidate: 100 },
-    });
+    const res = await fetch(
+      `${baseUrl}/api/product/features${type ? `?type=${type}` : ""}&limit=6`,
+      {
+        next: { revalidate: 100 },
+      },
+    );
 
-    if (!res.ok) {
-      throw new Error("Failed to fetch products");
-    }
+    if (!res.ok) throw new Error("Failed to fetch products");
 
-    const data = await res.json();
+    const { data } = await res.json();
 
-    if (!data?.data?.length) {
-      return <EmptyState />;
-    }
+    if (!data?.length) return <EmptyState />;
 
-    return <FeaturedGrid products={data.data} />;
+    return <FeaturedProductGrid products={data} />;
   } catch (error) {
-    console.error("[FeaturedExp Error]:", error);
-
+    console.error("[FeaturedSection Error]", error);
     return <ErrorState />;
   }
 }
@@ -62,12 +64,11 @@ function EmptyState() {
         </div>
       </div>
       <h3 className="text-2xl font-semibold text-lime-600 mb-3">
-        No Experiences Found
+        No Products Found
       </h3>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        We couldn&apos;t find any available experiences at the moment. Try
-        adjusting your filters or check back later — new routes are added
-        frequently.
+        We couldn&apos;t find available products at the moment. Try adjusting
+        your filters or check back later.
       </p>
     </div>
   );
@@ -82,11 +83,10 @@ function ErrorState() {
         </div>
       </div>
       <h3 className="text-2xl font-semibold text-red-600 mb-3">
-        Unable to Load Experiences
+        Unable to Load Products
       </h3>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Something unexpected happened while loading experiences. This could be a
-        temporary issue with the server or your connection.
+        Something unexpected happened while loading products.
       </p>
     </div>
   );
