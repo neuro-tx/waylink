@@ -5,6 +5,8 @@ export const displayMedia = (media: Media[]) => {
   const videos: Media[] = [];
   let cover: string | undefined;
 
+  if(!media) return []
+
   media.forEach((m) => {
     switch (m.type) {
       case "video":
