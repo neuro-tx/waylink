@@ -262,7 +262,7 @@ export default function HowItWorks() {
           variants={containerVariants}
           initial="hidden"
           animate={stepsInView ? "visible" : "hidden"}
-          className="rounded-3xl p-8 md:p-12 border backdrop-blur-sm bg-white/70 dark:bg-[#16161e]/70 border-[#e8e4de] dark:border-[#2a2930]"
+          className="rounded-3xl max-w-3xl mx-auto p-6 md:p-12 border backdrop-blur-sm bg-white/70 dark:bg-[#16161e]/70 border-[#e8e4de] dark:border-[#2a2930]"
           style={{
             boxShadow: "0 32px 80px rgba(0,0,0,0.06)",
           }}

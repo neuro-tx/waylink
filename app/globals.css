@@ -49,6 +49,7 @@
   --color-blue-20: var(--blue-2);
   --color-orange-1: var(--orange-1);
   --color-orange-2: var(--orange-2);
+  --color-waylink-fade: var(--waylink-fade);
 }
 
 :root {
@@ -89,6 +90,7 @@
   --blue-2: oklch(77.858% 0.14897 226.048);
   --orange-1: oklch(70.45% 0.19257 39.216);
   --orange-2: oklch(82.714% 0.171 80.526);
+  --waylink-fade: oklab(97.33000000000001% 0.00017 0.00685);
 }
 
 .dark {
@@ -123,6 +125,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --waylink-fade: oklab(17.082% 0.00272 -0.00999);
 }
 
 @layer base {
@@ -136,6 +139,33 @@
 
 @layer utilities {
   .mian-container {
-    @apply container mx-auto px-4 md:px-6 lg:px-9
+    @apply container mx-auto px-4 md:px-6 lg:px-9;
   }
+}
+
+@keyframes wl-scroll-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+@keyframes wl-scroll-right {
+  from {
+    transform: translateX(-33.333%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.waylink-marquee-left {
+  animation: wl-scroll-left var(--dur, 40s) linear infinite;
+}
+.waylink-marquee-right {
+  animation: wl-scroll-right var(--dur, 40s) linear infinite;
+}
+.waylink-paused {
+  animation-play-state: paused !important;
 }
