@@ -79,7 +79,7 @@ function TrustCardItem({ card, index }: TrustCardProps) {
       custom={index}
       whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="relative rounded-2xl border p-6 flex flex-col gap-4 group bg-white/60 dark:bg-[#16161e]/60 border-[#e8e4de] dark:border-[#2a2930] backdrop-blur-sm overflow-hidden"
+      className="relative rounded-2xl border p-6 flex flex-col gap-4 group box"
     >
       <motion.div
         className="absolute inset-0 opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-500"
@@ -117,11 +117,11 @@ function TrustCardItem({ card, index }: TrustCardProps) {
       <div className="relative z-10">
         <h3
           className="text-base font-bold mb-1.5 text-[#1a1814] dark:text-[#f0eee8]"
-          style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+          style={{ fontFamily: "Georgia, serif" }}
         >
           {card.title}
         </h3>
-        <p className="text-sm leading-relaxed text-[#6b6560] dark:text-[#9b9690]">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {card.description}
         </p>
       </div>
@@ -153,12 +153,10 @@ function StatItem({ stat, index }: StatItemProps) {
       className="flex flex-col items-center text-center gap-1"
     >
       <motion.span
-        className="text-4xl md:text-5xl font-extrabold"
+        className="text-4xl md:text-5xl font-extrabold bg-clip-text! text-transparent"
         style={{
-          fontFamily: "'Playfair Display', Georgia, serif",
+          fontFamily: "Georgia, serif",
           background: `linear-gradient(135deg, ${stat.accent}, ${stat.accent}99)`,
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
         }}
         initial={{ opacity: 0, y: 16 }}
         animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -170,7 +168,7 @@ function StatItem({ stat, index }: StatItemProps) {
       >
         {stat.value}
       </motion.span>
-      <span className="text-xs font-semibold tracking-widest uppercase text-[#6b6560] dark:text-[#6a6870]">
+      <span className="text-xs font-semibold tracking-widest uppercase text-gray-light">
         {stat.label}
       </span>
     </motion.div>
@@ -191,19 +189,17 @@ export default function TrustSection() {
     <section className="min-h-screen py-24 relative overflow-hidden bg-waylink-fade transition-colors duration-500 font-sans">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute top-10 left-16 w-72 h-72 rounded-full opacity-[0.08]"
+          className="absolute top-10 left-16 w-72 h-72 rounded-full opacity-[0.08] blur-2xl"
           style={{
             background: "radial-gradient(circle, #00C9A7 0%, transparent 70%)",
-            filter: "blur(50px)",
           }}
           animate={{ y: [0, -12, 0], x: [0, 8, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute bottom-20 right-12 w-80 h-80 rounded-full opacity-[0.07]"
+          className="absolute bottom-20 right-12 w-80 h-80 rounded-full opacity-[0.07] blur-3xl"
           style={{
             background: "radial-gradient(circle, #FF6B35 0%, transparent 70%)",
-            filter: "blur(60px)",
           }}
           animate={{ y: [0, -10, 0], rotate: [0, 3, 0] }}
           transition={{
@@ -214,10 +210,9 @@ export default function TrustSection() {
           }}
         />
         <motion.div
-          className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full opacity-[0.06]"
+          className="absolute top-1/2 right-1/4 w-64 h-64 rounded-full opacity-[0.06] blur-3xl"
           style={{
             background: "radial-gradient(circle, #845EF7 0%, transparent 70%)",
-            filter: "blur(70px)",
           }}
           animate={{ y: [0, -8, 0] }}
           transition={{
@@ -258,25 +253,16 @@ export default function TrustSection() {
         >
           <div className="flex items-center justify-center gap-3 mb-6">
             <motion.div
-              className="h-px w-12"
-              style={{
-                background: "linear-gradient(to right, transparent, #00C9A7)",
-              }}
+              className="h-px w-12 bg-linear-to-r from-transparent to-green-1"
               initial={{ scaleX: 0 }}
               animate={headerInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             />
-            <span
-              className="text-xs font-bold tracking-[0.22em] uppercase"
-              style={{ color: "#00C9A7" }}
-            >
+            <span className="text-xs font-bold tracking-[0.22em] uppercase text-green-1">
               Why Trust WayLink
             </span>
             <motion.div
-              className="h-px w-12"
-              style={{
-                background: "linear-gradient(to left, transparent, #00C9A7)",
-              }}
+              className="h-px w-12 bg-linear-to-l from-transparent to-green-1"
               initial={{ scaleX: 0 }}
               animate={headerInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -284,27 +270,21 @@ export default function TrustSection() {
           </div>
 
           <h2
-            className="text-5xl md:text-6xl font-extrabold leading-[1.05] mb-5 text-[#1a1814] dark:text-[#f0eee8]"
-            style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+            className="text-5xl md:text-6xl font-extrabold  mb-5 text-[#1a1814] dark:text-[#f0eee8]"
+            style={{ fontFamily: "Georgia, serif" }}
           >
             Built on{" "}
             <motion.span
-              style={{
-                background:
-                  "linear-gradient(135deg, #00C9A7 0%, #845EF7 50%, #FF6B35 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                display: "inline-block",
-              }}
               initial={{ opacity: 0, x: -12 }}
               animate={headerInView ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.7, delay: 0.25 }}
+              className="bg-clip-text text-transparent bg-linear-120 from-green-1 via-blue-10 to-orange-3 inline-flex"
             >
               Transparency.
             </motion.span>
           </h2>
 
-          <p className="text-base max-w-lg mx-auto leading-relaxed text-[#6b6560] dark:text-[#6a6870]">
+          <p className="text-base max-w-lg mx-auto leading-relaxed text-gray-light">
             From your first search to your final review — every layer of WayLink
             is designed with your safety, privacy, and peace of mind at its
             core.
@@ -316,7 +296,7 @@ export default function TrustSection() {
           variants={containerVariants}
           initial="hidden"
           animate={statsInView ? "visible" : "hidden"}
-          className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16 rounded-3xl border p-8 bg-white/60 dark:bg-[#16161e]/60 border-[#e8e4de] dark:border-[#2a2930] backdrop-blur-sm"
+          className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16 rounded-3xl border p-8 box"
           style={{ boxShadow: "0 16px 48px rgba(0,0,0,0.05)" }}
         >
           {stats.map((stat, i) => (
@@ -344,7 +324,7 @@ export default function TrustSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-3xl border p-10 text-center relative overflow-hidden bg-white/60 dark:bg-[#16161e]/60 border-[#e8e4de] dark:border-[#2a2930] backdrop-blur-sm"
+          className="rounded-3xl border p-10 text-center relative box"
         >
           <div className="absolute inset-0 pointer-events-none">
             <div
@@ -372,14 +352,11 @@ export default function TrustSection() {
               Your safety is our promise
             </div>
 
-            <h3
-              className="text-3xl md:text-4xl font-extrabold mb-3 text-[#1a1814] dark:text-[#f0eee8]"
-              style={{ fontFamily: "Georgia, serif" }}
-            >
+            <h3 className="text-3xl md:text-4xl font-extrabold mb-3 text-neutral-800 dark:text-neutral-200 font-georgia">
               Travel with Confidence.
             </h3>
 
-            <p className="text-sm text-[#6b6560] dark:text-[#9b9690] max-w-md mx-auto mb-8 leading-relaxed">
+            <p className="text-sm text-muted-foreground max-w-md mx-auto mb-8 leading-relaxed">
               Join over 2 million travelers who explore the world knowing
               WayLink has their back — every booking, every mile, every moment.
             </p>
@@ -388,7 +365,7 @@ export default function TrustSection() {
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.96 }}
-                className="px-8 py-3.5 rounded-2xl text-sm font-bold tracking-wide border bg-transparent text-[#1a1814] dark:text-[#f0eee8] border-[#e8e4de] dark:border-[#2a2930]"
+                className="px-6 py-3 rounded-xl text-sm font-bold tracking-wide border bg-transparent border-text"
               >
                 Learn About Safety →
               </motion.button>

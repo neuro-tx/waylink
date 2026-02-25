@@ -75,8 +75,8 @@ function StepCard({ step, index, steps }: StepCardProps) {
           <step.icon className="w-7 h-7" />
 
           <motion.span
-            className="absolute inset-0 rounded-2xl"
-            style={{ border: `1px solid ${step.accent}` }}
+            className="absolute inset-0 rounded-2xl border"
+            style={{ borderColor: step.accent }}
             initial={{ scale: 1, opacity: 0 }}
             whileHover={{ scale: 1.7, opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -114,13 +114,13 @@ function StepCard({ step, index, steps }: StepCardProps) {
         </div>
 
         <h3
-          className="text-xl font-bold mb-2 leading-snug text-[#1a1814] dark:text-[#f0eee8]"
+          className="text-xl font-bold mb-2 leading-snug text-neutral-800 dark:text-neutral-100"
           style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
         >
           {step.title}
         </h3>
 
-        <p className="text-sm leading-relaxed max-w-lg text-[#6b6560] dark:text-[#9b9690]">
+        <p className="text-sm leading-relaxed max-w-lg text-muted-foreground">
           {step.description}
         </p>
       </div>
@@ -205,25 +205,16 @@ export default function HowItWorks() {
         >
           <div className="flex items-center justify-center gap-3 mb-6">
             <motion.div
-              className="h-px w-12"
-              style={{
-                background: "linear-gradient(to right, transparent, #FF6B35)",
-              }}
+              className="h-px w-12 bg-linear-to-r from-transparent to-orange-3"
               initial={{ scaleX: 0 }}
               animate={headerInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             />
-            <span
-              className="text-xs font-bold tracking-[0.22em] uppercase"
-              style={{ color: "#FF6B35" }}
-            >
+            <span className="text-xs font-bold tracking-[0.22em] uppercase text-orange-3">
               How WayLink Works
             </span>
             <motion.div
-              className="h-px w-12"
-              style={{
-                background: "linear-gradient(to left, transparent, #FF6B35)",
-              }}
+              className="h-px w-12 bg-linear-to-l from-transparent to-orange-3"
               initial={{ scaleX: 0 }}
               animate={headerInView ? { scaleX: 1 } : { scaleX: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -231,18 +222,12 @@ export default function HowItWorks() {
           </div>
 
           <h2
-            className="text-5xl md:text-6xl font-extrabold leading-[1.05] mb-5 text-[#1a1814] dark:text-[#f0eee8]"
+            className="text-5xl md:text-6xl font-extrabold leading-[1.05] mb-5 text-neutral-800 dark:text-neutral-200"
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
           >
             Your Journey,{" "}
             <motion.span
-              style={{
-                background:
-                  "linear-gradient(135deg, #FF6B35 0%, #845EF7 50%, #00C9A7 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                display: "inline-block",
-              }}
+              className="inline-block bg-clip-text text-transparent bg-linear-120 from-orange-3 via-blue-10 to-green-1"
               initial={{ opacity: 0, x: -12 }}
               animate={headerInView ? { opacity: 1, x: 0 } : {}}
               transition={{ duration: 0.7, delay: 0.25 }}
@@ -251,7 +236,7 @@ export default function HowItWorks() {
             </motion.span>
           </h2>
 
-          <p className="text-base max-w-md mx-auto leading-relaxed text-[#6b6560] dark:text-[#6a6870]">
+          <p className="text-base max-w-md mx-auto leading-relaxed text-gray-light">
             From signing up to sharing your story — every step on WayLink is
             designed to feel effortless and memorable.
           </p>

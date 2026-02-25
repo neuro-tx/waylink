@@ -3,10 +3,31 @@ import { FeaturedProductGrid } from "./FeaturedProdsGrid";
 
 export function FeaturedExp() {
   return (
-    <section className="w-full my-14">
+    <section className="w-full bg-waylink-fade relative">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <svg className="absolute inset-0 w-full h-full opacity-[0.03]">
+          <defs>
+            <pattern
+              id="trust-grid"
+              width="40"
+              height="40"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M 40 0 L 0 0 0 40"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.5"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#trust-grid)" />
+        </svg>
+      </div>
       <div className="py-24 mian-container space-y-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <h2 className="text-5xl md:text-7xl font-bold leading-none text-stone-900 dark:text-white">
+          <h2 className="text-5xl md:text-7xl font-bold leading-none text-stone-900 dark:text-white" style={{ fontFamily: "Georgia, serif" }}
+          >
             Featured
             <br />
             <span className="italic text-transparent bg-clip-text bg-linear-to-r from-rose-500 via-amber-400 to-violet-500 dark:from-rose-400 dark:via-amber-300 dark:to-violet-400">
@@ -14,8 +35,8 @@ export function FeaturedExp() {
             </span>
           </h2>
           <p
-            style={{ fontFamily: "'Georgia', serif", fontStyle: "italic" }}
-            className="text-lg max-w-xs leading-relaxed text-muted-foreground"
+            style={{ fontFamily: "'Georgia', serif"}}
+            className="text-lg max-w-xs leading-relaxed text-muted-foreground italic"
           >
             Extraordinary moments curated from every corner of the world.
           </p>

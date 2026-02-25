@@ -49,7 +49,11 @@
   --color-blue-20: var(--blue-2);
   --color-orange-1: var(--orange-1);
   --color-orange-2: var(--orange-2);
+  --color-orange-3: var(--orange-3);
   --color-waylink-fade: var(--waylink-fade);
+  --color-green-1: var(--green-1);
+  --color-gray-light: var(--light-gray);
+  --font-georgia: "Georgia, serif";
 }
 
 :root {
@@ -90,7 +94,10 @@
   --blue-2: oklch(77.858% 0.14897 226.048);
   --orange-1: oklch(70.45% 0.19257 39.216);
   --orange-2: oklch(82.714% 0.171 80.526);
-  --waylink-fade: oklab(97.33000000000001% 0.00017 0.00685);
+  --orange-3: oklch(70.45% 0.19257 39.216);
+  --waylink-fade: oklch(97.33% 0.00685 88.609);
+  --green-1: oklch(74.608% 0.1411 174.692);
+  --light-gray: oklch(51.07% 0.01085 62.288);
 }
 
 .dark {
@@ -140,6 +147,14 @@
 @layer utilities {
   .mian-container {
     @apply container mx-auto px-4 md:px-6 lg:px-9;
+  }
+
+  .box {
+    @apply bg-white/60 dark:bg-[#16161e]/60 border-[#e8e4de] dark:border-[#2a2930] backdrop-blur-sm overflow-hidden;
+  }
+
+  .border-text {
+    @apply text-[#1a1814] dark:text-[#f0eee8] border-[#e8e4de] dark:border-[#2a2930];
   }
 }
 
