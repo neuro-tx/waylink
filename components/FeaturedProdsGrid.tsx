@@ -120,7 +120,7 @@ export function ProductCard({ product }: { product: Product }) {
       <CardContent className="flex h-[calc(100%-14rem)] flex-col justify-between space-y-3 px-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="line-clamp-1 text-lg font-bold leading-tight">
+            <h3 className="line-clamp-1 text-base font-bold leading-tight" style={{ fontFamily: "Georgia, serif" }}>
               {product.title}
             </h3>
 

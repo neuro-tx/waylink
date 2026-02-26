@@ -40,3 +40,46 @@ export interface Location {
   created_at: string;
   updated_at: string;
 }
+
+export type Provider = {
+  id: string;
+  ownerId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  logo: string | null;
+  cover: string | null;
+  serviceType: "transport" | "experience";
+  businessType: "individual" | "company" | "agency";
+  address: string | null;
+  status: "pending" | "approved" | "rejected";
+  isVerified: boolean;
+  businessPhone: string | null;
+  businessEmail: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FeaturedTransport = {
+  id: string;
+  providerId: string;
+  type: "transport";
+  title: string;
+  slug: string;
+  description: string | null;
+  shortDescription: string | null;
+  basePrice: string;
+  currency: string;
+  status: "draft" | "published" | "archived";
+  createdAt: string;
+  updatedAt: string;
+  score: number;
+  transportType: string;
+  class: string;
+  directroute: boolean;
+  reviews: number;
+  bookings: number;
+  avgRate: string;
+  locations: Location[];
+  provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
+};
