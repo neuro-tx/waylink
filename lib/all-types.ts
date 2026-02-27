@@ -60,7 +60,26 @@ export type Provider = {
   updatedAt: string;
 };
 
-export type FeaturedTransport = {
+export type TransportType =
+  | "bus"
+  | "flight"
+  | "train"
+  | "ferry"
+  | "cruise"
+  | "car_rental"
+  | "shuttle"
+  | "taxi"
+  | "private_van"
+  | "helicopter";
+
+export type TransportClass =
+  | "economy"
+  | "business"
+  | "first_class"
+  | "premium_economy"
+  | "vip";
+
+export type Transport = {
   id: string;
   providerId: string;
   type: "transport";
@@ -74,8 +93,8 @@ export type FeaturedTransport = {
   createdAt: string;
   updatedAt: string;
   score: number;
-  transportType: string;
-  class: string;
+  transportType: TransportType;
+  class: TransportClass;
   directroute: boolean;
   reviews: number;
   bookings: number;

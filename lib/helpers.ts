@@ -55,3 +55,12 @@ export const normalizeLocation = (locations: Location[]) => {
     stops,
   };
 };
+
+export function getRouteLocations(
+  locations: Pick<Location, "id" | "city" | "country" | "type">[],
+) {
+  const start = locations.find((l) => l.type === "start");
+  const end = locations.find((l) => l.type === "end");
+  const stops = locations.filter((l) => l.type === "stop");
+  return { start, end, stops };
+}
