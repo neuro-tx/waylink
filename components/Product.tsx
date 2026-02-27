@@ -3,35 +3,10 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion, Variants } from "framer-motion";
-import { Star, MapPin, Users, BadgeCheck, Heart } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Star, MapPin, Users, BadgeCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { displayMedia, normalizeLocation } from "@/lib/helpers";
-import { Location, Media } from "@/lib/all-types";
-
-type Provider = {
-  id: string;
-  name: string;
-  logo: string | null;
-  is_verified: boolean;
-};
-
-type Product = {
-  id: string;
-  title: string;
-  slug: string;
-  shortDescription: string;
-  basePrice: string;
-  currency: string;
-  avgRate: string;
-  reviews: number;
-  type: "experience" | "transport";
-  bookings: number;
-  media: Media[];
-  locations: Location[];
-  provider: Provider;
-};
+import { ProductCardProps } from "@/lib/all-types";
 
 const containerVariants: Variants = {
   hidden: {},
@@ -60,12 +35,7 @@ const itemVariants: Variants = {
   },
 };
 
-const TYPE_ACCENT: Record<Product["type"], string> = {
-  experience: "#FF6B35",
-  transport: "#845EF7",
-};
-
-export function FeaturedProductGrid({ products }: { products: Product[] }) {
+export function ProductGrid({ products }: { products: ProductCardProps[] }) {
   return (
     <motion.div
       variants={containerVariants}
@@ -83,15 +53,14 @@ export function FeaturedProductGrid({ products }: { products: Product[] }) {
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: ProductCardProps }) {
   const { cover } = displayMedia(product.media);
   const { to } = normalizeLocation(product.locations);
   const router = useRouter();
-  const accent = TYPE_ACCENT[product.type];
 
   return (
-    <Card className="group overflow-hidden rounded-xl border shadow-sm pt-0 transition-all duration-300">
-      <div className="relative h-56 w-full overflow-hidden">
+    <div className="group relative overflow-hidden rounded-2xl border box">
+      <div className="relative h-52 w-full aspect-square overflow-hidden flex-1">
         {cover ? (
           <Image
             src={cover}
@@ -103,7 +72,7 @@ export function ProductCard({ product }: { product: Product }) {
           <div
             className="w-full h-full"
             style={{
-              background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+              background: "linear-gradient(135deg, #FF6B3522, #FF6B3508)",
             }}
           />
         )}
@@ -117,17 +86,23 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </div>
 
-      <CardContent className="flex h-[calc(100%-14rem)] flex-col justify-between space-y-3 px-3">
+      <div className="flex flex-col flex-1 justify-between p-4 gap-4">
         <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="line-clamp-1 text-base font-bold leading-tight" style={{ fontFamily: "Georgia, serif" }}>
+          <div className="flex items-start justify-between gap-2">
+            <h3
+              className="truncate text-base font-bold leading-tight"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
               {product.title}
             </h3>
 
-            {product.provider?.is_verified && (
-              <div className="shrink-0">
-                <BadgeCheck className="h-4.5 w-4.5" style={{ color: accent }} />
-              </div>
+            {product.provider?.isVerified && (
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="shrink-0 mt-0.5"
+              >
+                <BadgeCheck className="h-4.5 w-4.5 text-blue-10" />
+              </motion.div>
             )}
           </div>
 
@@ -139,60 +114,57 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-green-1">
             <div className="flex items-center gap-1">
-              <MapPin
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: accent }}
-              />
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-orange-3" />
               <div className="truncate max-w-30">
-                {to?.city && to.country ? (
+                {to?.city && to?.country ? (
                   <span>
-                    {to?.country} , {to.country}
+                    {to.city}, {to.country}
                   </span>
                 ) : (
-                  <span className="underline" style={{ color: accent }}>
+                  <span className="underline underline-offset-2">
                     Not Detected
                   </span>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" style={{ color: accent }} />
-              {product.bookings > 0 ? (
-                <span>{product.bookings}+ booked</span>
-              ) : (
-                <span>No booking yet</span>
-              )}
+              <Users className="h-3.5 w-3.5 text-orange-3" />
+              <span>
+                {product.bookings > 0
+                  ? `${product.bookings}+ booked`
+                  : "No bookings yet"}
+              </span>
             </div>
           </div>
 
           <Separator />
 
-          <div className="flex items-end justify-between">
+          <div className="flex items-end justify-between gap-3">
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">
                 Starting from
               </span>
               <span className="text-xl font-bold tracking-tight">
-                {product.currency} {product.basePrice}
+                <span className="text-sm font-semibold mr-0.5 text-orange-3">
+                  {product.currency}
+                </span>
+                {product.basePrice}
               </span>
             </div>
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => router.push(`/products/${product.id}`)}
-              style={{
-                borderColor: `${accent}50`,
-                color: accent,
-                background: `${accent}10`,
-              }}
-              className="cursor-pointer hover:scale-101 transition-transform"
+            <motion.button
+              type="button"
+              onClick={() => router.push(`/experince/${product.id}`)}
+              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.01 }}
+              className="shrink-0 cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold border transition-colors duration-200 text-orange-3"
+              style={{ borderColor: `#FF6B3550`, background: `#FF6B3510` }}
             >
               View Details
-            </Button>
+            </motion.button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

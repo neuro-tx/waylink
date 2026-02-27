@@ -102,3 +102,19 @@ export type Transport = {
   locations: Location[];
   provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
 };
+
+export type ProductCardProps = {
+  id: string;
+  title: string;
+  slug: string;
+  shortDescription: string;
+  basePrice: string;
+  currency: string;
+  avgRate: string;
+  reviews: number;
+  type: "experience" | "transport";
+  bookings: number;
+  media: Media[];
+  locations: Location[];
+  provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
+};
