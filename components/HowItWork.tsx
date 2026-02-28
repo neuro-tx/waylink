@@ -136,7 +136,7 @@ export default function HowItWorks() {
   const stepsInView = useInView(stepsRef, { once: true, margin: "-60px" });
 
   return (
-    <section className="min-h-screen py-24 relative overflow-hidden bg-[#f8f6f1] dark:bg-[#0f0f14] transition-colors duration-500 font-sans">
+    <section className="min-h-screen py-24 relative overflow-hidden bg-waylink-fade transition-colors duration-500 font-sans">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
           className="absolute top-20 right-16 w-64 h-64 rounded-full opacity-10"
