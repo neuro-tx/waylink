@@ -41,6 +41,10 @@ export interface Location {
   updated_at: string;
 }
 
+export type BusinessType = "individual" | "company" | "agency";
+export type ServiceType = "transport" | "experience";
+export type ProviderStatus = "pending" | "approved" | "inactive" | "suspended";
+
 export type Provider = {
   id: string;
   ownerId: string;
@@ -49,10 +53,10 @@ export type Provider = {
   description: string | null;
   logo: string | null;
   cover: string | null;
-  serviceType: "transport" | "experience";
+  serviceType: ServiceType;
   businessType: "individual" | "company" | "agency";
   address: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: ProviderStatus;
   isVerified: boolean;
   businessPhone: string | null;
   businessEmail: string | null;
@@ -117,4 +121,17 @@ export type ProductCardProps = {
   media: Media[];
   locations: Location[];
   provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
+};
+
+export interface Limitation {
+  limit: number;
+  offset: number;
+  page?: number;
+}
+
+export type SpotlightProvider = Provider & {
+  totalProducts: number;
+  totalBookings: number;
+  avgRating: string;
+  totalReviews: number;
 };

@@ -153,25 +153,67 @@ function ExperienceCardSkeleton({ delay = 0 }: { delay?: number }) {
   );
 }
 
+function ProviderCardSkeleton({ delay = 0 }: { delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col rounded-2xl border box"
+      style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.05)" }}
+    >
+      <Bone className="h-32 w-full rounded-none" />
+      <div className="px-5 pb-5 pt-7 flex flex-col gap-3 relative">
+        <Bone className="absolute -top-6 left-5 w-12 h-12 rounded-2xl border-2 border-white dark:border-[#0f0f14]" />
+        <div className="flex items-start justify-between mt-2 gap-2">
+          <div className="flex flex-col gap-1.5 flex-1">
+            <Bone className="h-4 w-3/5 rounded-lg" />
+            <Bone className="h-3 w-2/5 rounded-full" />
+          </div>
+          <Bone className="h-5 w-16 rounded-full shrink-0" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Bone className="h-2.5 w-full rounded-full" />
+          <Bone className="h-2.5 w-4/5 rounded-full" />
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[0, 1, 2].map((i) => (
+            <Bone key={i} className="h-14 rounded-xl" />
+          ))}
+        </div>
+        <Bone className="h-9 w-full rounded-xl" />
+      </div>
+    </motion.div>
+  );
+}
+
 export default function SkeletonGrid({
   type,
   count = 6,
 }: {
   count?: number;
-  type: "transport" | "experince";
+  type: "transport" | "experince" | "provider";
 }) {
   const isMobile = useIsMobile();
-  count = isMobile ? Math.floor(count / 2) : count;
+  const finalCount = isMobile ? Math.floor(count / 2) : count;
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: count }).map((_, i) =>
-        type === "transport" ? (
-          <TransportCardSkeleton key={i} delay={i * 0.07} />
-        ) : (
-          <ExperienceCardSkeleton key={i} delay={i * 0.07} />
-        ),
-      )}
+      {Array.from({ length: finalCount }).map((_, i) => {
+        switch (type) {
+          case "experince":
+            return <ExperienceCardSkeleton key={i} delay={i * 0.07} />;
+
+          case "transport":
+            return <TransportCardSkeleton key={i} delay={i * 0.07} />;
+
+          case "provider":
+            return <ProviderCardSkeleton key={i} delay={i * 0.07} />;
+
+          default:
+            return null;
+        }
+      })}
     </div>
   );
 }
