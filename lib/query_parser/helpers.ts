@@ -15,9 +15,10 @@ import {
   SQL,
   desc,
   asc,
-  ne
+  ne,
+  sql,
 } from "drizzle-orm";
-import { OrderByClause } from "./analyzer-types";
+import { OrderByClause, SearchMode } from "./analyzer-types";
 
 /**
  * Helper to build Drizzle WHERE conditions from parsed query plan
@@ -35,7 +36,6 @@ export function buildWhereConditions(
   for (const [key, value] of Object.entries(whereClause)) {
     const column = tableSchema[key];
     if (!column) {
-      console.warn(`Column ${key} not found in table schema`);
       continue;
     }
 
@@ -89,7 +89,7 @@ function buildCondition(column: any, value: any): SQL | undefined {
           break;
 
         case "ne":
-          condition = ne(column ,operatorValue);
+          condition = ne(column, operatorValue);
           break;
 
         case "gt":
@@ -173,14 +173,12 @@ export function buildOrderBy(orderByClause: OrderByClause[], tableSchema: any) {
   const orderByClauses = [];
 
   for (const order of orderByClause) {
-    // Skip if it's for a different table (should be handled with joins)
     if (order.table) {
       continue;
     }
 
     const column = tableSchema[order.field];
     if (!column) {
-      console.warn(`Column ${order.field} not found in table schema`);
       continue;
     }
 
@@ -194,4 +192,34 @@ export function buildOrderBy(orderByClause: OrderByClause[], tableSchema: any) {
 
 function arrify<T>(item: T | T[]): T[] {
   return Array.isArray(item) ? item : [item];
+}
+
+export function buildSearchQuery(
+  column: any,
+  term?: string,
+  mode: SearchMode = "fts",
+  _language = "english",
+): SQL | undefined {
+  if (!term || !term.trim()) return undefined;
+
+  const cleanTerm = term.trim();
+
+  if (mode === "fts") {
+    sql`${column} @@ to_tsquery(${_language}, ${cleanTerm}:*)`;
+  }
+
+  if (mode === "ilike") {
+    return ilike(column, `%${cleanTerm}%`);
+  }
+
+  return undefined;
+}
+
+export function mergeWhere(...conditions: (SQL | undefined)[]) {
+  const valid = conditions.filter(Boolean) as SQL[];
+
+  if (valid.length === 0) return undefined;
+  if (valid.length === 1) return valid[0];
+
+  return and(...valid);
 }

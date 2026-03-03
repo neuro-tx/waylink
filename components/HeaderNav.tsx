@@ -147,7 +147,7 @@ export default function HeaderNavbar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <nav data-state={menuOpen && "active"} className="fixed z-20 w-full px-2">
+      <nav data-state={menuOpen && "active"} className="fixed z-9999 w-full px-2">
         <div
           className={cn(
             "mx-auto mt-2 container px-6 transition-all duration-300 lg:px-12",

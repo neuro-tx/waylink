@@ -51,8 +51,7 @@ export class QueryAnalyzer {
       defaultLimit: options?.defaultLimit ?? 20,
       allowedFields: options?.allowedFields ?? [],
       allowedRelations: options?.allowedRelations ?? [],
-      searchFields: options?.searchFields ?? [],
-      searchMode: options?.searchMode ?? "like",
+      searchMode: options?.searchMode ?? "ilike",
     };
   }
 
@@ -106,7 +105,6 @@ export class QueryAnalyzer {
         search: this.searchTerm
           ? {
               term: this.searchTerm,
-              fields: this.options.searchFields,
               mode: this.options.searchMode,
             }
           : undefined,
@@ -143,12 +141,6 @@ export class QueryAnalyzer {
 
       const value = this.getParam(key);
 
-      // Check if it's a relation filter (e.g., "location.city")
-      if (key.includes(".")) {
-        this.parseRelationFilter(key, value);
-        continue;
-      }
-
       // Check whitelist if provided
       if (
         this.options.allowedFields.length > 0 &&
@@ -170,49 +162,6 @@ export class QueryAnalyzer {
       } else {
         this.whereClause[fieldName] = parsedValue;
       }
-    }
-  }
-
-  /**
-   * Parse relation filters (e.g., location.city=Cairo)
-   */
-  private parseRelationFilter(key: string, value: string | undefined): void {
-    const parts = key.split(".");
-
-    if (parts.length < 2) {
-      this.errors.push({
-        field: key,
-        message: "Invalid relation filter format. Use: relation.field",
-      });
-      return;
-    }
-
-    const relationName = parts[0];
-    const fieldPath = parts.slice(1).join(".");
-
-    // Check whitelist if provided
-    if (
-      this.options.allowedRelations.length > 0 &&
-      !this.options.allowedRelations.includes(relationName)
-    ) {
-      this.warnings.push(
-        `Relation ${relationName} is not in allowed relations list`,
-      );
-      return;
-    }
-
-    // Parse operator if present
-    const { fieldName, operator } = this.parseFieldOperator(fieldPath);
-
-    // Parse value
-    const parsedValue = this.parseFilterValue(value, operator);
-
-    // Add to where clause with relation prefix
-    const whereKey = `${relationName}.${fieldName}`;
-    if (operator && operator !== "eq") {
-      this.whereClause[whereKey] = { [operator]: parsedValue };
-    } else {
-      this.whereClause[whereKey] = parsedValue;
     }
   }
 
@@ -366,11 +315,6 @@ export class QueryAnalyzer {
   private parseSearch(): void {
     const searchTerm = this.getParam("search");
     if (!searchTerm) {
-      return;
-    }
-
-    if (this.options.searchFields.length === 0) {
-      this.warnings.push("Search requested but no search fields configured");
       return;
     }
 

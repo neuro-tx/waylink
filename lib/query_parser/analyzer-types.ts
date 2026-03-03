@@ -35,6 +35,7 @@ export type WhereClause = {
 };
 
 export type SortDirection = "ASC" | "DESC" | "asc" | "desc";
+export type SearchMode = "fts" | "ilike";
 
 export interface OrderByClause {
   field: string;
@@ -52,10 +53,8 @@ export interface ParsedQuery {
   offset: number;
   select?: string[]; // fields to select
   search?: {
-    // full-text search info
     term: string;
-    fields: string[];
-    mode: "fulltext" | "like";
+    mode: SearchMode;
   };
 }
 
@@ -82,6 +81,5 @@ export interface QueryAnalyzerOptions {
   defaultLimit?: number; // Default limit if not specified (default: 20)
   allowedFields?: string[]; // Whitelist of fields that can be filtered/sorted
   allowedRelations?: string[]; // Whitelist of relations that can be included
-  searchFields?: string[]; // Fields to search in (for full-text search)
-  searchMode?: "fulltext" | "like"; // Search mode
+  searchMode?: SearchMode; // Search mode
 }
