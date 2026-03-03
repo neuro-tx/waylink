@@ -198,14 +198,21 @@ export function buildSearchQuery(
   column: any,
   term?: string,
   mode: SearchMode = "fts",
-  _language = "english",
+  language = "english",
 ): SQL | undefined {
-  if (!term || !term.trim()) return undefined;
+  if (!term?.trim()) return undefined;
 
-  const cleanTerm = term.trim();
+  const cleanTerm = term
+    .trim()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " & ");
+
+  if (!cleanTerm) return undefined;
 
   if (mode === "fts") {
-    sql`${column} @@ to_tsquery(${_language}, ${cleanTerm}:*)`;
+    return sql`${column} @@ to_tsquery(${language}, ${sql.raw(
+      `'${cleanTerm}:*'`,
+    )})`;
   }
 
   if (mode === "ilike") {

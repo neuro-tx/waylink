@@ -11,4 +11,8 @@ const feturedTransports = async (req: NextRequest) => {
   return await transportService.featuredTransports(limit, offset);
 };
 
-export const transportController = { feturedTransports };
+const getTransports = async(url: string) => {
+  return await transportService.getTransportWithUrl(url);
+}
+
+export const transportController = { feturedTransports ,getTransports };

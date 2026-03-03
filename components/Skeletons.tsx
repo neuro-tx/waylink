@@ -33,7 +33,7 @@ function Bone({
   );
 }
 
-function TransportCardSkeleton({ delay = 0 }: { delay?: number }) {
+export function TransportCardSkeleton({ delay = 0 }: { delay?: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -112,7 +112,7 @@ function TransportCardSkeleton({ delay = 0 }: { delay?: number }) {
   );
 }
 
-function ExperienceCardSkeleton({ delay = 0 }: { delay?: number }) {
+export function ExperienceCardSkeleton({ delay = 0 }: { delay?: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -153,7 +153,7 @@ function ExperienceCardSkeleton({ delay = 0 }: { delay?: number }) {
   );
 }
 
-function ProviderCardSkeleton({ delay = 0 }: { delay?: number }) {
+export function ProviderCardSkeleton({ delay = 0 }: { delay?: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
