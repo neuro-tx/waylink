@@ -135,3 +135,13 @@ export type SpotlightProvider = Provider & {
   avgRating: string;
   totalReviews: number;
 };
+
+export interface Pagination {
+  total: number;
+  limit: number;
+  offset: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}

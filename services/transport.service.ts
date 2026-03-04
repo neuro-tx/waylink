@@ -70,6 +70,9 @@ const featuredTransports = async (limit: number, offset: number) => {
 const getTransportWithUrl = async (url: string) => {
   const { query } = parseQuery(url);
 
+  const limit = Number(query?.limit ?? 1);
+  const offset = Number(query?.offset ?? 10);
+
   const mainConditions = buildWhereConditions(query?.where ?? {}, products);
   const transportSQL = buildWhereConditions(query?.where ?? {}, transports);
   const providerSQL = buildWhereConditions(query?.where ?? {}, providers);
@@ -100,6 +103,16 @@ const getTransportWithUrl = async (url: string) => {
     .groupBy(location.productId)
     .as("locations_sub");
 
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(distinct ${products.id})` })
+    .from(products)
+    .innerJoin(productScores, eq(products.id, productScores.productId))
+    .innerJoin(transports, eq(products.id, transports.productId))
+    .innerJoin(providers, eq(products.providerId, providers.id))
+    .leftJoin(productStats, eq(products.id, productStats.productId))
+    .leftJoin(locationSub, eq(products.id, locationSub.productId))
+    .where(final);
+
   const { searchVector, ...product } = getTableColumns(products);
   const result = await db
     .select({
@@ -127,9 +140,22 @@ const getTransportWithUrl = async (url: string) => {
     .leftJoin(productStats, eq(products.id, productStats.productId))
     .leftJoin(locationSub, eq(products.id, locationSub.productId))
     .where(final)
-    .orderBy(...mainOrder);
+    .orderBy(...mainOrder)
+    .limit(limit)
+    .offset(offset);
 
-  return result;
+  return {
+    data: result,
+    pagination: {
+      total,
+      limit,
+      offset,
+      page: Math.floor(offset / limit) + 1,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: offset + limit < total,
+      hasPrevPage: offset > 0,
+    },
+  };
 };
 
 export const transportService = { featuredTransports, getTransportWithUrl };

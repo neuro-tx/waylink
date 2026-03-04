@@ -1,7 +1,6 @@
 "use client";
 
-import { motion, Variants } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Users,
   BadgeCheck,
@@ -25,6 +24,15 @@ import {
 } from "@/lib/all-types";
 import { getRouteLocations } from "@/lib/helpers";
 import Link from "next/link";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { cn } from "@/lib/utils";
 
 const TRANSPORT_CONFIG: Record<
   TransportType,
@@ -115,7 +123,6 @@ export function RouteBadge({
 }
 
 export function TransportCard({ product }: { product: Transport }) {
-  const router = useRouter();
   const config = TRANSPORT_CONFIG[product.transportType];
   const accent = config.accent;
   const Icon = config.icon;
@@ -273,12 +280,13 @@ export function TransportCard({ product }: { product: Transport }) {
           </div>
 
           <motion.div
-            whileHover={{ scale: 1.01, boxShadow: `0 8px 24px ${accent}45` }}
+            whileHover={{ scale: 1.01, boxShadow: `0 8px 20px ${accent}45` }}
             whileTap={{ scale: 0.97 }}
+            className="rounded-xl bg-transparent"
           >
             <Link
               href={`/transport/variants/${product.id}`}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 cursor-pointer flex-nowrap whitespace-nowrap"
               style={{
                 background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
                 boxShadow: `0 4px 16px ${accent}30`,
@@ -298,11 +306,11 @@ export function CategoryFilter({
   active,
   onChange,
 }: {
-  active: string;
-  onChange: (v: string) => void;
+  active: TransportType | "all";
+  onChange: (v: TransportType | "all") => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
       {FILTER_TABS.map(({ label, value }) => {
         const isActive = active === value;
         const accent =
@@ -321,18 +329,66 @@ export function CategoryFilter({
             onClick={() => onChange(value)}
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.96 }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all duration-200 cursor-pointer"
             style={{
               background: isActive ? `${accent}18` : "transparent",
               borderColor: isActive ? `${accent}60` : undefined,
               color: isActive ? accent : undefined,
             }}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-3.5 h-3.5" style={{ color: accent }} />
             {label}
           </motion.button>
         );
       })}
     </div>
+  );
+}
+
+export function TypeFilterStrip({
+  active,
+  onChange,
+  className,
+}: {
+  active: TransportType | "all";
+  className: string;
+  onChange: (v: TransportType | "all") => void;
+}) {
+  return (
+    <Select
+      value={active}
+      onValueChange={(v) => onChange(v as TransportType | "all")}
+    >
+      <SelectTrigger className={cn("w-full max-w-48 inline-flex", className)}>
+        <div className="flex items-center gap-1.5">
+          <SelectValue placeholder="All types" />
+        </div>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {FILTER_TABS.map((tab) => {
+            const config =
+              tab.value === "all"
+                ? null
+                : TRANSPORT_CONFIG[tab.value as TransportType];
+
+            const Icon = config?.icon ?? Car;
+            const accent = config?.accent ?? "#845EF7";
+
+            return (
+              <SelectItem key={tab.value} value={tab.value}>
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className="w-3.5 h-3.5 shrink-0"
+                    style={{ color: accent }}
+                  />
+                  {tab.label}
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
