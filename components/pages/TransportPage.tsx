@@ -343,21 +343,36 @@ function SidebarFilters({
     maxPrice !== undefined;
 
   return (
-    <div className="flex flex-col gap-5 p-5 rounded-2xl border box sticky top-24 font-sans shadow-md">
+    <motion.div
+      className="flex flex-col gap-5 p-5 rounded-2xl border box sticky top-24 font-sans shadow-md backdrop-blur-sm bg-background/80"
+      initial={{ opacity: 0, x: 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{
+        duration: 0.55,
+        ease: [0.25, 1, 0.36, 1],
+      }}
+    >
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase text-gray-light tracking-[0.15em] flex items-center gap-2">
           <Filter className="w-4 h-4 text-blue-10" />
           Filters
         </p>
-        {hasAny && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-xs font-semibold px-2 py-0.5 rounded-lg text-orange-3 bg-orange-3/10 border border-orange-3/30 cursor-pointer hover:bg-orange-3/15 transition-colors"
-          >
-            Reset all
-          </button>
-        )}
+
+        <AnimatePresence>
+          {hasAny && (
+            <motion.button
+              type="button"
+              onClick={onReset}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-xs font-semibold px-2 py-0.5 rounded-lg text-orange-3 bg-orange-3/10 border border-orange-3/30 cursor-pointer hover:bg-orange-3/15 transition-colors"
+            >
+              Reset all
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       <PriceRangeFilter
@@ -377,13 +392,16 @@ function SidebarFilters({
           {(Object.entries(CLASS_LABELS) as [TransportClass, string][]).map(
             ([cls, label]) => {
               const active = filters.class === cls;
+
               return (
-                <button
+                <motion.button
                   key={cls}
                   type="button"
                   onClick={() =>
                     onChange({ ...filters, class: active ? null : cls })
                   }
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.97 }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-medium transition-all duration-150 cursor-pointer",
                     active
@@ -395,7 +413,6 @@ function SidebarFilters({
                   <AnimatePresence>
                     {active && (
                       <motion.span
-                        key="dot"
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
@@ -404,7 +421,7 @@ function SidebarFilters({
                       />
                     )}
                   </AnimatePresence>
-                </button>
+                </motion.button>
               );
             },
           )}
@@ -421,8 +438,9 @@ function SidebarFilters({
         ].map(({ key, label }) => {
           const on = filters[key];
           return (
-            <div
+            <motion.div
               key={key}
+              whileHover={{ scale: 1.01 }}
               className={cn(
                 "flex items-center border gap-2.5 p-3 rounded-lg hover:bg-accent transition-all duration-200",
                 on && "bg-blue-10/15 border-blue-10/50 hover:bg-blue-10/20",
@@ -437,7 +455,7 @@ function SidebarFilters({
               <Label htmlFor={`filter-${key}`} className="cursor-pointer">
                 {label}
               </Label>
-            </div>
+            </motion.div>
           );
         })}
       </div>
@@ -445,7 +463,11 @@ function SidebarFilters({
       <div className="h-px rounded-full bg-linear-to-r from-blue-10 via-orange-1/50 to-transparent" />
 
       {hasAny && (
-        <p className="text-xs text-muted-foreground text-center">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-xs text-muted-foreground text-center"
+        >
           <span className="text-green-1">
             {[
               filters.class && CLASS_LABELS[filters.class],
@@ -458,9 +480,9 @@ function SidebarFilters({
               .join(" · ")}
           </span>{" "}
           filter{hasAny ? "s" : ""} active
-        </p>
+        </motion.p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -682,10 +704,28 @@ export default function TransportPageClient() {
     <div className="min-h-screen bg-waylink-fade duration-500 font-sans">
       <TransportHero />
 
-      <div className="sticky top-18 z-40 border-y py-4 backdrop-blur-lg">
-        <div className="mian-container">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 flex-1 min-w-full md:min-w-50 px-3.5 py-2 rounded-xl border transition-all duration-200 overflow-hidden">
+      <motion.div
+        className="sticky top-18 md:top-20 z-40"
+        initial={{ opacity: 0, y: -25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: 0.55,
+          ease: [0.25, 1, 0.36, 1],
+        }}
+      >
+        <div className="mian-container border backdrop-blur-lg py-4 rounded-xl">
+          <motion.div
+            className="flex items-center gap-3 flex-wrap"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <motion.div
+              className={cn(
+                "flex items-center gap-2 flex-1 min-w-full md:min-w-50 px-3.5 py-2 rounded-xl border overflow-hidden",
+                search && "border-blue-10/50",
+              )}
+            >
               <Search className="w-4 h-4 text-muted-foreground shrink-0" />
               <input
                 type="text"
@@ -709,7 +749,7 @@ export default function TransportPageClient() {
                   </motion.button>
                 )}
               </AnimatePresence>
-            </div>
+            </motion.div>
 
             <div className="flex items-center gap-3 flex-nowrap">
               <SortDropdown value={sort} onChange={setSort} />
@@ -725,7 +765,7 @@ export default function TransportPageClient() {
                 type="button"
                 onClick={() => setSidebarOpen((v) => !v)}
                 className={cn(
-                  "lg:hidden",
+                  "lg:hidden transition-all",
                   activeFilterCount > 0 &&
                     "border-blue-10/50 text-blue-10 bg-blue-10/10",
                 )}
@@ -733,7 +773,7 @@ export default function TransportPageClient() {
                 <SlidersHorizontal className="w-3 h-3" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-10 text-white leading-none">
+                  <span className="ml-1 text-[10px] font-semibold size-4 grid place-items-center rounded-full bg-blue-10 text-white leading-none">
                     {activeFilterCount}
                   </span>
                 )}
@@ -748,7 +788,7 @@ export default function TransportPageClient() {
                   variant="ghost"
                   className={cn(
                     viewMode === v
-                      ? "bg-purple-500 hover:bg-purple-600! text-white!"
+                      ? "bg-purple-500 hover:bg-purple-600 text-white hover:text-white!"
                       : "bg-transparent",
                   )}
                   onClick={() => setViewMode(v)}
@@ -762,13 +802,15 @@ export default function TransportPageClient() {
               ))}
             </div>
 
-            <div className="hidden md:flex items-center justify-center">
-              <CategoryFilter active={typeFilter} onChange={setTypeFilter} />
-            </div>
-
             <span className="text-xs text-muted-foreground ml-auto hidden md:block">
               {loading ? (
-                <span className="text-blue-10/60 animate-pulse">Fetching…</span>
+                <motion.span
+                  className="text-blue-10"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                >
+                  Fetching…
+                </motion.span>
               ) : (
                 <span className="text-xs font-medium text-muted-foreground space-x-0.5">
                   <span className="font-semibold text-orange-3 underline">
@@ -782,12 +824,15 @@ export default function TransportPageClient() {
                 </span>
               )}
             </span>
+          </motion.div>
+          <div className="hidden md:flex items-center justify-center mt-3">
+            <CategoryFilter active={typeFilter} onChange={setTypeFilter} />
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="mian-container px-4 py-10">
-        <div className="flex gap-6 items-start">
+      <div className="mian-container py-10">
+        <div className="flex gap-5 items-start">
           <div className="hidden lg:block w-64 shrink-0">
             <SidebarFilters
               filters={filters}
