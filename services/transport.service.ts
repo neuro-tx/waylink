@@ -103,28 +103,26 @@ const getTransportWithUrl = async (url: string) => {
     .groupBy(location.productId)
     .as("locations_sub");
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(distinct ${products.id})` })
-    .from(products)
-    .innerJoin(productScores, eq(products.id, productScores.productId))
-    .innerJoin(transports, eq(products.id, transports.productId))
-    .innerJoin(providers, eq(products.providerId, providers.id))
-    .leftJoin(productStats, eq(products.id, productStats.productId))
-    .leftJoin(locationSub, eq(products.id, locationSub.productId))
-    .where(final);
-
   const { searchVector, ...product } = getTableColumns(products);
-  const result = await db
-    .select({
-      ...product,
-      transportType: transports.transportType,
-      class: transports.transportClass,
-      directRoute: transports.hasDirectRoute,
-      reviews: productStats.reviewsCount,
-      bookings: productStats.bookingsCount,
-      avgRating: productStats.averageRating,
-      locations: locationSub.locations,
-      provider: sql<Pick<Provider, "id" | "name" | "logo" | "isVerified">>`
+
+  const [countResult, transportlist] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(distinct ${products.id})` })
+      .from(products)
+      .innerJoin(transports, eq(products.id, transports.productId))
+      .innerJoin(providers, eq(products.providerId, providers.id))
+      .where(final),
+    db
+      .select({
+        ...product,
+        transportType: transports.transportType,
+        class: transports.transportClass,
+        directRoute: transports.hasDirectRoute,
+        reviews: productStats.reviewsCount,
+        bookings: productStats.bookingsCount,
+        avgRating: productStats.averageRating,
+        locations: locationSub.locations,
+        provider: sql<Pick<Provider, "id" | "name" | "logo" | "isVerified">>`
             json_build_object(
               'id', ${providers.id},
               'name', ${providers.name},
@@ -132,20 +130,22 @@ const getTransportWithUrl = async (url: string) => {
               'isVerified', ${providers.isVerified}
             )
           `,
-    })
-    .from(products)
-    .innerJoin(productScores, eq(products.id, productScores.productId))
-    .innerJoin(transports, eq(products.id, transports.productId))
-    .innerJoin(providers, eq(products.providerId, providers.id))
-    .leftJoin(productStats, eq(products.id, productStats.productId))
-    .leftJoin(locationSub, eq(products.id, locationSub.productId))
-    .where(final)
-    .orderBy(...mainOrder)
-    .limit(limit)
-    .offset(offset);
+      })
+      .from(products)
+      .innerJoin(productScores, eq(products.id, productScores.productId))
+      .innerJoin(transports, eq(products.id, transports.productId))
+      .innerJoin(providers, eq(products.providerId, providers.id))
+      .leftJoin(productStats, eq(products.id, productStats.productId))
+      .leftJoin(locationSub, eq(products.id, locationSub.productId))
+      .where(final)
+      .orderBy(...mainOrder)
+      .limit(limit)
+      .offset(offset),
+  ]);
 
+  const total = Number(countResult[0]?.total ?? 0);
   return {
-    data: result,
+    data: transportlist,
     pagination: {
       total,
       limit,
