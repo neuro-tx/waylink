@@ -36,10 +36,12 @@ const getExperiences = async (url: string) => {
     query?.search?.term,
     "fts",
   );
+  const providerSQL = buildWhereConditions(query?.where ?? {} ,providers)
   const whereClause = mergeWhere(
     productConditions,
     experienceConditions,
     searchCondition,
+    providerSQL
   );
 
   const productOrder = buildOrderBy(query?.orderBy ?? [], products);
@@ -83,6 +85,7 @@ const getExperiences = async (url: string) => {
       })
       .from(experiences)
       .innerJoin(products, eq(products.id, experiences.productId))
+      .innerJoin(providers, eq(products.providerId, providers.id))
       .where(whereClause),
 
     db

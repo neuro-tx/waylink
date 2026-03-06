@@ -145,3 +145,22 @@ export interface Pagination {
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }
+
+export type ExperienceType =
+  | "tour"
+  | "adventure"
+  | "cultural"
+  | "entertainment"
+  | "food_drink"
+  | "sports"
+  | "wellness"
+  | "water"
+  | "wildlife"
+  | "photography"
+  | "nature"
+  | "shopping"
+  | "nightlife"
+  | "learning"
+  | "seasonal";
+
+export type DifficultyLevel = "easy" | "moderate" | "challenging" | "extreme";
