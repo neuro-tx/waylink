@@ -21,6 +21,17 @@ interface ExperienceURL extends SharedPrams {
   expType: ExperienceType | "all";
 }
 
+interface ProviderURL {
+  search?: string;
+  verified?: boolean;
+  business?: "all" | "individual" | "company" | "agency";
+  service?: "all" | "transport" | "experience";
+  status?: "pending" | "approved" | "inactive" | "suspended";
+  sort?: "newest" | "oldest" | "name";
+  page?: number;
+  limit?: number;
+}
+
 export default function transportUrlBuilder(params: Partial<TransportURL>) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -108,6 +119,44 @@ export function experienceUrlBuilder(params: Partial<ExperienceURL>) {
   }
   if (verified) {
     url.searchParams.append("isVerified", "true");
+  }
+  if (page !== undefined) {
+    url.searchParams.append("page", String(page));
+  }
+  if (limit !== undefined) {
+    url.searchParams.append("limit", String(limit));
+  }
+
+  return url.toString();
+}
+
+export function providerUrl(params: ProviderURL = {}) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const url = new URL("/api/provider", baseUrl);
+
+  const { search, verified, business, service, status, sort, page, limit } =
+    params;
+
+  url.searchParams.append("status", "approved");
+  url.searchParams.append("limit", "12");
+
+  if (search) {
+    url.searchParams.append("search", search);
+  }
+  if (verified !== undefined) {
+    url.searchParams.append("isVerified", String(verified));
+  }
+  if (business && business !== "all") {
+    url.searchParams.append("businessType", business);
+  }
+  if (service && service !== "all") {
+    url.searchParams.append("serviceType", service);
+  }
+  if (status) {
+    url.searchParams.append("status", status);
+  }
+  if (sort) {
+    url.searchParams.append("sort", sort);
   }
   if (page !== undefined) {
     url.searchParams.append("page", String(page));
