@@ -64,7 +64,7 @@ export function ProviderCard({
             src={provider.cover}
             alt={provider.name}
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-101"
           />
         ) : (
           <div
@@ -94,8 +94,7 @@ export function ProviderCard({
 
       <div className="relative px-5 pb-5 pt-7 flex flex-col gap-4 flex-1">
         <div
-          className="absolute -top-6 left-5 w-12 h-12 rounded-2xl border-2 overflow-hidden shrink-0"
-          style={{ borderColor: accent }}
+          className="absolute -top-6 left-5 w-12 h-12 rounded-2xl overflow-hidden shrink-0"
         >
           {provider.logo ? (
             <Image

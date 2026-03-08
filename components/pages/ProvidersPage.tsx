@@ -280,6 +280,7 @@ export default function ProvidersPageClient() {
     const controller = new AbortController();
     const fetchProviders = async () => {
       setLoading(true);
+      setError(false)
       try {
         const res = await fetch(buildQuery(1), {
           signal: controller.signal,
@@ -287,7 +288,6 @@ export default function ProvidersPageClient() {
         if (!res.ok) throw new Error();
         const json = await res.json();
         const payload = json.data ?? json;
-
         setResults(payload.data ?? []);
         setPagination(payload.pagination);
       } catch {
@@ -305,6 +305,7 @@ export default function ProvidersPageClient() {
     if (!pagination.hasNextPage) return;
     const next = page + 1;
     setLoadingMore(true);
+    setError(false)
     try {
       const res = await fetch(buildQuery(next));
       if (!res.ok) throw new Error();
@@ -426,7 +427,7 @@ export default function ProvidersPageClient() {
             </motion.div>
           )}
 
-          {!loading && error && (
+          {error && (
             <motion.div
               key="error"
               initial={{ opacity: 0, scale: 0.97 }}
@@ -454,7 +455,7 @@ export default function ProvidersPageClient() {
             </motion.div>
           )}
 
-          {!loading && !error && results.length === 0 && (
+          {results.length === 0 && (
             <motion.div
               key="empty"
               initial={{ opacity: 0, scale: 0.97 }}
@@ -482,7 +483,7 @@ export default function ProvidersPageClient() {
             </motion.div>
           )}
 
-          {!loading && !error && results.length > 0 && (
+          { results.length > 0 && (
             <motion.div key={`${service}-${business}`} layout>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
