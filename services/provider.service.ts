@@ -1,58 +1,68 @@
 import { db } from "@/db";
 import { products, productStats, providers } from "@/db/schemas";
-import { BusinessType, Limitation, ProviderStatus } from "@/lib/all-types";
-import { count, getTableColumns, sql, and, eq, or, ilike } from "drizzle-orm";
+import { parseQuery } from "@/lib/query_parser/analyzer";
+import {
+  buildSearchQuery,
+  buildWhereConditions,
+  mergeWhere,
+} from "@/lib/query_parser/helpers";
+import { count, getTableColumns, sql, eq } from "drizzle-orm";
 
-type ProviderService = "transport" | "accommodation" | "experience";
+const getProviders = async (url: string) => {
+  const { query } = parseQuery(url);
+  const limit = Number(query?.limit ?? 10);
+  const offset = Number(query?.offset ?? 0);
 
-interface GetProvidersParams {
-  search?: string;
-  type?: ProviderService;
-  limits: Limitation;
-  status?: ProviderStatus;
-  businessType?: BusinessType;
-}
-
-const getProviders = async ({
-  search,
-  type,
-  limits,
-  status,
-  businessType,
-}: GetProvidersParams) => {
-  const { ...provider } = getTableColumns(providers);
-  const { limit, offset } = limits;
-
-  const filters = and(
-    status ? eq(providers.status, status): undefined,
-    businessType ? eq(providers.businessType, businessType) : undefined,
-    type ? eq(providers.serviceType, type) : undefined,
-    search
-      ? or(
-          ilike(providers.name, `%${search}%`),
-          ilike(providers.description, `%${search}%`),
-        )
-      : undefined,
+  const providerSQL = buildWhereConditions(query?.where ?? {}, providers);
+  const searchSQL = buildSearchQuery(
+    providers.description,
+    query?.search?.term,
+    "ilike",
   );
+  const final = mergeWhere(providerSQL, searchSQL);
 
-  const data = await db
-    .select({
-      ...provider,
-      totalProducts: count(products.id),
-      totalBookings: sql<number>`COALESCE(SUM(${productStats.bookingsCount}), 0)`,
-      avgRating: sql<number>`COALESCE(ROUND(AVG(${productStats.averageRating})::numeric, 2), 0)`,
-      totalReviews: sql<number>`COALESCE(SUM(${productStats.reviewsCount}), 0)`,
-    })
-    .from(providers)
-    .leftJoin(products, eq(providers.id, products.providerId))
-    .leftJoin(productStats, eq(products.id, productStats.productId))
-    .where(filters)
-    .groupBy(providers.id)
-    .orderBy(sql`COALESCE(SUM(${productStats.bookingsCount}), 0) DESC`)
-    .limit(limit)
-    .offset(offset);
+  const { ...provider } = getTableColumns(providers);
 
-  return data;
+  const [countRes, list] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(providers)
+      .innerJoin(products, eq(providers.id, products.providerId))
+      .leftJoin(productStats, eq(products.id, productStats.productId))
+      .where(final),
+    db
+      .select({
+        ...provider,
+        totalProducts: count(products.id),
+        totalBookings: sql<number>`COALESCE(SUM(${productStats.bookingsCount}), 0)`,
+        avgRating: sql<number>`COALESCE(ROUND(AVG(${productStats.averageRating})::numeric, 2), 0)`,
+        totalReviews: sql<number>`COALESCE(SUM(${productStats.reviewsCount}), 0)`,
+      })
+      .from(providers)
+      .leftJoin(products, eq(providers.id, products.providerId))
+      .leftJoin(productStats, eq(products.id, productStats.productId))
+      .where(final)
+      .groupBy(providers.id)
+      .orderBy(sql`COALESCE(SUM(${productStats.bookingsCount}), 0) DESC`)
+      .limit(limit)
+      .offset(offset),
+  ]);
+
+  const total = Number(countRes[0]?.total ?? 0);
+  const pagination = {
+    total,
+    limit,
+    offset,
+    page: Math.floor(offset / limit) + 1,
+    totalPages: Math.ceil(total / limit),
+    hasNextPage: offset + limit < total,
+    hasPrevPage: offset > 0,
+  };
+
+  return {
+    data: list,
+    pagination,
+  };
 };
 
 export const providerService = { getProviders };

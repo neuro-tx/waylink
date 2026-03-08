@@ -64,11 +64,6 @@ const BUSINESS_CHIPS: ChipOpt<BusinessFilter>[] = [
   { value: "agency", label: "Agency", icon: Briefcase, accent: "#F59E0B" },
 ];
 
-const listVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.055 } },
-};
-
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 16, scale: 0.97 },
   visible: {
@@ -268,7 +263,6 @@ export default function ProvidersPageClient() {
   });
 
   const gridRef = useRef<HTMLDivElement>(null);
-  const gridInView = useInView(gridRef, { once: true, margin: "-80px" });
   const debouncedSearch = useDebounce(search);
 
   const buildQuery = (p: number) => {
@@ -489,11 +483,10 @@ export default function ProvidersPageClient() {
           )}
 
           {!loading && !error && results.length > 0 && (
-            <motion.div key={`${service}-${business}`}>
+            <motion.div key={`${service}-${business}`} layout>
               <motion.div
-                variants={listVariants}
-                initial="hidden"
-                animate={gridInView ? "visible" : "hidden"}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
               >
                 {results.map((provider) => (

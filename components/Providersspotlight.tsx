@@ -7,6 +7,7 @@ import { SpotlightProvider } from "@/lib/all-types";
 import SkeletonGrid from "./Skeletons";
 import Link from "next/link";
 import { ProviderCard } from "./ProviderCard";
+import { providerUrl } from "@/lib/url-builder";
 
 const headerVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -22,18 +23,15 @@ function SpotlightContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const url = providerUrl({limit:6 ,status:"approved"})
   const fetchProviders = async () => {
     setLoading(true);
     setError(null);
     try {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const res = await fetch(
-        `${baseUrl}/api/provider?status=approved&limit=6`,
-      );
+      const res = await fetch(url)
       if (!res.ok) throw new Error("Failed to fetch providers");
       const data = await res.json();
-      setProviders(data.data);
+      setProviders(data.data.data);
     } catch (err: unknown) {
       err instanceof Error
         ? setError(err.message)

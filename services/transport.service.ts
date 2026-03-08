@@ -70,8 +70,8 @@ const featuredTransports = async (limit: number, offset: number) => {
 const getTransportWithUrl = async (url: string) => {
   const { query } = parseQuery(url);
 
-  const limit = Number(query?.limit ?? 1);
-  const offset = Number(query?.offset ?? 10);
+  const limit = Number(query?.limit ?? 10);
+  const offset = Number(query?.offset ?? 0);
 
   const mainConditions = buildWhereConditions(query?.where ?? {}, products);
   const transportSQL = buildWhereConditions(query?.where ?? {}, transports);
