@@ -10,8 +10,8 @@ import {
   List,
   MapPin,
   Filter,
-  ChevronDown,
   DollarSign,
+  MapPinOff,
 } from "lucide-react";
 import {
   Pagination,
@@ -40,7 +40,7 @@ import transportUrlBuilder from "@/lib/url-builder";
 import { useDebounce } from "@/hooks/useDebounce";
 import SkeletonGrid, { TransportCardSkeleton } from "../Skeletons";
 import { useClickOutside } from "@/hooks/useClickOut";
-import { toast } from "sonner";
+import { EmptyState, ErrorState ,LoadMore } from "../StatesLayout";
 
 type SortKey =
   | "recommended"
@@ -486,70 +486,6 @@ function SidebarFilters({
   );
 }
 
-function LoadMoreButton({
-  loading,
-  onClick,
-  pagination,
-}: {
-  loading: boolean;
-  onClick: () => void;
-  pagination: Pagination;
-}) {
-  if (!pagination.hasNextPage) return null;
-
-  const { page, totalPages } = pagination;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center gap-3 pt-8 pb-2"
-    >
-      <div className="text-xs text-muted-foreground">
-        Page {page} of {totalPages}
-      </div>
-
-      <motion.button
-        type="button"
-        onClick={onClick}
-        disabled={loading}
-        whileHover={!loading ? { scale: 1.01, y: -1 } : undefined}
-        whileTap={!loading ? { scale: 0.98 } : undefined}
-        className={cn(
-          "relative flex items-center gap-2.5 px-7 py-2.5 rounded-2xl border text-sm font-semibold overflow-hidden transition-all duration-200",
-          loading
-            ? "text-muted-foreground border-border cursor-not-allowed"
-            : "text-blue-10 border-blue-10/40 bg-blue-10/8 hover:bg-blue-10/14 cursor-pointer",
-        )}
-      >
-        {loading && (
-          <motion.div
-            className="absolute inset-0 bg-linear-to-r from-transparent via-blue-10/6 to-transparent"
-            animate={{ x: ["-100%", "100%"] }}
-            transition={{ duration: 1.2, repeat: Infinity }}
-          />
-        )}
-
-        {loading ? (
-          <>
-            <motion.div
-              className="w-4 h-4 rounded-full border-2 border-blue-10/30 border-t-blue-10 shrink-0"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-            />
-            Loading more…
-          </>
-        ) : (
-          <>
-            <ChevronDown className="w-4 h-4" />
-            Load more routes
-          </>
-        )}
-      </motion.button>
-    </motion.div>
-  );
-}
-
 function SortDropdown({
   value,
   onChange,
@@ -586,7 +522,6 @@ export default function TransportPageClient() {
   const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
   const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
   const [results, setResults] = useState<Transport[]>([]);
-  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -597,6 +532,10 @@ export default function TransportPageClient() {
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [retryKey, setRetryKey] = useState(0);
+  const [state, setState] = useState<"loading" | "data" | "empty" | "error">(
+    "loading",
+  );
 
   const sideBarRef = useRef<HTMLDivElement | null>(null);
 
@@ -613,8 +552,8 @@ export default function TransportPageClient() {
       limit: 20,
       sort,
       page: p,
-      maxPrice,
-      minPrice,
+      maxPrice: debounceMaxPrice,
+      minPrice: debounceMinPrice,
       type: typeFilter,
       verified: filters.onlyVerified,
       directRoute: filters.onlyDirect,
@@ -623,27 +562,32 @@ export default function TransportPageClient() {
 
   useEffect(() => {
     const controller = new AbortController();
-
     const run = async () => {
-      setLoading(true);
+      setState("loading");
       try {
         const res = await fetch(buildQuery(1), {
           signal: controller.signal,
         });
 
         if (!res.ok) throw new Error();
+
         const json = await res.json();
         const payload = json.data ?? json;
+        const items: Transport[] = payload.data ?? [];
 
-        setResults(payload.data ?? []);
+        if (items.length === 0) {
+          setResults([]);
+          setState("empty");
+          return;
+        }
+        setResults(items);
         setPagination(payload.pagination);
         setPage(1);
+        setState("data");
       } catch (err: any) {
         if (err.name !== "AbortError") {
-          setResults([]);
+          setState("error");
         }
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -659,13 +603,14 @@ export default function TransportPageClient() {
     transportClass,
     debounceMinPrice,
     debounceMaxPrice,
+    retryKey,
   ]);
 
   const handleLoadMore = async () => {
     if (!pagination.hasNextPage) return;
     const next = page + 1;
-    setLoadingMore(true);
     try {
+      setLoadingMore(true);
       const res = await fetch(buildQuery(next));
       if (!res.ok) throw new Error();
       const json = await res.json();
@@ -674,8 +619,10 @@ export default function TransportPageClient() {
       setResults((prev) => [...prev, ...items]);
       setPagination(payload.pagination);
       setPage(next);
-    } catch {
-      toast.error("Failed to load more routes");
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        setState("error");
+      }
     } finally {
       setLoadingMore(false);
     }
@@ -803,7 +750,7 @@ export default function TransportPageClient() {
             </div>
 
             <span className="text-xs text-muted-foreground ml-auto hidden md:block">
-              {loading ? (
+              {state === "loading" ? (
                 <motion.span
                   className="text-blue-10"
                   animate={{ opacity: [0.5, 1, 0.5] }}
@@ -888,78 +835,79 @@ export default function TransportPageClient() {
           </AnimatePresence>
 
           <div className="flex-1 min-w-0" ref={gridRef}>
-            <AnimatePresence mode="wait">
-              {loading ? (
-                <motion.div
-                  key="skeleton"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <SkeletonGrid type="transport" />
-                </motion.div>
-              ) : results.length === 0 ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col items-center justify-center py-24 gap-3 border-2 border-dashed border-orange-3/50 rounded-lg"
-                >
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center border border-blue-10/30 bg-blue-10/10">
-                    <MapPin className="w-7 h-7 text-blue-10" />
-                  </div>
-                  <p className="text-xl tracking-wider font-bold font-georgia">
-                    No routes found
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Try adjusting your filters or search term.
-                  </p>
-                  <Button variant="outline" onClick={resetAll}>
-                    <X className="w-3.5 h-3.5" />
+            {state === "loading" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.25 }}
+              >
+                <SkeletonGrid type="transport" />
+              </motion.div>
+            )}
+
+            {state === "error" && (
+              <ErrorState
+                icon={<MapPinOff className="w-6 h-6 text-red-400" />}
+                title="Routes unavailable"
+                message="Transport routes could not be loaded. Please try again."
+                buttonLabel="Reload routes"
+                onRetry={() => setRetryKey((k) => k + 1)}
+              />
+            )}
+
+            {state === "empty" && (
+              <EmptyState
+                icon={<MapPin className="w-7 h-7 text-orange-3" />}
+                title="No routes found"
+                message="No routes match your filters."
+                action={
+                  <Button variant="outline" size="sm" onClick={resetAll}>
                     Clear filters
                   </Button>
-                </motion.div>
-              ) : (
-                <motion.div key={`${typeFilter}-${viewMode}`}>
-                  <motion.div
-                    variants={gridVariants}
-                    initial="hidden"
-                    animate={gridInView ? "visible" : "hidden"}
-                    className={
-                      viewMode === "grid"
-                        ? "grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
-                        : "flex flex-col gap-4"
-                    }
-                  >
-                    <>
-                      {results.map((product, i) => (
-                        <motion.div
-                          key={`transport-card-${i}`}
-                          layout
-                          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          transition={{
-                            duration: 0.4,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                        >
-                          <TransportCard product={product} />
-                        </motion.div>
-                      ))}
+                }
+              />
+            )}
 
-                      {loadingMore && <LoadingGrid count={3} />}
+            {state === "data" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <motion.div
+                  variants={gridVariants}
+                  initial="hidden"
+                  animate={gridInView ? "visible" : "hidden"}
+                  className={
+                    viewMode === "grid"
+                      ? "grid gap-5 sm:grid-cols-2 xl:grid-cols-3"
+                      : "flex flex-col gap-4"
+                  }
+                >
+                  {results.map((product) => (
+                    <motion.div
+                      key={product.id}
+                      layout
+                      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <TransportCard product={product} />
+                    </motion.div>
+                  ))}
 
-                      <LoadMoreButton
-                        loading={loadingMore}
-                        onClick={handleLoadMore}
-                        pagination={pagination}
-                      />
-                    </>
-                  </motion.div>
+                  {loadingMore && <LoadingGrid count={3} />}
                 </motion.div>
-              )}
-            </AnimatePresence>
+
+                <LoadMore
+                  loading={loadingMore}
+                  onClick={handleLoadMore}
+                  pagination={pagination}
+                  label="transports"
+                  color="orange"
+                />
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

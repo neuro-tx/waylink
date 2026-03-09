@@ -13,13 +13,11 @@ import {
   Users,
   Plane,
   Compass,
-  ChevronDown,
   User,
   Building2,
   Briefcase,
   RefreshCcw,
   ArrowDown,
-  Loader,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +33,8 @@ import { providerUrl } from "@/lib/url-builder";
 import SkeletonGrid from "../Skeletons";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
+import { EmptyState, ErrorState, LoadMore } from "../StatesLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type ServiceFilter = "all" | ServiceType;
 type BusinessFilter = "all" | BusinessType;
@@ -242,12 +242,11 @@ function Hero() {
 }
 
 export default function ProvidersPageClient() {
+  const ismobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [service, setService] = useState<ServiceFilter>("all");
   const [business, setBusiness] = useState<BusinessFilter>("all");
   const [results, setResults] = useState<SpotlightProvider[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [open, setOpen] = useState(true);
   const [page, setPage] = useState(1);
@@ -261,6 +260,9 @@ export default function ProvidersPageClient() {
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [state, setState] = useState<"loading" | "data" | "empty" | "error">(
+    "loading",
+  );
 
   const gridRef = useRef<HTMLDivElement>(null);
   const debouncedSearch = useDebounce(search);
@@ -278,22 +280,27 @@ export default function ProvidersPageClient() {
 
   useEffect(() => {
     const controller = new AbortController();
+
     const fetchProviders = async () => {
-      setLoading(true);
-      setError(false)
+      setState("loading");
       try {
-        const res = await fetch(buildQuery(1), {
-          signal: controller.signal,
-        });
+        const res = await fetch(buildQuery(1), { signal: controller.signal });
         if (!res.ok) throw new Error();
         const json = await res.json();
         const payload = json.data ?? json;
-        setResults(payload.data ?? []);
+        const items: SpotlightProvider[] = payload.data ?? [];
+
+        if (items.length === 0) {
+          setState("empty");
+          return;
+        }
+        setResults(items);
         setPagination(payload.pagination);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
+        setState("data");
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          setState("error");
+        }
       }
     };
 
@@ -304,23 +311,32 @@ export default function ProvidersPageClient() {
   const loadMore = async () => {
     if (!pagination.hasNextPage) return;
     const next = page + 1;
-    setLoadingMore(true);
-    setError(false)
     try {
+      setLoadingMore(true);
       const res = await fetch(buildQuery(next));
       if (!res.ok) throw new Error();
       const json = await res.json();
       const payload = json.data ?? json;
       const items: SpotlightProvider[] = payload.data ?? [];
+
+      if (items.length === 0) {
+        setState("empty");
+        return;
+      }
       setResults((prev) => [...prev, ...items]);
       setPagination(payload.pagination);
       setPage(next);
-    } catch (error) {
+      setState("data");
+    } catch (err: any) {
       toast.error("Failed to load more providers.");
     } finally {
       setLoadingMore(false);
     }
   };
+
+  useEffect(() => {
+    if (!ismobile) setOpen(false);
+  }, [ismobile]);
 
   return (
     <div className="min-h-screen bg-waylink-fade font-sans">
@@ -348,6 +364,7 @@ export default function ProvidersPageClient() {
               size="icon"
               variant="outline"
               onClick={() => setOpen((v) => !v)}
+              className="md:hidden"
             >
               <ArrowDown
                 className={cn(
@@ -358,7 +375,7 @@ export default function ProvidersPageClient() {
           </div>
 
           <AnimatePresence mode="wait">
-            {open && (
+            {(!ismobile || open) && (
               <motion.div
                 key="dropdown-filter-menu"
                 initial={{ opacity: 0, height: 0, y: -8 }}
@@ -394,19 +411,17 @@ export default function ProvidersPageClient() {
                     </LayoutGroup>
                   </FilterGroup>
 
-                  {!loading && !error && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.15 }}
-                      className="hidden md:block ml-auto text-xs text-muted-foreground shrink-0"
-                    >
-                      <span className="font-bold text-foreground">
-                        {results.length}
-                      </span>{" "}
-                      providers
-                    </motion.span>
-                  )}
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="hidden md:block ml-auto text-xs text-muted-foreground shrink-0"
+                  >
+                    <span className="font-bold text-foreground">
+                      {results.length}
+                    </span>{" "}
+                    providers
+                  </motion.span>
                 </div>
               </motion.div>
             )}
@@ -415,120 +430,62 @@ export default function ProvidersPageClient() {
       </motion.div>
 
       <div className="mian-container py-10" ref={gridRef}>
-        <AnimatePresence mode="wait">
-          {loading && (
+        {state === "loading" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+          >
+            <SkeletonGrid type="provider" />
+          </motion.div>
+        )}
+
+        {state === "error" && (
+          <ErrorState
+            icon={<RefreshCcw className="w-6 h-6 text-red-400" />}
+            title="Failed to load providers"
+            message="We couldn't load the provider list. Please check your connection and try again."
+            buttonLabel="Retry"
+            onRetry={() => setRetryKey((k) => k + 1)}
+          />
+        )}
+
+        {state === "empty" && (
+          <EmptyState
+            icon={<Users className="w-7 h-7 text-orange-3" />}
+            title="No providers found"
+            message="Try searching a different name."
+          />
+        )}
+
+        {state === "data" && (
+          <motion.div layout>
             <motion.div
-              key="skeleton"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
             >
-              <SkeletonGrid type="provider" />
-            </motion.div>
-          )}
-
-          {error && (
-            <motion.div
-              key="error"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center py-28 gap-4 border border-dashed border-red-500/20 rounded-2xl"
-            >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-red-500/8 border border-red-500/20">
-                <RefreshCcw className="w-6 h-6 text-red-400" />
-              </div>
-              <p className="text-lg font-bold font-georgia text-red-400">
-                Something went wrong
-              </p>
-              <p className="text-sm text-muted-foreground text-center max-w-xs">
-                Could not load providers. Check your connection and try again.
-              </p>
-              <motion.button
-                type="button"
-                onClick={() => setRetryKey((k) => k + 1)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-red-500/25 text-red-400 bg-red-500/8 text-sm font-semibold cursor-pointer hover:bg-red-500/14 transition-all"
-              >
-                <RefreshCcw className="w-3.5 h-3.5" />
-                Try again
-              </motion.button>
-            </motion.div>
-          )}
-
-          {results.length === 0 && (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center py-28 gap-3 border border-dashed border-orange-3/25 rounded-2xl"
-            >
-              <motion.div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center bg-orange-3/10 border border-orange-3/25"
-                animate={{ y: [0, -5, 0] }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
-                <Users className="w-7 h-7 text-orange-3" />
-              </motion.div>
-              <p className="text-xl font-bold font-georgia">
-                No providers found
-              </p>
-              <p className="text-sm text-muted-foreground text-center max-w-xs">
-                Try searching a different name.
-              </p>
-            </motion.div>
-          )}
-
-          { results.length > 0 && (
-            <motion.div key={`${service}-${business}`} layout>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                {results.map((provider) => (
-                  <motion.div key={provider.id} variants={itemVariants}>
-                    <ProviderCard provider={provider} />
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              {pagination.hasNextPage && (
+              {results.map((provider) => (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="flex justify-center pt-10"
+                  key={provider.id}
+                  variants={itemVariants}
+                  initial="hidden"
+                  animate="visible"
                 >
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02, y: -1 }}
-                    whileTap={{ scale: 0.97 }}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl border border-orange-3/30 text-orange-3 bg-orange-3/8 hover:bg-orange-3/14 text-sm font-medium cursor-pointer transition-all"
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? (
-                      <>
-                        <Loader className="w-4 h-4 animate-spin" />
-                        Loading more…
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4" />
-                        Show more providers
-                      </>
-                    )}
-                  </motion.button>
+                  <ProviderCard provider={provider} />
                 </motion.div>
-              )}
+              ))}
             </motion.div>
-          )}
-        </AnimatePresence>
+
+            <LoadMore
+              onClick={loadMore}
+              loading={loadingMore}
+              pagination={pagination}
+              color="orange"
+            />
+          </motion.div>
+        )}
       </div>
     </div>
   );
