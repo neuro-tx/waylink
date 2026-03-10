@@ -32,6 +32,13 @@ interface ProviderURL {
   limit?: number;
 }
 
+interface TopRatedURL {
+  search: string;
+  service: "all" | "transport" | "experience";
+  page: number;
+  limit: number;
+}
+
 export default function transportUrlBuilder(params: Partial<TransportURL>) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -157,6 +164,28 @@ export function providerUrl(params: ProviderURL = {}) {
   }
   if (sort) {
     url.searchParams.append("sort", sort);
+  }
+  if (page !== undefined) {
+    url.searchParams.append("page", String(page));
+  }
+  if (limit !== undefined) {
+    url.searchParams.append("limit", String(limit));
+  }
+
+  return url.toString();
+}
+
+export function TopRatedURL(params: Partial<TopRatedURL>) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const url = new URL("/api/product/most-rating", baseUrl);
+
+  const { search, service, limit, page } = params || {};
+
+  if (search) {
+    url.searchParams.append("search", search);
+  }
+  if (service && service !== "all") {
+    url.searchParams.append("type", service);
   }
   if (page !== undefined) {
     url.searchParams.append("page", String(page));

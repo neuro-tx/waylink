@@ -187,12 +187,62 @@ export function ProviderCardSkeleton({ delay = 0 }: { delay?: number }) {
   );
 }
 
+export function TopRatedCardSkeleton({ delay = 0 }: { delay?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col rounded-2xl border border-border bg-card overflow-hidden h-full"
+    >
+      <Bone className="h-48 w-full rounded-none" />
+
+      <div className="flex flex-col gap-3 p-4 flex-1">
+        <div className="flex items-center justify-between">
+          <Bone className="h-5 w-20 rounded-full" />
+          <Bone className="h-4 w-24 rounded-full" />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Bone className="h-4 w-full rounded-md" />
+          <Bone className="h-4 w-4/5 rounded-md" />
+        </div>
+
+        <div className="flex flex-col gap-1.5 flex-1">
+          <Bone className="h-3 w-full rounded-full" />
+          <Bone className="h-3 w-3/4 rounded-full" />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <Bone className="h-3 w-28 rounded-full" />
+          <Bone className="h-3 w-20 rounded-full" />
+        </div>
+
+        <div className="h-px bg-border/60" />
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bone className="size-7 rounded-full shrink-0" />
+            <Bone className="h-3 w-20 rounded-full" />
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Bone className="h-2.5 w-8 rounded-full" />
+            <Bone className="h-4 w-16 rounded-md" />
+          </div>
+        </div>
+
+        <Bone className="h-8 w-full rounded-lg" />
+      </div>
+    </motion.div>
+  );
+}
+
 export default function SkeletonGrid({
   type,
   count = 6,
 }: {
   count?: number;
-  type: "transport" | "experince" | "provider";
+  type: "transport" | "experince" | "provider" | "topRated";
 }) {
   const isMobile = useIsMobile();
   const finalCount = isMobile ? Math.floor(count / 2) : count;
@@ -209,6 +259,9 @@ export default function SkeletonGrid({
 
           case "provider":
             return <ProviderCardSkeleton key={i} delay={i * 0.07} />;
+
+          case "topRated":
+            return <TopRatedCardSkeleton key={i} delay={i * 0.07} />;
 
           default:
             return null;
