@@ -136,12 +136,12 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => redirect("/admin/account")}>
+              <DropdownMenuItem onClick={() => redirect("/account")}>
                 <User className="text-blue-10" />
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => redirect("/admin/notifications")}
+                onClick={() => redirect("/account/notifications")}
               >
                 <Bell className="text-yellow-500" />
                 Notifications

@@ -59,19 +59,19 @@ const dropMenu = [
   {
     title: "Notifications",
     icon: Bell,
-    href: "/notifications",
+    href: "/account/notifications",
     color: "text-amber-400",
   },
   {
     title: "My Bookings",
     icon: BookMarked,
-    href: "/bookings",
+    href: "/account/bookings",
     color: "text-green-500",
   },
   {
     title: "My List",
     icon: Heart,
-    href: "/wish-list",
+    href: "/account/wish-list",
     color: "text-red-500",
   },
 ];
