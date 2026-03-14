@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { isApiError } from "./errors";
+type Result<T, E = Error> = [T, null] | [null, E];
+type PromiseResult<T, E> = Promise<Result<T, E>>;
 
 /**
  * Value, Promise, or function that returns them
@@ -30,9 +32,9 @@ export async function tryCatch<T>(
         {
           status: "empty",
           message: options?.emptyMessage ?? "No data found",
-          data: []
+          data: [],
         },
-        { status: 200  },
+        { status: 200 },
       );
     }
 
@@ -69,5 +71,16 @@ export async function tryCatch<T>(
       },
       { status: 500 },
     );
+  }
+}
+
+export async function asyncHandler<T, E = Error>(
+  promise: Promise<T>,
+): PromiseResult<T, E> {
+  try {
+    const data = await promise;
+    return [data, null];
+  } catch (error) {
+    return [null, error as E];
   }
 }
