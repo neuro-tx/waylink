@@ -164,3 +164,31 @@ export type ExperienceType =
   | "seasonal";
 
 export type DifficultyLevel = "easy" | "moderate" | "challenging" | "extreme";
+
+export interface Wishlist {
+  id: string;
+  userId?: string;
+  name: string;
+  description: string;
+  isPrivate: boolean;
+  color: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WishlistItem {
+  id: string;
+  wishlistId: string;
+  itemType: "experience" | "transport";
+  itemId: string;
+  notes: string | null;
+  productId: string;
+  title: string;
+  basePrice: number;
+  type: "experience" | "transport";
+  reviews: number;
+  bookings: number;
+  avgRate: number;
+  media: Media[];
+  locations: Location[];
+}

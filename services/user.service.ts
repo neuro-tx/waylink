@@ -7,7 +7,7 @@ import {
   wishlistItems,
 } from "@/db/schemas";
 import { Location, Media } from "@/lib/all-types";
-import { eq, sql } from "drizzle-orm";
+import { eq, getTableColumns, sql } from "drizzle-orm";
 
 async function getUserWishlists(userId: string) {
   if (!userId) throw new Error("User id is required.");
@@ -20,9 +20,10 @@ async function getUserWishlists(userId: string) {
 }
 
 async function getListItems(listId: string) {
+  const {...item} = getTableColumns(wishlistItems);
   const itemsQuery = db
     .select({
-      id: wishlistItems.id,
+      ...item,
       productId: wishlistItems.itemId,
       title: products.title,
       basePrice: products.basePrice,

@@ -40,9 +40,9 @@ export default function DashboardLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <AuthGuard>
+            {/* <AuthGuard> */}
               <UserLayout>{children}</UserLayout>
-            </AuthGuard>
+            {/* </AuthGuard> */}
             <ThemedToaster />
           </ThemeProvider>
         </AuthProvider>
