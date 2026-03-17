@@ -172,6 +172,7 @@ export interface Wishlist {
   description: string;
   isPrivate: boolean;
   color: string;
+  totalItems: number;
   createdAt: Date;
   updatedAt: Date;
 }

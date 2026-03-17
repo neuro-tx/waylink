@@ -5,22 +5,36 @@ import {
   products,
   productStats,
   wishlistItems,
+  wishlists,
 } from "@/db/schemas";
 import { Location, Media } from "@/lib/all-types";
-import { eq, getTableColumns, sql } from "drizzle-orm";
+import { count, eq, getTableColumns, sql } from "drizzle-orm";
 
 async function getUserWishlists(userId: string) {
   if (!userId) throw new Error("User id is required.");
 
-  const wishlists = await db.query.wishlists.findMany({
-    where: (wishlists, { eq }) => eq(wishlists.userId, userId),
-  });
+  const wishlistsWithCount = await db
+    .select({
+      id: wishlists.id,
+      name: wishlists.name,
+      description: wishlists.description,
+      color: wishlists.color,
+      isPrivate: wishlists.isPrivate,
+      userId: wishlists.userId,
+      createdAt: wishlists.createdAt,
+      updatedAt: wishlists.updatedAt,
+      totalItems: count(wishlistItems.id),
+    })
+    .from(wishlists)
+    .leftJoin(wishlistItems, eq(wishlistItems.wishlistId, wishlists.id))
+    .where(eq(wishlists.userId, userId))
+    .groupBy(wishlists.id);
 
-  return wishlists;
+  return wishlistsWithCount;
 }
 
 async function getListItems(listId: string) {
-  const {...item} = getTableColumns(wishlistItems);
+  const { ...item } = getTableColumns(wishlistItems);
   const itemsQuery = db
     .select({
       ...item,
