@@ -144,7 +144,7 @@ export const productVariantsRelations = relations(
       references: [products.id],
     }),
     bookings: many(bookings),
-        pricing: one(pricing, {
+    pricing: one(pricing, {
       fields: [productVariants.id],
       references: [pricing.variantId],
     }),
@@ -273,14 +273,6 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
   user: one(user, {
     fields: [notifications.userId],
     references: [user.id],
-  }),
-  booking: one(bookings, {
-    fields: [notifications.relatedBookingId],
-    references: [bookings.id],
-  }),
-  product: one(products, {
-    fields: [notifications.relatedProductId],
-    references: [products.id],
   }),
 }));
 

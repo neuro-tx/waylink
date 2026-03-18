@@ -8,6 +8,13 @@
       "when": 1771289513064,
       "tag": "0000_brainy_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773804122095,
+      "tag": "0001_illegal_mimic",
+      "breakpoints": true
     }
   ]
 }

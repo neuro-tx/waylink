@@ -1,18 +1,25 @@
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { roleEnum, timestamps } from "./enums";
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  role: roleEnum("role").default("user"),
-  banned: boolean("banned").default(false),
-  banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires"),
-  ...timestamps,
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    role: roleEnum("role").default("user"),
+    banned: boolean("banned").default(false),
+    banReason: text("ban_reason"),
+    banExpires: timestamp("ban_expires"),
+    ...timestamps,
+  },
+  (t) => [
+    index("user_email_idx").on(t.email),
+    index("user_role_idx").on(t.role),
+  ],
+);
 
 export const session = pgTable(
   "session",

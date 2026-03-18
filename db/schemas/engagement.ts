@@ -63,24 +63,16 @@ export const notifications = pgTable(
     type: notificationTypeEnum("type").notNull(),
     title: text("title").notNull(),
     message: text("message").notNull(),
-    linkUrl: text("link_url"),
-
-    relatedBookingId: uuid("related_booking_id").references(() => bookings.id, {
-      onDelete: "set null",
-    }),
-    relatedProductId: uuid("related_product_id").references(() => products.id, {
-      onDelete: "set null",
-    }),
-
     isRead: boolean("is_read").notNull().default(false),
     readAt: timestamp("read_at"),
-
     ...timestamps,
   },
   (t) => [
     index("notification_user_idx").on(t.userId),
-    index("notification_type_idx").on(t.type),
     index("notification_read_idx").on(t.isRead),
     index("notification_created_idx").on(t.createdAt),
   ],
 );
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
