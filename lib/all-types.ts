@@ -193,3 +193,15 @@ export interface WishlistItem {
   media: Media[];
   locations: Location[];
 }
+
+export type NotificationType =
+  | "booking_confirmed"
+  | "booking_cancelled"
+  | "booking_completed"
+  | "review_received"
+  | "provider_approved"
+  | "provider_rejected"
+  | "provider_suspended"
+  | "system_announcement"
+  | "system_warning"
+  | "promotion";

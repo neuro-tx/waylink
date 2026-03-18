@@ -121,3 +121,25 @@ export const downloadLocationsCSV = (
     document.body.removeChild(link);
   }
 };
+
+export function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  const units = [
+    { limit: 60, value: 1, suffix: "just now" },
+    { limit: 3600, value: 60, suffix: "m" },
+    { limit: 86400, value: 3600, suffix: "h" },
+    { limit: 604800, value: 86400, suffix: "d" },   
+    { limit: 2592000, value: 604800, suffix: "w" }, 
+    { limit: 31536000, value: 2592000, suffix: "mo" },
+  ];
+
+  if (seconds < 60) return "just now";
+
+  for (const unit of units.slice(1)) {
+    if (seconds < unit.limit) {
+      return `${Math.floor(seconds / unit.value)}${unit.suffix} ago`;
+    }
+  }
+
+  return `${Math.floor(seconds / 31536000)}y ago`;
+}

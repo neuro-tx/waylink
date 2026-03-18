@@ -156,7 +156,7 @@ export default function UserLayout({
   const currentLabel = currentPage?.label ?? "Profile";
 
   return (
-    <div className="min-h-screen bg-waylink-fade font-sans flex">
+    <div className="min-h-screen font-sans flex">
       <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
