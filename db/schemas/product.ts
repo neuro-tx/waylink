@@ -182,8 +182,5 @@ export const pricing = pgTable("pricing", {
   infantPrice: numeric("infant_price", { precision: 10, scale: 2 })
     .notNull()
     .default("0.00"),
-
-  currency: text("currency").default("USD").notNull(),
-
   ...timestamps,
 });

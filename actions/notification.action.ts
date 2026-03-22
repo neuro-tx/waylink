@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { Notification, notifications } from "@/db/schemas";
+import { Notification, notifications, user } from "@/db/schemas";
 import { NotificationType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
 import { and, count, desc, eq } from "drizzle-orm";
@@ -162,4 +162,31 @@ export async function sendNotification(payload: {
   } catch {
     return { success: false, error: "Failed to send notification" };
   }
+}
+
+export async function broadcastAnnouncement({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  const session = await getAuthSession();
+  if (!session || session.user.role !== "admin") {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const allUsers = await db.select({ id: user.id }).from(user);
+  if (allUsers.length === 0) return { success: true, count: 0 };
+
+  await db.insert(notifications).values(
+    allUsers.map((u) => ({
+      userId: u.id,
+      type: "system_announcement" as const,
+      title,
+      message,
+    })),
+  );
+
+  return { success: true, count: allUsers.length };
 }

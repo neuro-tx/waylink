@@ -134,6 +134,7 @@ export const productRelations = relations(products, ({ one, many }) => ({
   experience: one(experiences),
   transport: one(transports),
   wishlistItems: many(wishlistItems),
+  bookings: many(bookings),
 }));
 
 export const productVariantsRelations = relations(
@@ -187,6 +188,13 @@ export const productStatsRelations = relations(productStats, ({ one }) => ({
   }),
 }));
 
+export const pricingRelations = relations(pricing, ({ one }) => ({
+  variant: one(productVariants, {
+    fields: [pricing.variantId],
+    references: [productVariants.id],
+  }),
+}));
+
 // ============================================
 // EXPERIENCE RELATIONS
 // ============================================
@@ -232,6 +240,10 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
   user: one(user, {
     fields: [bookings.userId],
     references: [user.id],
+  }),
+  product: one(products, {
+    fields: [bookings.productId],
+    references: [products.id],
   }),
   variant: one(productVariants, {
     fields: [bookings.variantId],
