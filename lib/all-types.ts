@@ -205,3 +205,68 @@ export type NotificationType =
   | "system_announcement"
   | "system_warning"
   | "promotion";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  role: string;
+  banned: boolean;
+  banReason: string | null;
+  banExpires: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type PassengerType = "adult" | "children" | "infant";
+export type ProductType = "experience" | "transport";
+export type ProductStatus = "draft" | "active" | "inactive";
+export type VariantStatus = "available" | "sold_out" | "cancelled";
+
+export interface BookingItem {
+  id: string;
+  bookingId: string;
+  passengerType: PassengerType;
+  quantity: number;
+  unitPrice: string;
+  totalPrice: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingVariant {
+  id: string;
+  productId: string;
+  name: string | null;
+  startDate: string;
+  endDate: string | null;
+  capacity: number;
+  bookedCount: number;
+  status: VariantStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Booking {
+  id: string;
+  userId: string;
+  productId: string;
+  variantId: string;
+  orderNumber: string;
+  participantsCount: number;
+  hasReviewed: boolean;
+  totalAmount: string;
+  currency: string;
+  status: BookingStatus;
+  canceledAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: BookingItem[];
+  variant: BookingVariant;
+  product: Product;
+  user?: User;
+}
