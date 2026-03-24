@@ -221,7 +221,7 @@ export interface User {
 }
 
 export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
-export type PassengerType = "adult" | "children" | "infant";
+export type PassengerType = "adult" | "child" | "infant";
 export type ProductType = "experience" | "transport";
 export type ProductStatus = "draft" | "active" | "inactive";
 export type VariantStatus = "available" | "sold_out" | "cancelled";
