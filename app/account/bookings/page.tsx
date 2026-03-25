@@ -1,70 +1,17 @@
 import { redirect } from "next/navigation";
-import { BadgeCheck, BookMarkedIcon, CheckCircle2, Wallet } from "lucide-react";
+import { BadgeCheck, BookMarkedIcon, CheckCircle2 } from "lucide-react";
 import { bookingsService } from "@/services/bookings.service";
 import { BookingCard, BookingsPagination } from "../_components/BookingCom";
 import { getAuthSession } from "@/lib/auth-server";
-import { cn } from "@/lib/utils";
+import { CalendarDays, Clock3, XCircle } from "lucide-react";
 
-type StatCardProps = {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  accent: string;
-  className?: string;
+type BookingStatsBoxProps = {
+  total: number;
+  completed: number;
+  pending: number;
+  confirmed: number;
+  cancelled: number;
 };
-
-export function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-  className,
-}: StatCardProps) {
-  return (
-    <div
-      className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border/60 bg-card/95 px-5 py-5 md:py-7 shrink-0",
-        "shadow-sm transition-all duration-300",
-        "hover:shadow-md hover:border-border",
-        className,
-      )}
-    >
-      <div
-        className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl opacity-20 transition-opacity duration-300 group-hover:opacity-30"
-        style={{ backgroundColor: accent }}
-      />
-      <div
-        className="absolute inset-x-0 top-0 h-0.5 opacity-80"
-        style={{
-          background: `linear-gradient(90deg, ${accent} 0%, transparent 100%)`,
-        }}
-      />
-
-      <div className="relative flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <p className="text-xs font-medium uppercase text-muted-foreground">
-            {label}
-          </p>
-
-          <p className="text-3xl font-bold tracking-tight text-foreground sm:text-[2rem]">
-            {value}
-          </p>
-        </div>
-
-        <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-300 aspect-square"
-          style={{
-            backgroundColor: `${accent}14`,
-            borderColor: `${accent}26`,
-            color: accent,
-          }}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function EmptyState() {
   return (
@@ -109,39 +56,13 @@ export default async function MyBookingsPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard
-          label="Total Bookings"
-          value={stats.total}
-          icon={BookMarkedIcon}
-          accent="#845EF7"
-        />
-        <StatCard
-          label="Completed"
-          value={stats.completed}
-          icon={CheckCircle2}
-          accent="#00C9A7"
-        />
-        <StatCard
-          label="Confirmed"
-          value={stats.confirmed}
-          icon={BadgeCheck}
-          accent="#3Bc0F6"
-        />
-        <StatCard
-          label="Total Invested"
-          value={
-            stats.totalInvested > 0
-              ? `$${stats.totalInvested.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`
-              : "$0.00"
-          }
-          icon={Wallet}
-          accent="#FF6B35"
-        />
-      </div>
+      <BookingStatsBox
+        total={stats.total}
+        completed={stats.completed}
+        pending={stats.pending}
+        confirmed={stats.confirmed}
+        cancelled={stats.cancelled}
+      />
 
       {bookings.length === 0 ? (
         <EmptyState />
@@ -154,6 +75,111 @@ export default async function MyBookingsPage({
           <BookingsPagination page={page} totalPages={totalPages} />
         </div>
       )}
+    </div>
+  );
+}
+
+function BookingStatsBox({
+  total,
+  completed,
+  pending,
+  confirmed,
+  cancelled,
+}: BookingStatsBoxProps) {
+  const items = [
+    {
+      label: "Total",
+      value: total,
+      icon: CalendarDays,
+      iconBg: "bg-blue-500/10",
+      iconColor: "text-blue-600",
+      textColor: "text-blue-700 dark:text-blue-400",
+    },
+    {
+      label: "Completed",
+      value: completed,
+      icon: CheckCircle2,
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-600",
+      textColor: "text-emerald-700 dark:text-emerald-400",
+    },
+    {
+      label: "Pending",
+      value: pending,
+      icon: Clock3,
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-600",
+      textColor: "text-amber-700 dark:text-amber-400",
+    },
+    {
+      label: "Confirmed",
+      value: confirmed,
+      icon: BadgeCheck,
+      iconBg: "bg-violet-500/10",
+      iconColor: "text-violet-600",
+      textColor: "text-violet-700 dark:text-violet-400",
+    },
+    {
+      label: "Cancelled",
+      value: cancelled,
+      icon: XCircle,
+      iconBg: "bg-rose-500/10",
+      iconColor: "text-rose-600",
+      textColor: "text-rose-700 dark:text-rose-400",
+    },
+  ];
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+  return (
+    <div className="relative overflow-hidden rounded-3xl border bg-background/80 p-5 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/70">
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-muted/20" />
+
+      <div className="relative space-y-5">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">
+            Booking Overview
+          </p>
+          <h3 className="text-xl font-semibold tracking-tight">
+            Your Bookings
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
+                className="rounded-2xl border hover:drop-shadow-sm bg-card p-3 transition-all"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <div className={`rounded-xl p-2 ${item.iconBg}`}>
+                    <Icon className={`h-4 w-4 ${item.iconColor}`} />
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+                <p className={`text-xl font-bold ${item.textColor}`}>
+                  {item.value}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Completion Rate</span>
+            <span>{completionRate}%</span>
+          </div>
+
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-purple-500 transition-all"
+              style={{ width: `${completionRate}%` }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

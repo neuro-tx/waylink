@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar,
@@ -19,9 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Trash2,
-  Headset,
-  FileText,
+  BadgeCheck,
+  Loader,
+  Clock3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { useBooking } from "@/hooks/useBooking";
 
 interface PaginationProps {
   page: number;
@@ -94,7 +94,7 @@ const STATUS_CONFIG: Record<
 
 const PASSENGER_ICONS: Record<PassengerType, React.ReactNode> = {
   adult: <UserRound className="h-3.5 w-3.5" />,
-  children: <Users className="h-3.5 w-3.5" />,
+  child: <Users className="h-3.5 w-3.5" />,
   infant: <Baby className="h-3.5 w-3.5" />,
 };
 
@@ -211,23 +211,30 @@ export function BookingCard({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {booking.status === "confirmed" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-8 gap-1"
-                >
-                  <Ticket className="h-3.5 w-3.5" />
-                  View ticket
-                </Button>
-              )}
-
-              {booking.status === "completed" && (
+              {booking.status === "completed" ? (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Reviewed
+                  Ready to review
                 </span>
+              ) : booking.status === "pending" ? (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock3 className="h-3.5 w-3.5 text-amber-500" />
+                  Awaiting confirmation
+                </span>
+              ) : booking.status === "confirmed" ? (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <BadgeCheck className="h-3.5 w-3.5 text-violet-500" />
+                  Booking confirmed
+                </span>
+              ) : (
+                booking.status === "cancelled" && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                    Booking cancelled
+                  </span>
+                )
               )}
+              
               <Button
                 size="sm"
                 variant="ghost"
@@ -392,6 +399,17 @@ export function BookingsPagination({ page, totalPages }: PaginationProps) {
   );
 }
 
+interface ConfirmDialogProps {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  description: string;
+  confirmLabel: string;
+  confirmClass?: string;
+  onConfirm: () => void;
+  loading: boolean;
+}
+
 function ConfirmDialog({
   open,
   onOpenChange,
@@ -410,13 +428,20 @@ function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Keep it</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={loading}
             className={confirmClass}
           >
-            {loading ? "Please wait…" : confirmLabel}
+            {loading ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Please wait…
+              </span>
+            ) : (
+              confirmLabel
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -424,37 +449,80 @@ function ConfirmDialog({
   );
 }
 
-function BookingActions({ bookingId, status }: BookingActionsProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [hideOpen, setHideOpen] = useState(false);
+function Btn({
+  loading,
+  loadingLabel,
+  icon: Icon,
+  label,
+  ...props
+}: React.ComponentProps<typeof Button> & {
+  loading: boolean;
+  loadingLabel: string;
+  icon: React.ElementType;
+  label: string;
+}) {
+  return (
+    <Button {...props} disabled={props.disabled || loading}>
+      {loading ? (
+        <>
+          <Loader className="h-3.5 w-3.5 animate-spin" />
+          {loadingLabel}
+        </>
+      ) : (
+        <>
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </>
+      )}
+    </Button>
+  );
+}
 
-  const dangerBtn =
-    "text-xs h-8 text-rose-500 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950";
+export function BookingActions({ bookingId, status }: BookingActionsProps) {
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const { cancel, confirm, rebook, viewMap, pendingAction, pendingBookingId } =
+    useBooking();
+
+  const is = (action: typeof pendingAction) =>
+    pendingAction === action && pendingBookingId === bookingId;
+
+  const isCancelling = is("cancel");
+  const isConfirming = is("confirm");
+  const isRebooking = is("rebook");
+  const isViewingMap = is("viewMap");
+  const anyPending =
+    isCancelling || isConfirming || isRebooking || isViewingMap;
+
+  const base = "text-xs h-8 gap-1.5";
+  const danger = `${base} text-rose-500 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600`;
+  const info = `${base} border-blue-500 text-blue-500 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950`;
 
   if (status === "pending") {
     return (
       <>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
-            <FileText className="h-3.5 w-3.5" />
-            View details
-          </Button>
-          <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
-            <Headset className="h-3.5 w-3.5" />
-            Contact support
-          </Button>
-          <Button
+          <Btn
             size="sm"
             variant="outline"
-            className={`gap-1.5 ${dangerBtn}`}
+            className={danger}
+            loading={isCancelling}
+            loadingLabel="Cancelling…"
+            icon={XCircle}
+            label="Cancel"
+            disabled={anyPending}
             onClick={() => setCancelOpen(true)}
-            disabled={isPending}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Cancel booking
-          </Button>
+          />
+          <Btn
+            size="sm"
+            variant="outline"
+            className={info}
+            loading={isConfirming}
+            loadingLabel="Confirming…"
+            icon={BadgeCheck}
+            label="Confirm booking"
+            disabled={anyPending}
+            onClick={() => void confirm(bookingId)}
+          />
         </div>
 
         <ConfirmDialog
@@ -462,10 +530,12 @@ function BookingActions({ bookingId, status }: BookingActionsProps) {
           onOpenChange={setCancelOpen}
           title="Cancel this booking?"
           description="This action cannot be undone. You may be subject to a cancellation fee depending on the provider's policy."
-          confirmLabel="Yes, cancel booking"
+          confirmLabel="Yes, cancel"
           confirmClass="bg-rose-500 hover:bg-rose-600 text-white"
-          onConfirm={() => {}}
-          loading={isPending}
+          onConfirm={() =>
+            cancel(bookingId, { onSuccess: () => setCancelOpen(false) })
+          }
+          loading={isCancelling}
         />
       </>
     );
@@ -475,28 +545,27 @@ function BookingActions({ bookingId, status }: BookingActionsProps) {
     return (
       <>
         <div className="flex gap-2 flex-wrap">
-          <Button
+          <Btn
             size="sm"
-            className="text-xs h-8 gap-1.5"
-            onClick={() => router.push(`/account/bookings/${bookingId}/map`)}
-          >
-            <ArrowUpRight className="h-3.5 w-3.5" />
-            View on map
-          </Button>
-          <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
-            <Headset className="h-3.5 w-3.5" />
-            Contact support
-          </Button>
-          <Button
+            className={base}
+            loading={isViewingMap}
+            loadingLabel="Opening…"
+            icon={ArrowUpRight}
+            label="View on map"
+            disabled={anyPending}
+            onClick={() => void viewMap(bookingId)}
+          />
+          <Btn
             size="sm"
             variant="outline"
-            className={`gap-1.5 ${dangerBtn}`}
+            className={danger}
+            loading={isCancelling}
+            loadingLabel="Cancelling…"
+            icon={XCircle}
+            label="Cancel"
+            disabled={anyPending}
             onClick={() => setCancelOpen(true)}
-            disabled={isPending}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Cancel booking
-          </Button>
+          />
         </div>
 
         <ConfirmDialog
@@ -506,8 +575,10 @@ function BookingActions({ bookingId, status }: BookingActionsProps) {
           description="This action cannot be undone. You may be subject to a cancellation fee depending on the provider's policy."
           confirmLabel="Yes, cancel booking"
           confirmClass="bg-rose-500 hover:bg-rose-600 text-white"
-          onConfirm={() => {}}
-          loading={isPending}
+          onConfirm={() =>
+            cancel(bookingId, { onSuccess: () => setCancelOpen(false) })
+          }
+          loading={isCancelling}
         />
       </>
     );
@@ -517,32 +588,18 @@ function BookingActions({ bookingId, status }: BookingActionsProps) {
     return (
       <>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Rebook
-          </Button>
-          <Button
+          <Btn
             size="sm"
             variant="outline"
-            className={`gap-1.5 ${dangerBtn}`}
-            onClick={() => setHideOpen(true)}
-            disabled={isPending}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Remove from list
-          </Button>
+            className={base}
+            loading={isRebooking}
+            loadingLabel="Processing…"
+            icon={RefreshCw}
+            label="Rebook"
+            disabled={anyPending}
+            onClick={() => void rebook(bookingId)}
+          />
         </div>
-
-        <ConfirmDialog
-          open={hideOpen}
-          onOpenChange={setHideOpen}
-          title="Remove from your list?"
-          description="This booking will no longer appear in your list."
-          confirmLabel="Remove"
-          confirmClass="bg-rose-500 hover:bg-rose-600 text-white"
-          onConfirm={() => {}}
-          loading={isPending}
-        />
       </>
     );
   }

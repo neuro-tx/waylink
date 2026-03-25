@@ -130,6 +130,8 @@ const getBookingStatsByUserId = async (userId: string) => {
     total: rows.reduce((acc, r) => acc + r.total, 0),
     completed: byStatus["completed"] ?? 0,
     confirmed: byStatus["confirmed"] ?? 0,
+    cancelled: byStatus["cancelled"] ?? 0,
+    pending: byStatus["pending"] ?? 0,
     totalInvested,
   };
 };
