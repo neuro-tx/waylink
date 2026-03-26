@@ -246,6 +246,7 @@ export function WishlistFormDialog({
               <Button
                 type="submit"
                 disabled={isSubmitting || (mode === "edit" && !isDirty)}
+                className="cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

@@ -5,6 +5,7 @@ import { motion, useInView } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { Separator } from "./ui/separator";
+import { usePathname } from "next/navigation";
 
 interface NavItem {
   title: string;
@@ -165,8 +166,12 @@ const socials: SocialLink[] = [
 export default function Footer() {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
+  const path = usePathname();
 
   const currentYear = new Date().getFullYear();
+  const current = path === "/unauthorized";
+
+  if (current) return null;
 
   return (
     <footer

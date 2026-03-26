@@ -226,6 +226,7 @@ export default function NotificationsPage() {
     unreadCount,
     isLoading,
     isActionPending,
+    empty,
     markAsRead,
     markAllAsRead,
     clearRead,
@@ -380,7 +381,7 @@ export default function NotificationsPage() {
             ))
           ) : (
             <AnimatePresence mode="popLayout">
-              {filtered.length === 0 ? (
+              {empty ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0, scale: 0.96 }}

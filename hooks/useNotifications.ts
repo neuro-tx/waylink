@@ -15,6 +15,7 @@ type State = {
   isLoading: boolean;
   isActionPending: boolean;
   error: string | null;
+  empty: boolean;
 };
 
 export function useNotifications(limit = 20) {
@@ -26,6 +27,7 @@ export function useNotifications(limit = 20) {
     isActionPending: false,
     error: null,
     total: 0,
+    empty: true,
   });
 
   const [isPending, startTransition] = useTransition();
@@ -44,6 +46,7 @@ export function useNotifications(limit = 20) {
           unreadCount: result.unreadCount,
           total: result.total,
           isLoading: false,
+          empty: result.data.length === 0,
         }));
       } else {
         setState((s) => ({ ...s, isLoading: false, error: result.error }));
@@ -91,6 +94,7 @@ export function useNotifications(limit = 20) {
           ),
           unreadCount: s.unreadCount + 1,
           error: result.error,
+          empty: false,
         }));
       }
     });
@@ -139,6 +143,7 @@ export function useNotifications(limit = 20) {
             ),
             unreadCount: !target.isRead ? s.unreadCount + 1 : s.unreadCount,
             error: result.error,
+            empty: false,
           }));
         }
       });
@@ -152,6 +157,7 @@ export function useNotifications(limit = 20) {
     setState((s) => ({
       ...s,
       notifications: s.notifications.filter((n) => !n.isRead),
+      empty: false,
     }));
 
     startTransition(async () => {
@@ -163,6 +169,7 @@ export function useNotifications(limit = 20) {
             (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
           ),
           error: result.error,
+          empty: false,
         }));
       }
     });
@@ -180,6 +187,7 @@ export function useNotifications(limit = 20) {
     isLoading: state.isLoading,
     isActionPending: isPending,
     error: state.error,
+    empty: state.empty,
     // Pagination
     page,
     totalPages,

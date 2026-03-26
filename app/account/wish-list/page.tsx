@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit2, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { Edit2, Plus, RefreshCcw, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -221,7 +221,7 @@ export default function WishlistPage() {
               <div className="flex items-center gap-3">
                 <Button
                   size="icon-sm"
-                  variant="destructive"
+                  variant="outline"
                   onClick={() => openDeleteDialog(activeList)}
                 >
                   <Trash2 />
@@ -229,23 +229,17 @@ export default function WishlistPage() {
                 <Button
                   size="icon-sm"
                   variant="outline"
-                  onClick={() => setOpenWishList(true)}
+                  onClick={() => openEditDialog(activeList)}
                 >
                   <Edit2 />
                 </Button>
-                {itemsState === "data" && (
-                  <span
-                    className="text-xs rounded-full px-3 py-1 border font-medium shrink-0"
-                    style={{
-                      color: activeList.color,
-                      borderColor: `${activeList.color}40`,
-                      background: `${activeList.color}10`,
-                    }}
-                  >
-                    {wishlistItems.length} item
-                    {wishlistItems.length !== 1 ? "s" : ""}
-                  </span>
-                )}
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  onClick={() => setActiveListId("")}
+                >
+                  <X size={16} onClick={() => setActiveListId("")} />
+                </Button>
               </div>
             </motion.div>
           ) : (
