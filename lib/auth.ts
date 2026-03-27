@@ -29,4 +29,9 @@ export const auth = betterAuth({
     },
   },
   plugins: [admin()],
+  user: {
+    deleteUser: {
+      enabled: true,
+    },
+  },
 });

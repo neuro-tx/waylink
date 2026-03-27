@@ -122,8 +122,8 @@ export const downloadLocationsCSV = (
   }
 };
 
-export function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+export function timeAgo(date: Date | string): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   const units = [
     { limit: 60, value: 1, suffix: "just now" },
     { limit: 3600, value: 60, suffix: "m" },
@@ -142,4 +142,12 @@ export function timeAgo(date: Date): string {
   }
 
   return `${Math.floor(seconds / 31536000)}y ago`;
+}
+
+export function fmtDate(iso: string | Date) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
