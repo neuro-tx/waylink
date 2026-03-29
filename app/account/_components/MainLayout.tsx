@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Home,
+  Loader,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -150,6 +151,13 @@ export default function UserLayout({
   const pathname = usePathname();
   const { logout } = useAuth();
   const [logoutOpen, setLogoutOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+
+    const handleLogout = () => {
+      startTransition(async () => {
+        await logout();
+      });
+    };
 
   const currentPage = NAV_ITEMS.find((n) => n.href === pathname);
   const currentAccent = currentPage?.accent ?? "#3b82f6";
@@ -160,18 +168,22 @@ export default function UserLayout({
       <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm logout</AlertDialogTitle>
             <AlertDialogDescription>
-              You'll need to sign back in to access your bookings and wishlist.
+              You’ll be logged out and. You can sign in again anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => logout()}
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              Sign out
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} disabled={isPending}>
+              {isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Logging out...
+                </span>
+              ) : (
+                "Continue"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -29,6 +29,8 @@ import {
   SignInData,
   SignUpData,
 } from "@/validations";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [githubPending, startGithubTrans] = useTransition();
   const [GooglePending, startGoogleTrans] = useTransition();
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const signInForm = useForm<SignInData>({
     resolver: zodResolver(signInSchema),
@@ -60,13 +63,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const onSignIn = (data: SignInData) => {
     startTransition(async () => {
-      await signIn(data);
+      const res = await signIn(data);
+      if (res?.success) {
+        toast.success(res.message);
+        router.push("/account");
+      }
     });
   };
 
   const onSignUp = (data: SignUpData) => {
     startTransition(async () => {
-      await signUp(data);
+      const res = await signUp(data);
+      if (res?.success) {
+        toast.success(res.message);
+        router.push("/account");
+      }
     });
   };
 

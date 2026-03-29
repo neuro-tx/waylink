@@ -6,12 +6,13 @@ import {
   SignUpData,
   signUpSchema,
 } from "@/validations";
+import { useRouter } from "next/navigation";
 
 export async function handleSocialAuth(provider: "github" | "google") {
   try {
     const res = await authClient.signIn.social({
       provider,
-      callbackURL: "/",
+      callbackURL: "/account",
     });
 
     if (res?.error) {
@@ -19,7 +20,7 @@ export async function handleSocialAuth(provider: "github" | "google") {
       return;
     }
 
-    toast.success("Welcome back buddy!");
+    toast.success("Loged in successfully ,Welcome back!");
   } catch (error) {
     const errorMessage =
       error instanceof Error
@@ -42,21 +43,25 @@ export async function signIn(signData: SignInData) {
     const res = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/",
+      callbackURL: "/account",
       rememberMe: true,
     });
     if (res?.error) {
-      toast.error(res.error.message || "Failed to sign in. Please try again.");
-      return;
+      return {
+        success: false,
+        message: res.error.message || "Failed to sign in. Please try again.",
+      };
     }
-    toast.success("Signed in successfully!");
+    return {
+      success: true,
+      message: "Signed in successfully!",
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error
         ? error.message
         : "Something went wrong. Please try again.";
     toast.error(errorMessage);
-    return { success: false, error: errorMessage };
   }
 }
 
@@ -75,15 +80,20 @@ export async function signUp(signUp: SignUpData) {
       email,
       name,
       password,
-      callbackURL: "/",
+      callbackURL: "/account",
     });
     if (res?.error) {
-      toast.error(
-        res.error.message || "Failed to create account. Please try again.",
-      );
-      return;
+      return {
+        success: false,
+        message:
+          res.error.message || "Failed to create account. Please try again.",
+      };
     }
-    toast.success("Account created successfully! Welcome aboard!");
+
+    return {
+      success: true,
+      message: "Account created successfully! Welcome aboard!",
+    };
   } catch (error) {
     const errorMessage =
       error instanceof Error

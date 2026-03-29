@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import AuthModal from "../AuthModel";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const router = useRouter();
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -43,10 +45,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await authClient.signOut();
-      setUser(null);
-      setIsModalOpen(true);
-      toast.success("Signed out successfully!");
+      router.replace("/");
+
+      setTimeout(async () => {
+        await authClient.signOut();
+
+        setUser(null);
+        router.refresh();
+        toast.success("Signed out successfully!");
+      }, 50);
     } catch (err: any) {
       toast.error(err?.message || "Failed to log out");
     }

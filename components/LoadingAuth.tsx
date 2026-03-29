@@ -9,12 +9,10 @@ const LoadingAuth = () => {
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/80 backdrop-blur-xl shadow-xl">
-          <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-
+        <div className="relative overflow-hidden bg-transparent">
           <div className="relative p-8">
             <div className="flex items-center justify-center mb-6">
               <motion.div
