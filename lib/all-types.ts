@@ -60,8 +60,8 @@ export type Provider = {
   isVerified: boolean;
   businessPhone: string | null;
   businessEmail: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type TransportType =
