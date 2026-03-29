@@ -281,3 +281,14 @@ export interface Session {
   ipAddress?: string | null | undefined;
   userAgent?: string | null | undefined;
 }
+
+export type ProviderStats = {
+  totalServices: number;
+  avgRating: string;
+  totalReviews: number;
+  fiveStar: number;
+  fourStar: number;
+  threeStar: number;
+  twoStar: number;
+  oneStar: number;
+};

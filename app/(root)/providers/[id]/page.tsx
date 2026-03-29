@@ -1,5 +1,5 @@
 import { ProviderPublicView } from "@/components/provider/ProviderPublicView";
-import { Provider } from "@/lib/all-types";
+import { Provider, ProviderStats } from "@/lib/all-types";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AlertTriangle, RefreshCcw, Home } from "lucide-react";
@@ -17,13 +17,9 @@ type FetchResult =
 
 interface ProviderData {
   provider: Provider;
-  status?: {
-    reviews?: any[];
-    stats?: {
-      totalServices: number;
-      averageRating: string;
-      totalReviews: number;
-    };
+  status: {
+    reviews: any[];
+    stats: ProviderStats
   };
 }
 
@@ -134,19 +130,20 @@ export default async function ProviderPage({ params }: PageProps) {
   const { data } = result;
   const reviews = data.status?.reviews ?? [];
   const stats = data.status?.stats ?? {
-    totalServices: 0,
-    averageRating: "0",
-    totalReviews: 0,
+    avgRating: "0" ,
+    fiveStar: 0,
+    fourStar: 0,
+    oneStar: 0,
+    threeStar: 0,
+    totalReviews: 0 ,
+    totalServices: 0 ,
+    twoStar: 0
   };
 
   return (
     <ProviderPublicView
       provider={data.provider}
-      stats={{
-        activeServices: stats.totalServices,
-        avgRating: stats.averageRating,
-        totalReviews: stats.totalReviews,
-      }}
+      stats={stats}
       reviews={reviews}
     />
   );

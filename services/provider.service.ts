@@ -111,15 +111,18 @@ const providerReviewState = async (providerId: string) => {
       .select({
         totalReviews: sql<number>`count(${productReviews.id})`,
         totalServices: sql<number>`count(distinct ${products.id})`,
-        averageRating: sql<string>`coalesce(to_char(round(avg(${productReviews.rating})::numeric, 1), 'FM999999990.0'), '0.0')`,
+        avgRating: sql<string>`
+        coalesce(
+          to_char(round(avg(${productReviews.rating})::numeric, 1), 'FM999999990.0'),
+          '0.0')`,
         fiveStar: sql<number>`count(*) filter (where ${productReviews.rating} = 5)`,
         fourStar: sql<number>`count(*) filter (where ${productReviews.rating} = 4)`,
         threeStar: sql<number>`count(*) filter (where ${productReviews.rating} = 3)`,
         twoStar: sql<number>`count(*) filter (where ${productReviews.rating} = 2)`,
         oneStar: sql<number>`count(*) filter (where ${productReviews.rating} = 1)`,
       })
-      .from(productReviews)
-      .innerJoin(products, eq(productReviews.productId, products.id))
+      .from(products)
+      .leftJoin(productReviews, eq(productReviews.productId, products.id))
       .where(eq(products.providerId, providerId)),
   ]);
 

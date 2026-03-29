@@ -13,18 +13,12 @@ import {
   ChevronRight,
   ArrowUpRight,
 } from "lucide-react";
-import { Pagination, Product, Provider } from "@/lib/all-types";
+import { Pagination, Product, Provider, ProviderStats } from "@/lib/all-types";
 import { Button } from "../ui/button";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Skeleton } from "../ui/skeleton";
-
-type ProviderStats = {
-  activeServices: number;
-  avgRating: string;
-  totalReviews: number;
-};
 
 type Review = {
   id: string;
@@ -50,13 +44,20 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function ratingBars(reviews: Review[]) {
-  const counts = [5, 4, 3, 2, 1].map((star) => ({
-    star,
-    count: reviews.filter((r) => r.rating === star).length,
+function ratingBars(ratings: ProviderStats) {
+  const counts = [
+    { star: 5, count: Number(ratings.fiveStar) || 0 },
+    { star: 4, count: Number(ratings.fourStar) || 0 },
+    { star: 3, count: Number(ratings.threeStar) || 0 },
+    { star: 2, count: Number(ratings.twoStar) || 0 },
+    { star: 1, count: Number(ratings.oneStar) || 0 },
+  ];
+  const total = counts.reduce((sum, item) => sum + item.count, 0);
+
+  return counts.map((c) => ({
+    ...c,
+    pct: total > 0 ? Math.round((c.count / total) * 100) : 0,
   }));
-  const max = Math.max(...counts.map((c) => c.count), 1);
-  return counts.map((c) => ({ ...c, pct: Math.round((c.count / max) * 100) }));
 }
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -416,7 +417,7 @@ export function ReviewsCard({
   reviews: Review[];
   stats: ProviderStats;
 }) {
-  const bars = ratingBars(reviews);
+  const bars = ratingBars(stats);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -453,20 +454,17 @@ export function ReviewsCard({
             </p>
           </div>
           <div className="flex-1 space-y-1">
-            {bars.map(({ star, count, pct }) => (
+            {bars.map(({ star, pct }) => (
               <div key={star} className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-3">
                   {star}
                 </span>
-                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden hover:h-2.5 transition-all duration-200">
                   <div
                     className="h-full bg-amber-500 rounded-full"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-xs text-muted-foreground w-4 text-right">
-                  {count}
-                </span>
               </div>
             ))}
           </div>
@@ -478,40 +476,43 @@ export function ReviewsCard({
           </p>
         ) : (
           <div className="space-y-4">
+            <p className="font-semibold">What people says about our products</p>
             {reviews.slice(0, 5).map((r) => (
-              <div key={r.id} className="space-y-2 ">
+              <div key={r.id} className="space-y-2 hover:bg-muted/50 transition-all duration-300 py-3 px-2 rounded-xl">
                 <div className="flex items-center gap-2">
-                  <Avatar className="size-7">
+                  <Avatar>
                     <AvatarImage src={r.authorImage ?? undefined} />
                     <AvatarFallback className="text-xs">
                       {r?.authorName && initials(r.authorName)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium flex-1">
+                  <span className="text-sm capitalize font-semibold flex-1">
                     {r.authorName}
                   </span>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`size-3 ${
-                          s <= r.rating
-                            ? "fill-amber-500 text-amber-500"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    ))}
+                  <div className="flex gap-2 flex-col">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`size-3 ${
+                            s <= r.rating
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs">
+                      {new Date(r.createdAt).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
                   </div>
                 </div>
-                <div className="pl-2 text-muted-foreground">
+                <div className="pl-3 md:pl-10 text-muted-foreground">
                   <p className="text-sm leading-relaxed">{r.body}</p>
-                  <p className="text-xs">
-                    {new Date(r.createdAt).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
                 </div>
               </div>
             ))}
@@ -530,7 +531,7 @@ export function QuickStatsCard({
   startedAt: Date | string;
 }) {
   const rows = [
-    { label: "Services offered", value: stats.activeServices },
+    { label: "Services offered", value: stats.totalServices },
     {
       label: "Avg rating",
       value: stats.avgRating ? `${stats.avgRating} ★` : "—",
