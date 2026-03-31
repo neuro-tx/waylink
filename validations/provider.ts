@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const optionalUrl = z
+  .string()
+  .url("Must be a valid URL")
+  .optional()
+  .or(z.literal(""));
+
 const providerSchema = z.object({
   id: z.string().uuid().optional(),
   ownerId: z.string().min(1, "Owner ID is required"),
@@ -7,8 +13,8 @@ const providerSchema = z.object({
   slug: z.string().optional(),
   description: z.string().optional().nullable(),
 
-  logo: z.string().url("Logo must be a valid URL").optional().nullable(),
-  cover: z.string().url("Cover must be a valid URL").optional().nullable(),
+  logo: optionalUrl,
+  cover: optionalUrl,
 
   serviceType: z.enum(["transport", "experience"]),
   businessType: z.enum(["individual", "company", "agency"]),

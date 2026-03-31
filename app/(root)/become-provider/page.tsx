@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { motion, AnimatePresence, Transition } from "motion/react";
 import {
   Building2,
@@ -17,6 +17,7 @@ import {
   Utensils,
   Car,
   LucideIcon,
+  Loader,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,9 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { BusinessType, ServiceType } from "@/lib/all-types";
 import { useForm } from "react-hook-form";
-import { providerFormType } from "@/validations";
+import { providerForm, providerFormType } from "@/validations";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 const SERVICE_TYPES: { value: ServiceType; label: string; icon: LucideIcon }[] =
   [
@@ -104,22 +107,30 @@ export default function BecomeProviderPage() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-  const { register, watch, setValue, trigger, handleSubmit } =
-    useForm<providerFormType>({
-      mode: "onChange",
-      defaultValues: {
-        name: "",
-        description: "",
-        logo: "",
-        cover: "",
-        serviceType: "" as ServiceType,
-        businessType: "" as BusinessType,
-        address: "",
-        businessPhone: "",
-        businessEmail: "",
-      },
-    });
+  const {
+    register,
+    watch,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    mode: "onChange",
+    resolver: zodResolver(providerForm),
+    defaultValues: {
+      name: "",
+      description: "",
+      logo: "",
+      cover: "",
+      serviceType: "" as ServiceType,
+      businessType: "" as BusinessType,
+      address: "",
+      businessPhone: "",
+      businessEmail: "",
+    },
+  });
 
   const formValues = watch();
 
@@ -145,14 +156,9 @@ export default function BecomeProviderPage() {
     setStep(nextStep);
   };
 
-  const canNext =
-    step === 0
-      ? !!formValues.businessType
-      : step === 1
-        ? !!formValues.serviceType && !!formValues.name?.trim()
-        : step === 2
-          ? !!formValues.businessEmail?.trim()
-          : true;
+  const canNext = stepFields[step].every(
+    (field) => !errors[field] && !!formValues[field],
+  );
 
   const handleContinue = async () => {
     const fields = stepFields[step];
@@ -171,24 +177,36 @@ export default function BecomeProviderPage() {
   };
 
   const onSubmit = (data: providerFormType) => {
-    console.log("Form submitted:", data);
-    setSubmitted(true);
+  startTransition(async () => {
+    setSubmitted(false);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      console.log("Form submitted:", data);
+      setSubmitted(true);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while submitting your application. Please try again.",
+      );
+    }
+  });
   };
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={spring}
-          className="max-w-sm space-y-4 text-center"
+          className="max-w-sm px-4 md:px-6 space-y-4 text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ ...spring, delay: 0.1 }}
-            className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+            className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-500"
           >
             <Check className="h-8 w-8" />
           </motion.div>
@@ -255,7 +273,6 @@ export default function BecomeProviderPage() {
           </div>
         </motion.div>
 
-        {/* FORM ONLY */}
         <form
           onSubmit={(e) => e.preventDefault()}
           onKeyDown={(e) => {
@@ -418,6 +435,11 @@ export default function BecomeProviderPage() {
                           {...register("name", { required: true })}
                           placeholder="e.g. Sunrise Maintenance Co."
                         />
+                        {errors.name && (
+                          <p className="mt-1 text-xs text-destructive">
+                            {errors.name.message}
+                          </p>
+                        )}
                       </Field>
 
                       <Field
@@ -430,9 +452,14 @@ export default function BecomeProviderPage() {
                           rows={3}
                           className="resize-none"
                         />
+                        {errors.description && (
+                          <p className="mt-1 text-xs text-destructive">
+                            {errors.description.message}
+                          </p>
+                        )}
                       </Field>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid md:grid-cols-2 gap-3">
                         <Field label="Logo URL" hint="optional">
                           <div className="relative">
                             <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -442,6 +469,11 @@ export default function BecomeProviderPage() {
                               placeholder="https://…"
                             />
                           </div>
+                          {errors.logo && (
+                            <p className="mt-1 text-xs text-destructive">
+                              {errors.logo.message}
+                            </p>
+                          )}
                         </Field>
 
                         <Field label="Cover URL" hint="optional">
@@ -453,6 +485,11 @@ export default function BecomeProviderPage() {
                               placeholder="https://…"
                             />
                           </div>
+                          {errors.cover && (
+                            <p className="mt-1 text-xs text-destructive">
+                              {errors.cover.message}
+                            </p>
+                          )}
                         </Field>
                       </div>
                     </div>
@@ -475,6 +512,11 @@ export default function BecomeProviderPage() {
                           placeholder="hello@yourbusiness.com"
                         />
                       </div>
+                      {errors.businessEmail && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {errors.businessEmail.message}
+                        </p>
+                      )}
                     </Field>
 
                     <Field label="Business Phone" hint="optional">
@@ -487,6 +529,11 @@ export default function BecomeProviderPage() {
                           placeholder="+1 (555) 000-0000"
                         />
                       </div>
+                      {errors.businessPhone && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {errors.businessPhone.message}
+                        </p>
+                      )}
                     </Field>
 
                     <Field
@@ -502,6 +549,11 @@ export default function BecomeProviderPage() {
                           placeholder="123 Main St, City, Country"
                         />
                       </div>
+                      {errors.address && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {errors.address.message}
+                        </p>
+                      )}
                     </Field>
                   </div>
                 )}
@@ -550,12 +602,11 @@ export default function BecomeProviderPage() {
           </div>
         </form>
 
-        {/* NAVIGATION OUTSIDE FORM */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mt-16 flex items-center justify-between gap-3"
+          className="mt-8 flex items-center justify-between gap-3"
         >
           <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
             <Button
@@ -590,10 +641,20 @@ export default function BecomeProviderPage() {
               <Button
                 type="button"
                 onClick={handleSubmit(onSubmit)}
+                disabled={pending}
                 className="gap-1.5 px-6"
               >
-                <Sparkles className="h-4 w-4" />
-                Submit Application
+                {pending ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    Submit Application
+                    <ChevronRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
             )}
           </motion.div>

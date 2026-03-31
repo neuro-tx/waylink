@@ -169,7 +169,7 @@ export default function Footer() {
   const path = usePathname();
 
   const currentYear = new Date().getFullYear();
-  const current = path === "/unauthorized";
+  const current = path === "/unauthorized" || path === "/become-provider";
 
   if (current) return null;
 
