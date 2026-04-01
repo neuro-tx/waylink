@@ -1,5 +1,5 @@
 import { getAuthSession } from "@/lib/auth-server";
-import { Lock, User2 } from "lucide-react";
+import { Briefcase, Lock, User2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileMetadata } from "@/components/profile/ProfileMetadata";
 import { ProfileActivity } from "@/components/profile/ProfileActivity";
@@ -7,6 +7,7 @@ import { ProfileDangerZone } from "@/components/profile/ProfileDangerZone";
 import { ProfileSessions } from "@/components/profile/ProfileSession";
 import { ProfileIdentityCard } from "@/components/profile/ProfileIdentityCard";
 import { redirect } from "next/navigation";
+import { ProviderRequest } from "@/components/provider/ProviderRequest";
 
 const Page = async () => {
   const session = await getAuthSession();
@@ -26,6 +27,11 @@ const Page = async () => {
             {[
               { value: "profile", icon: User2, label: "Profile" },
               { value: "sessions", icon: Lock, label: "Sessions" },
+              {
+                value: "requests",
+                icon: Briefcase,
+                label: "Provider Requests",
+              },
             ].map(({ value, icon: Icon, label }) => (
               <TabsTrigger
                 key={value}
@@ -53,6 +59,10 @@ const Page = async () => {
 
           <TabsContent value="sessions" className="space-y-6">
             <ProfileSessions />
+          </TabsContent>
+
+          <TabsContent value="requests" className="space-y-6">
+            <ProviderRequest />
           </TabsContent>
         </Tabs>
       </div>

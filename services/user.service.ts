@@ -4,6 +4,7 @@ import {
   productMedia,
   products,
   productStats,
+  providers,
   wishlistItems,
   wishlists,
 } from "@/db/schemas";
@@ -81,4 +82,12 @@ async function getListItems(listId: string) {
   return { items, total };
 }
 
-export const userService = { getUserWishlists, getListItems };
+const getUserProvider = async(userId: string) => {
+  const provider = await db.query.providers.findFirst({
+    where: eq(providers.ownerId, userId),
+  });
+
+  return provider;
+}
+
+export const userService = { getUserWishlists, getListItems, getUserProvider };
