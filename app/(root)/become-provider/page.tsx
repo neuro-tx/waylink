@@ -30,10 +30,13 @@ import { useForm } from "react-hook-form";
 import { providerForm, providerFormType } from "@/validations";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { createProvider } from "@/actions/provider.action";
+import { useAuth } from "@/components/providers/AuthProvider";
+import Link from "next/link";
 
 const SERVICE_TYPES: { value: ServiceType; label: string; icon: LucideIcon }[] =
   [
-    { value: "experience", label: "Experience", icon: Utensils },
+    { value: "experience", label: "Experience", icon: Sparkles },
     { value: "transport", label: "Transport", icon: Car },
   ];
 
@@ -108,6 +111,7 @@ export default function BecomeProviderPage() {
   const [direction, setDirection] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
+  const {openModal} = useAuth()
 
   const {
     register,
@@ -176,21 +180,29 @@ export default function BecomeProviderPage() {
     }
   };
 
-  const onSubmit = (data: providerFormType) => {
-  startTransition(async () => {
-    setSubmitted(false);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      console.log("Form submitted:", data);
+  const onSubmit = (formData: providerFormType) => {
+    startTransition(async () => {
+      setSubmitted(false);
+      const result = await createProvider(formData);
+      if(result.state === "auth") {
+        toast.warning(result.message);
+        openModal();
+        return;
+      }
+      
+      if(result.state === "warn") {
+        toast.warning(result.message);
+        return;
+      }
+
+      if (!result.success || result.state === "error") {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
       setSubmitted(true);
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : "An error occurred while submitting your application. Please try again.",
-      );
-    }
-  });
+    });
   };
 
   if (submitted) {
@@ -229,6 +241,14 @@ export default function BecomeProviderPage() {
             We’ll review your provider application and get back to you. Keep an
             eye on your email or notifications.
           </motion.p>
+
+          <Link
+            href="/account"
+            className="group inline-flex items-center gap-1.5 rounded-full px-1 py-0.5 text-sm font-medium text-blue-10 dark:text-blue-20 transition-all duration-200"
+          >
+            <span>Go to Dashboard</span>
+            <ChevronRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-1" />
+          </Link>
         </motion.div>
       </div>
     );

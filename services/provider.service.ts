@@ -12,6 +12,8 @@ import {
   buildWhereConditions,
   mergeWhere,
 } from "@/lib/query_parser/helpers";
+import { generateSlug } from "@/lib/utils";
+import { providerFormType } from "@/validations";
 import {
   count,
   getTableColumns,
@@ -177,9 +179,53 @@ const getProviderProducts = async (
   };
 };
 
+const createProvider = async (data: providerFormType, ownerId: string) => {
+  const slug = generateSlug(data.name);
+
+  const newProvider = await db
+    .insert(providers)
+    .values({
+      slug,
+      ...data,
+      ownerId,
+      status: "pending",
+    })
+    .returning();
+
+  return newProvider[0];
+};
+
+const updateProvider = async (
+  providerId: string,
+  data: providerFormType,
+  ownerId: string,
+) => {
+  const slug = generateSlug(data.name);
+
+  const updated = await db
+    .update(providers)
+    .set({
+      slug,
+      ...data,
+    })
+    .where(and(eq(providers.id, providerId), eq(providers.ownerId, ownerId)))
+    .returning();
+
+  return updated[0];
+};
+
+const deleteProvider = async (providerId: string, ownerId: string) => {
+  await db
+    .delete(providers)
+    .where(and(eq(providers.id, providerId), eq(providers.ownerId, ownerId)));
+};
+
 export const providerService = {
   getProviders,
   providerReviewState,
   getProviderById,
   getProviderProducts,
+  createProvider,
+  updateProvider,
+  deleteProvider,
 };
