@@ -628,6 +628,11 @@ export function ProviderRequest() {
 
         const data = await res.json();
 
+        if (data.status === "empty") {
+          setState({ status: "success", provider: null });
+          return;
+        }
+
         setState({ status: "success", provider: data.data });
       } catch (error) {
         const errMessage =

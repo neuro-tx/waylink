@@ -4,6 +4,7 @@ import { getAuthSession } from "@/lib/auth-server";
 import { providerService } from "@/services/provider.service";
 import { providerForm, providerFormType } from "@/validations";
 import z from "zod";
+import { sendNotification } from "./notification.action";
 
 type ActionResponse = {
   success: boolean;
@@ -34,6 +35,14 @@ export const createProvider = async (
     }
 
     await providerService.createProvider(validate.data, session.user.id);
+    const notificationMessage = `Your provider "${validate.data.name}" has been created and is pending review. We will notify you once it's approved.`;
+
+    await sendNotification({
+      userId: session.user.id,
+      type: "review_received",
+      message: notificationMessage,
+      title: "Provider Created",
+    });
 
     return {
       success: true,
