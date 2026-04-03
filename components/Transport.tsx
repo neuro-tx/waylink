@@ -122,12 +122,14 @@ export function RouteBadge({
   );
 }
 
-export function TransportCard({ product }: { product: Transport }) {
+export function TransportCard({ product ,detailsUrl }: { product: Transport ,detailsUrl?: string}) {
   const config = TRANSPORT_CONFIG[product.transportType];
   const accent = config.accent;
   const Icon = config.icon;
   const classLabel = CLASS_LABELS[product.class as TransportClass];
   const classAccent = CLASS_ACCENT[product.class as TransportClass];
+
+  const alternate = detailsUrl ? detailsUrl : `/transport/${product.id}`;
 
   return (
     <motion.div
@@ -285,7 +287,7 @@ export function TransportCard({ product }: { product: Transport }) {
             className="rounded-xl bg-transparent"
           >
             <Link
-              href={`/transport/variants/${product.id}`}
+              href={alternate}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white shrink-0 cursor-pointer flex-nowrap whitespace-nowrap"
               style={{
                 background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,

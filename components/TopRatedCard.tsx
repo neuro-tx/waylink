@@ -158,6 +158,10 @@ export function TopRatedCard({ product }: { product: ProductCardProps }) {
   const rate = parseFloat(product.avgRate);
   const isTransport = product.type === "transport";
 
+  const detailsUrl = isTransport
+    ? `/transport/${product.id}`
+    : `/experiences/${product.id}`;
+
   return (
     <motion.div className="h-full">
       <div
@@ -311,7 +315,7 @@ export function TopRatedCard({ product }: { product: ProductCardProps }) {
               size="sm"
               asChild
             >
-              <Link href={`/products/${product.id}`} as={`${product.slug}`}>
+              <Link href={detailsUrl}>
                 View details
                 <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Link>

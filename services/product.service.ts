@@ -1,11 +1,14 @@
 import { db } from "@/db";
 import {
+  experiences,
   location,
   productMedia,
+  productReviews,
   products,
   productScores,
   productStats,
   providers,
+  transports,
 } from "@/db/schemas";
 import { parseQuery } from "@/lib/query_parser/analyzer";
 import {
@@ -110,31 +113,6 @@ const getProducts = async (
   }
 
   return await query;
-};
-
-const getProductById = async (id: string) => {
-  const conditions = [eq(products.id, id)];
-
-  const result = await db.query.products.findFirst({
-    where: and(...conditions),
-
-    with: {
-      locations: true,
-      media: true,
-      provider: true,
-      reviews: true,
-      variants: {
-        with: {
-          pricing: true,
-          transportSchedule: true,
-        },
-      },
-      experience: true,
-      transport: true,
-    },
-  });
-
-  return result;
 };
 
 const featuredProducts = async (
@@ -317,6 +295,87 @@ const mostRatedProducts = async (url: string) => {
   return {
     data,
     pagination,
+  };
+};
+
+const getProductById = async (id: string) => {
+  const product = await db.query.products.findFirst({
+    where: eq(products.id, id),
+    with: {
+      variants: {
+        with: {
+          pricing: true,
+          transportSchedule: true,
+        },
+      },
+    },
+    columns: {
+      searchVector: false,
+    },
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  const [media, locations, provider, reviews, stats, experince, transport] =
+    await Promise.all([
+      db.query.productMedia.findMany({
+        where: eq(productMedia.productId, id),
+      }),
+      db.query.location.findMany({
+        where: eq(location.productId, id),
+      }),
+      db.query.providers.findFirst({
+        where: eq(providers.id, product.providerId),
+        columns: {
+          id: true,
+          name: true,
+          logo: true,
+          isVerified: true,
+        },
+      }),
+      db.query.productReviews.findMany({
+        where: eq(sql`${productReviews.productId}`, id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+        limit: 5,
+      }),
+      db.query.productStats.findFirst({
+        where: eq(productStats.productId, id),
+        columns: {
+          averageRating: true,
+          bookingsCount: true,
+          reviewsCount: true,
+        },
+      }),
+      db.query.experiences.findFirst({
+        where: eq(sql`${product.id}`, sql`${experiences.productId}`),
+        with: {
+          itineraries: true,
+        },
+      }),
+      db.query.transports.findFirst({
+        where: eq(sql`${product.id}`, sql`${transports.productId}`),
+      }),
+    ]);
+
+  return {
+    ...product,
+    media,
+    locations,
+    provider,
+    reviews,
+    stats,
+    experince,
+    transport,
   };
 };
 

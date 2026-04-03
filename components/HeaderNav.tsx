@@ -45,8 +45,9 @@ import { useActive } from "@/hooks/useActive";
 const navLinks = [
   { title: "Explore", href: "/", exact: true },
   { title: "Transports", href: "/transport" },
-  { title: "Trips", href: "/trips" },
+  { title: "Experiences", href: "/experiences" },
   { title: "Most Rating", href: "/most-rating" },
+    { title: "Providers", href: "/providers" },
 ];
 
 const dropMenu = [

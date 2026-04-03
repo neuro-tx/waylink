@@ -53,10 +53,12 @@ export function ProductGrid({ products }: { products: ProductCardProps[] }) {
   );
 }
 
-export function ProductCard({ product }: { product: ProductCardProps }) {
+export function ProductCard({ product ,detailsUrl }: { product: ProductCardProps; detailsUrl?: string }) {
   const { cover } = displayMedia(product.media);
   const { to } = normalizeLocation(product.locations);
   const router = useRouter();
+
+  const alternate = !detailsUrl ? (product.type === "experience" ? `/experiences/${product.id}` : `/transport/${product.id}`) : detailsUrl;
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border box">
@@ -154,7 +156,7 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
 
             <motion.button
               type="button"
-              onClick={() => router.push(`/experince/${product.id}`)}
+              onClick={() => router.push(alternate)}
               whileTap={{ scale: 0.97 }}
               whileHover={{ scale: 1.01 }}
               className="shrink-0 cursor-pointer px-4 py-2 rounded-xl text-xs font-semibold border transition-colors duration-200 text-orange-3"

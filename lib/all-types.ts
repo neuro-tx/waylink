@@ -292,3 +292,118 @@ export type ProviderStats = {
   twoStar: number;
   oneStar: number;
 };
+
+export type Pricing = {
+  variantId: string;
+  adultPrice: string;
+  childPrice: string;
+  infantPrice: string;
+};
+
+export type ProductVariant = {
+  id: string;
+  productId: string;
+  name: string | null;
+  startDate: string | Date;
+  endDate: string | Date;
+  capacity: number;
+  bookedCount: number;
+  status: VariantStatus;
+  pricing: Pricing | null;
+  schedule?: {
+    departureTime: string | Date;
+    arrivalTime: string | Date;
+    duration: number;
+    checkInTime: string | null;
+    stops:
+      | {
+          locationName: string;
+          arrivalTime: string;
+          departureTime: string;
+        }[]
+      | null;
+  } | null;
+};
+
+export type ProductReview = {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  comment: string | null;
+  isVerified: boolean;
+  providerResponse: string | null;
+  respondedAt: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+  };
+};
+
+export type Itinerary = {
+  id: string;
+  experienceId: string;
+  dayNumber: number;
+  title: string;
+  description: string;
+  activities: string[] | null;
+  mealsIncluded: string[] | null;
+  accommodationInfo: string | null;
+};
+
+export type SeatType =
+  | "standard"
+  | "reclining"
+  | "semi_sleeper"
+  | "sleeper"
+  | "bed"
+  | "cabin"
+  | "premium"
+  | "vip"
+  | "window"
+  | "aisle";
+
+export type ExperienceDetails = {
+  productId: string;
+  experienceType: ExperienceType;
+  difficultyLevel: DifficultyLevel | null;
+  durationCount: string | number;
+  durationUnit: "hours" | "minutes" | "days";
+  included: string[] | null;
+  notIncluded: string[] | null;
+  requirements: string[] | null;
+  ageRestriction: string | null;
+  itineraries: Itinerary[];
+};
+
+export type TransportDetails = {
+  productId: string;
+  transportType: TransportType;
+  distance: number | null;
+  hasDirectRoute: boolean;
+  transportClass: TransportClass | null;
+  seatType: SeatType | null;
+  amenities: string[] | null;
+  luggageAllowance: string | null;
+  extraLuggageFee: string | number | null;
+  departureAddress: string | null;
+  arrivalAddress: string | null;
+  importantNotes: string[] | null;
+};
+
+export interface ProductDetails extends Product {
+  provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
+  reviews: ProductReview[];
+  experience: ExperienceDetails;
+  variants: ProductVariant[];
+  transport: TransportDetails;
+  stats: {
+    bookingsCount: number;
+    reviewsCount: number;
+    averageRating: string | null;
+  };
+}
