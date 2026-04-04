@@ -310,7 +310,7 @@ export type ProductVariant = {
   bookedCount: number;
   status: VariantStatus;
   pricing: Pricing | null;
-  schedule?: {
+  transportSchedule?: {
     departureTime: string | Date;
     arrivalTime: string | Date;
     duration: number;
@@ -397,10 +397,6 @@ export type TransportDetails = {
 
 export interface ProductDetails extends Product {
   provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
-  reviews: ProductReview[];
-  experience: ExperienceDetails;
-  variants: ProductVariant[];
-  transport: TransportDetails;
   stats: {
     bookingsCount: number;
     reviewsCount: number;

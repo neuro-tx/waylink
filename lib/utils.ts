@@ -151,3 +151,26 @@ export function fmtDate(iso: string | Date) {
     day: "numeric",
   });
 }
+
+export function parseArray<T>(stops: unknown): T[] {
+  if (Array.isArray(stops)) return stops;
+
+  if (typeof stops !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(stops);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    try {
+      const fixed = stops
+        .trim()
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') 
+        .replace(/,\s*([}\]])/g, "$1"); 
+
+      const parsed = JSON.parse(fixed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+}
