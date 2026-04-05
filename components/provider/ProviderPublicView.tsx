@@ -174,11 +174,9 @@ function SkeletonRow() {
 function ServiceRow({
   item,
   index,
-  onClick,
 }: {
   item: Product;
   index: number;
-  onClick: () => void;
 }) {
   const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
     experience: {
@@ -201,6 +199,8 @@ function ServiceRow({
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+  const router = useRouter();
+  const routeUrl = item.type === "experience" ? `/experiences/${item.id}` : `/transport/${item.id}`;
 
   return (
     <motion.div
@@ -209,7 +209,7 @@ function ServiceRow({
       transition={{ duration: 0.28, delay: index * 0.07, ease: "easeOut" }}
     >
       <button
-        onClick={onClick}
+        onClick={()=> router.push(routeUrl)}
         className="w-full text-left group flex items-start gap-4 py-3 px-5 rounded-lg -mx-2 hover:bg-accent/50 active:bg-accent/70 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
       >
         <div className="flex-1 min-w-0 space-y-1">
@@ -263,7 +263,6 @@ export function ServicesCard({ providerId }: { providerId: string }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageKey, setPageKey] = useState(0);
-  const router = useRouter();
 
   const fetchProducts = useCallback(
     async (p: number) => {
@@ -351,7 +350,6 @@ export function ServicesCard({ providerId }: { providerId: string }) {
                   key={item.id}
                   item={item}
                   index={i}
-                  onClick={() => router.push(`/products/${item.id}`)}
                 />
               ))}
             </motion.div>
@@ -638,7 +636,7 @@ export function ProviderPublicView({ provider, stats, reviews }: Props) {
         <CoverHeader provider={provider} />
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
-          <div className="space-y-5">
+          <div className="space-y-4">
             <AboutCard provider={provider} />
             <ServicesCard providerId={provider.id} />
             <ReviewsCard reviews={reviews} stats={stats} />

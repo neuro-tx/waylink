@@ -17,11 +17,16 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { cn } from "@/lib/utils";
-import { ExperienceDetails, TransportDetails } from "@/lib/all-types";
+import {
+  ExperienceDetails,
+  Itinerary,
+  TransportDetails,
+} from "@/lib/all-types";
+import { Button } from "../ui/button";
 
 export function Section({
   title,
@@ -35,7 +40,7 @@ export function Section({
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-3" ,className)}>
+    <Card className={cn("gap-3", className)}>
       <CardHeader>
         <div className="flex items-center gap-2">
           {Icon && <Icon className="size-4.5" />}
@@ -135,67 +140,117 @@ export function ExperienceSections({ exp }: { exp: ExperienceDetails }) {
         </Section>
       )}
 
-      {/* Itinerary */}
-      {exp.itineraries && exp.itineraries.length > 0 && (
-        <Section title="Itinerary" icon={Compass}>
-          <div className="space-y-0">
-            {[...exp.itineraries]
-              .sort((a, b) => a.dayNumber - b.dayNumber)
-              .map((day, i, arr) => (
-                <div key={day.id} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-semibold shrink-0">
-                      {day.dayNumber}
-                    </div>
-                    {i < arr.length - 1 && (
-                      <div className="w-px flex-1 bg-border mt-1 mb-0 min-h-6" />
-                    )}
-                  </div>
-                  <div
-                    className={cn(
-                      "pb-6 flex-1 min-w-0",
-                      i === arr.length - 1 && "pb-0",
-                    )}
-                  >
-                    <p className="text-sm font-semibold leading-tight mb-1">
-                      {day.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {day.description}
-                    </p>
-                    {day.activities && day.activities.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {day.activities.map((a, ai) => (
-                          <span
-                            key={ai}
-                            className="text-xs bg-muted border border-border rounded-full px-2.5 py-0.5 text-muted-foreground"
-                          >
-                            {a}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-4">
-                      {day.mealsIncluded && day.mealsIncluded.length > 0 && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Utensils className="size-3" />
-                          {day.mealsIncluded.join(", ")}
-                        </div>
-                      )}
-                      {day.accommodationInfo && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <BedDouble className="size-3" />
-                          {day.accommodationInfo}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </Section>
-      )}
+      <ItinerarySection itineraries={exp.itineraries} />
     </>
+  );
+}
+
+export default function ItinerarySection({
+  itineraries,
+}: {
+  itineraries: Itinerary[];
+}) {
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  const sortedItineraries = [...itineraries].sort(
+    (a, b) => a.dayNumber - b.dayNumber,
+  );
+
+  const showMore = () =>
+    setVisibleCount((prev) => Math.min(prev + 3, sortedItineraries.length));
+  const showLess = () => setVisibleCount(5);
+
+  const visibleItineraries = sortedItineraries.slice(0, visibleCount);
+
+  return (
+    <Section title="Itinerary" icon={Compass}>
+      {itineraries.length > 0 ? (
+        <div className="space-y-0">
+          {visibleItineraries.map((day, i, arr) => (
+            <div key={day.id} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold shrink-0">
+                  {day.dayNumber}
+                </div>
+                {i < arr.length - 1 && (
+                  <div className="w-px flex-1 bg-green-1 my-0 min-h-6" />
+                )}
+              </div>
+              <div
+                className={cn(
+                  "pb-6 flex-1 min-w-0",
+                  i === arr.length - 1 && "pb-0",
+                )}
+              >
+                <p className="text-sm font-semibold leading-tight mb-1">
+                  {day.title}
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {day.description}
+                </p>
+
+                {day.activities && day.activities.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {day.activities.map((a, ai) => (
+                      <span
+                        key={ai}
+                        className="text-xs bg-muted border border-border rounded-full px-2.5 py-0.5 text-muted-foreground"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-3 flex flex-wrap gap-4">
+                  {day.mealsIncluded && day.mealsIncluded.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Utensils className="size-3" />
+                      {day.mealsIncluded.join(", ")}
+                    </div>
+                  )}
+                  {day.accommodationInfo && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <BedDouble className="size-3" />
+                      {day.accommodationInfo}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {sortedItineraries.length > 5 && (
+            <div className="mt-4">
+              {visibleCount < sortedItineraries.length ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={showMore}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Show More
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={showLess}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Show Less
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-destructive flex items-center gap-2">
+          <Info className="size-4.5" />
+          No itineraries available.
+        </p>
+      )}
+    </Section>
   );
 }
 

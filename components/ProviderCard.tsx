@@ -50,13 +50,11 @@ export function ProviderCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex flex-col rounded-2xl border box font-sans"
-      style={{
-        boxShadow: "0 4px 24px rgba(0,0,0,0.05)",
-      }}
+      transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
+      className="group relative flex flex-col rounded-2xl border box font-sans overflow-hidden"
+      style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}
     >
       <div className="relative h-32 w-full overflow-hidden shrink-0">
         {provider.cover ? (
@@ -70,7 +68,7 @@ export function ProviderCard({
           <div
             className="w-full h-full"
             style={{
-              background: `linear-linear(135deg, ${accent}28, ${accent}08)`,
+              background: `linear-gradient(135deg, ${accent}28, ${accent}08)`,
             }}
           />
         )}
@@ -79,12 +77,12 @@ export function ProviderCard({
         <div
           className="absolute top-0 left-0 right-0 h-0.5"
           style={{
-            background: `linear-linear(to right, ${accent}, ${accent}00)`,
+            background: `linear-gradient(to right, ${accent}, transparent)`,
           }}
         />
 
         <div
-          className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium text-white capitalize backdrop-blur-sm"
+          className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white capitalize backdrop-blur-sm"
           style={{ background: `${accent}cc` }}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
@@ -93,9 +91,7 @@ export function ProviderCard({
       </div>
 
       <div className="relative px-5 pb-5 pt-7 flex flex-col gap-4 flex-1">
-        <div
-          className="absolute -top-6 left-5 w-12 h-12 rounded-2xl overflow-hidden shrink-0"
-        >
+        <div className="absolute -top-5 left-4 w-12 h-12 rounded-xl overflow-hidden shrink-0">
           {provider.logo ? (
             <Image
               src={provider.logo}
@@ -127,32 +123,28 @@ export function ProviderCard({
                 {provider.name}
               </h3>
               {provider.isVerified && (
-                <motion.div whileHover={{ scale: 1.1 }} className="shrink-0">
-                  <BadgeCheck className="w-4 h-4 text-blue-10" />
-                </motion.div>
+                <BadgeCheck className="w-4 h-4 text-blue-10" />
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="flex items-center gap-1 text-[10px] text-gray-light">
+              <span className="flex items-center gap-1 text-xs text-gray-light">
                 <BizIcon className="w-3 h-3" />
                 {BUSINESS_LABEL[provider.businessType]}
               </span>
-              <span className="flex items-center gap-1 text-[10px] text-gray-light">
+              <span className="flex items-center gap-1 text-xs text-gray-light">
                 <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                 {provider.avgRating}
-                <span className="text-muted-foreground">
-                  ({provider.totalReviews})
-                </span>
+                <span className="text-muted-foreground">({provider.totalReviews})</span>
               </span>
             </div>
           </div>
 
           {provider.status !== "approved" && (
             <span
-              className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 capitalize"
+              className="text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 capitalize"
               style={{
                 background:
-                  provider.status === "pending" ? "#FF6B3518" : "#ef444418",
+                  provider.status === "pending" ? "#FF6B3515" : "#ef444415",
                 color: provider.status === "pending" ? "#FF6B35" : "#ef4444",
               }}
             >
@@ -162,7 +154,7 @@ export function ProviderCard({
         </div>
 
         {provider.description && (
-          <p className="text-xs leading-relaxed text-muted-foreground line-clamp-2">
+          <p className="text-xs leading-relaxed text-muted-foreground line-clamp-1">
             {provider.description}
           </p>
         )}
@@ -170,7 +162,7 @@ export function ProviderCard({
         {(provider.businessEmail || provider.businessPhone) && (
           <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
             {provider.businessEmail && (
-              <span className="flex items-center gap-1  truncate max-w-35">
+              <span className="flex items-center gap-1 truncate max-w-35">
                 <Mail className="w-3 h-3 shrink-0" style={{ color: accent }} />
                 {provider.businessEmail}
               </span>
@@ -216,15 +208,14 @@ export function ProviderCard({
           onClick={() => router.push(`/providers/${provider.id}`)}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold cursor-pointer border"
+          className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold cursor-pointer border"
           style={{
-            background: `linear-linear(135deg, ${accent}, ${accent}bb)`,
-            boxShadow: `0 4px 14px ${accent}30`,
-            borderColor: accent,
+            background: `${accent}12`,
+            borderColor: `${accent}40`,
             color: accent,
           }}
         >
-          <Users className="w-3.5 h-3.5" />
+          <Users className="w-3 h-3" />
           View Profile
         </motion.button>
       </div>
