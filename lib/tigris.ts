@@ -10,3 +10,5 @@ export const s3Client = new S3Client({
 });
 
 export const BUCKET_NAME = process.env.TIGRIS_BUCKET_NAME!;
+export const publicUrl = (key: string) =>
+  `https://waylink.t3.storage.dev/${key}`;
