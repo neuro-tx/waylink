@@ -9,12 +9,10 @@ import {
   Phone,
   Mail,
   MapPin,
-  Image as ImageIcon,
   ChevronRight,
   ChevronLeft,
   Check,
   Sparkles,
-  Utensils,
   Car,
   LucideIcon,
   Loader,
@@ -33,6 +31,7 @@ import { toast } from "sonner";
 import { createProvider } from "@/actions/provider.action";
 import { useAuth } from "@/components/providers/AuthProvider";
 import Link from "next/link";
+import { MediaUpload } from "@/components/MediaUpload";
 
 const SERVICE_TYPES: { value: ServiceType; label: string; icon: LucideIcon }[] =
   [
@@ -62,6 +61,7 @@ const STEPS = [
   "Business Type",
   "Service & Identity",
   "Contact & Location",
+  "Media",
   "Review",
 ] as const;
 
@@ -111,7 +111,7 @@ export default function BecomeProviderPage() {
   const [direction, setDirection] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
-  const {openModal} = useAuth()
+  const { openModal } = useAuth();
 
   const {
     register,
@@ -146,12 +146,15 @@ export default function BecomeProviderPage() {
     { label: "Email", value: formValues.businessEmail || "—" },
     { label: "Phone", value: formValues.businessPhone || "—" },
     { label: "Address", value: formValues.address || "—" },
+    { label: "Logo", value: formValues.logo ? "✓ Uploaded" : "—" },
+    { label: "Cover", value: formValues.cover ? "✓ Uploaded" : "—" },
   ];
 
   const stepFields: (keyof providerFormType)[][] = [
     ["businessType"],
     ["serviceType", "name"],
     ["businessEmail"],
+    ["logo", "cover"],
     [],
   ];
 
@@ -184,13 +187,13 @@ export default function BecomeProviderPage() {
     startTransition(async () => {
       setSubmitted(false);
       const result = await createProvider(formData);
-      if(result.state === "auth") {
+      if (result.state === "auth") {
         toast.warning(result.message);
         openModal();
         return;
       }
-      
-      if(result.state === "warn") {
+
+      if (result.state === "warn") {
         toast.warning(result.message);
         return;
       }
@@ -478,40 +481,6 @@ export default function BecomeProviderPage() {
                           </p>
                         )}
                       </Field>
-
-                      <div className="grid md:grid-cols-2 gap-3">
-                        <Field label="Logo URL" hint="optional">
-                          <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              {...register("logo")}
-                              className="pl-9"
-                              placeholder="https://…"
-                            />
-                          </div>
-                          {errors.logo && (
-                            <p className="mt-1 text-xs text-destructive">
-                              {errors.logo.message}
-                            </p>
-                          )}
-                        </Field>
-
-                        <Field label="Cover URL" hint="optional">
-                          <div className="relative">
-                            <ImageIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              {...register("cover")}
-                              className="pl-9"
-                              placeholder="https://…"
-                            />
-                          </div>
-                          {errors.cover && (
-                            <p className="mt-1 text-xs text-destructive">
-                              {errors.cover.message}
-                            </p>
-                          )}
-                        </Field>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -579,6 +548,104 @@ export default function BecomeProviderPage() {
                 )}
 
                 {step === 3 && (
+                  <div className="space-y-6">
+                    <p className="text-sm text-muted-foreground">
+                      Add your brand visuals — these are the first thing
+                      customers see.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Logo</p>
+                          <p className="text-xs text-muted-foreground">
+                            Square image · shown everywhere your brand appears
+                          </p>
+                        </div>
+                        {formValues.logo && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={spring}
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"
+                          >
+                            <Check className="h-3 w-3" />
+                          </motion.div>
+                        )}
+                      </div>
+
+                      <MediaUpload
+                        variant="logo"
+                        keyPrefix="providers/logo"
+                        label="Upload logo"
+                        hint="PNG or WebP"
+                        onComplete={(file) => {
+                          setValue("logo", file.url, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        className={cn(
+                          formValues.logo &&
+                            "opacity-50 select-none pointer-events-none",
+                        )}
+                      />
+                      {errors.logo && (
+                        <p className="text-xs text-destructive">
+                          {errors.logo.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Cover image</p>
+                          <p className="text-xs text-muted-foreground">
+                            Wide banner · shown on your public profile page
+                          </p>
+                        </div>
+                        {formValues.cover && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={spring}
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"
+                          >
+                            <Check className="h-3 w-3" />
+                          </motion.div>
+                        )}
+                      </div>
+
+                      <MediaUpload
+                        variant="cover"
+                        keyPrefix="providers/cover"
+                        label="Upload cover"
+                        hint="1440 × 400 recommended · JPG, PNG, WebP"
+                        onComplete={(file) => {
+                          setValue("cover", file.url, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        className={cn(
+                          formValues.cover &&
+                            "opacity-50 select-none pointer-events-none",
+                        )}
+                      />
+                      {errors.cover && (
+                        <p className="text-xs text-destructive">
+                          {errors.cover.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {step === 4 && (
                   <div className="space-y-4">
                     <p className="mb-2 text-sm text-muted-foreground">
                       Review your details before submitting.
