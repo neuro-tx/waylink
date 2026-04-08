@@ -1,6 +1,9 @@
 import { ProductReview } from "@/lib/all-types";
 import { cn, fmtDate } from "@/lib/utils";
-import { MessageSquareOff, Star } from "lucide-react";
+import { MessageSquareOff, Plus, Star } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "../ui/button";
 
 type StarDisplayProps = {
   rating: number;
@@ -116,24 +119,39 @@ function ReviewCard({ review }: { review: ProductReview }) {
 }
 
 export function ReviewsList({ reviews }: { reviews: ProductReview[] }) {
-if (!reviews.length) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/50 px-4 py-6 text-center">
-      <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-muted">
-        <MessageSquareOff className="size-5 text-muted-foreground" />
-      </div>
+  const currentPath = usePathname();
+  const reviewPath = `${currentPath}?tab=review`;
 
-      <p className="text-sm font-medium">No reviews yet</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Be the first to share your experience.
-      </p>
-    </div>
-  );
-}
+  if (!reviews.length) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/50 px-4 py-6 text-center">
+        <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-muted">
+          <MessageSquareOff className="size-5 text-muted-foreground" />
+        </div>
+
+        <p className="text-sm font-medium">No reviews yet</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Be the first to share your experience.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="space-y-3">
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+        >
+          <Link href={reviewPath}>
+            <Plus className="size-4" />
+            Write a review
+          </Link>
+        </Button>
+
         {reviews.map((r) => (
           <ReviewCard key={r.id} review={r} />
         ))}

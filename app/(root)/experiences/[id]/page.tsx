@@ -1,4 +1,4 @@
-import ProductDetails from "@/components/details/ProductDetails";
+import ProductPageView from "@/components/details/DetailsWrapper";
 
 type PageProps = {
   params: Promise<{
@@ -11,7 +11,7 @@ export default async function Page({ params }: PageProps) {
 
   return (
     <div className="w-full min-h-dvh">
-      <ProductDetails productId={id} />
+      <ProductPageView productId={id} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import ProductDetails from "@/components/details/ProductDetails";
+import ProductPageView from "@/components/details/DetailsWrapper";
 import React from "react";
 
 type PageProps = {
@@ -12,7 +12,7 @@ export default async function Page({ params }: PageProps) {
 
     return (
       <div className="w-full min-h-dvh">
-        <ProductDetails productId={id} />
+        <ProductPageView productId={id} />
       </div>
     );
 }

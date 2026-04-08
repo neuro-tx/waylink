@@ -28,7 +28,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Booking, BookingStatus, PassengerType } from "@/lib/all-types";
+import {
+  Booking,
+  BookingStatus,
+  PassengerType,
+  ProductType,
+} from "@/lib/all-types";
 import Image from "next/image";
 import {
   AlertDialog,
@@ -41,6 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useBooking } from "@/hooks/useBooking";
+import Link from "next/link";
 
 interface PaginationProps {
   page: number;
@@ -49,6 +55,8 @@ interface PaginationProps {
 interface BookingActionsProps {
   bookingId: string;
   status: BookingStatus;
+  type: ProductType;
+  prodId: string;
 }
 
 interface ConfirmDialogProps {
@@ -234,7 +242,7 @@ export function BookingCard({
                   </span>
                 )
               )}
-              
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -319,7 +327,12 @@ export function BookingCard({
                 )}
               </div>
 
-              <BookingActions bookingId={booking.id} status={booking.status} />
+              <BookingActions
+                bookingId={booking.id}
+                status={booking.status}
+                type={booking.product.type}
+                prodId={booking.productId}
+              />
             </div>
           </motion.div>
         )}
@@ -478,13 +491,22 @@ function Btn({
   );
 }
 
-export function BookingActions({ bookingId, status }: BookingActionsProps) {
+export function BookingActions({
+  bookingId,
+  status,
+  type,
+  prodId,
+}: BookingActionsProps) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const { cancel, confirm, rebook, viewMap, pendingAction, pendingBookingId } =
     useBooking();
 
   const is = (action: typeof pendingAction) =>
     pendingAction === action && pendingBookingId === bookingId;
+  const reviewUrl =
+    type === "experience"
+      ? `/experiences/${prodId}?tab=review`
+      : `/transport/${prodId}?tab=review`;
 
   const isCancelling = is("cancel");
   const isConfirming = is("confirm");
@@ -566,6 +588,9 @@ export function BookingActions({ bookingId, status }: BookingActionsProps) {
             disabled={anyPending}
             onClick={() => setCancelOpen(true)}
           />
+          <Button asChild variant="outline" size="sm">
+            <Link href={reviewUrl}>Review the product</Link>
+          </Button>
         </div>
 
         <ConfirmDialog
@@ -599,6 +624,18 @@ export function BookingActions({ bookingId, status }: BookingActionsProps) {
             disabled={anyPending}
             onClick={() => void rebook(bookingId)}
           />
+        </div>
+      </>
+    );
+  }
+
+  if (status === "completed") {
+    return (
+      <>
+        <div className="flex gap-2 flex-wrap">
+          <Button asChild variant="outline" size="sm">
+            <Link href={reviewUrl}>Review the product</Link>
+          </Button>
         </div>
       </>
     );
