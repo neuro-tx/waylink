@@ -1,7 +1,14 @@
 "use server";
 
 import { db } from "@/db";
-import { bookingItems, bookings, location, products, productVariants } from "@/db/schemas";
+import {
+  bookingItems,
+  bookings,
+  location,
+  products,
+  productVariants,
+} from "@/db/schemas";
+import { inngest } from "@/inngest/client";
 import { PassengerType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
 import { and, eq } from "drizzle-orm";
@@ -39,6 +46,23 @@ export async function createBookingAction(
 
   try {
     const result = await db.transaction(async (tx) => {
+      // Step 0: check if the user already has an active booking for this variant
+      const existing = await tx
+        .select()
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.userId, userId),
+            eq(bookings.variantId, input.variantId),
+            eq(bookings.productId, input.productId),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        throw new Error("You already have a booking for this slot");
+      }
+
       // Step 1: validate variant
       const variant = await tx.query.productVariants.findFirst({
         where: (v, { eq }) => eq(v.id, input.variantId),
@@ -50,11 +74,24 @@ export async function createBookingAction(
         throw new Error("This slot is no longer available");
       if (variant.productId !== input.productId)
         throw new Error("Variant does not belong to this product");
+      if (variant.product.status !== "active")
+        throw new Error("This product is not available for booking");
 
-      const totalParticipants = input.items.reduce(
-        (acc, i) => acc + i.quantity,
-        0,
-      );
+      if (!input.items.length) throw new Error("empty items not valid");
+
+      const infantsCount = input.items
+        .filter((i) => i.passengerType === "infant")
+        .reduce((acc, i) => acc + i.quantity, 0);
+
+      if (infantsCount > 6) {
+        throw new Error("Maximum 6 infants allowed");
+      }
+
+      const totalParticipants = input.items.reduce((acc, i) => {
+        if (i.passengerType === "infant") return acc; // if infants don't consume capacity (max 6)
+        return acc + i.quantity;
+      }, 0);
+
       const remainingCapacity = variant.capacity - variant.bookedCount;
 
       if (totalParticipants > remainingCapacity) {
@@ -110,6 +147,11 @@ export async function createBookingAction(
       return { bookingId: booking.id, orderNumber: booking.orderNumber };
     });
 
+    await inngest.send({
+      name: "app/booking.created",
+      data: { bookingId: result.bookingId },
+    });
+
     return { success: true, data: result };
   } catch (err) {
     const message =
@@ -125,7 +167,7 @@ export async function cancelBookingAction(
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
   try {
-    await db.transaction(async (tx) => {
+    const res = await db.transaction(async (tx) => {
       // Step 1: validate
       const booking = await tx.query.bookings.findFirst({
         where: (b, { eq, and }) =>
@@ -135,6 +177,7 @@ export async function cancelBookingAction(
           status: true,
           variantId: true,
           participantsCount: true,
+          productId: true,
         },
       });
 
@@ -142,6 +185,8 @@ export async function cancelBookingAction(
       if (!["pending", "confirmed"].includes(booking.status)) {
         throw new Error(`A ${booking.status} booking cannot be cancelled`);
       }
+
+      const wasConfirmed = booking.status === "confirmed";
 
       // Step 2: cancel booking
       await tx
@@ -172,13 +217,26 @@ export async function cancelBookingAction(
         .update(productVariants)
         .set({ bookedCount: newBookedCount, status: newVariantStatus })
         .where(eq(productVariants.id, booking.variantId));
+
+      return {
+        productId: booking.productId,
+        variantId: booking.variantId,
+        participantsCount: booking.participantsCount,
+        wasConfirmed,
+        variantAlreadyRestored: true,
+      };
+    });
+
+    await inngest.send({
+      name: "app/booking.cancelled",
+      data: res,
     });
 
     return { success: true, data: undefined };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to cancel booking";
-    console.error(err)
+    console.error(err);
     return { success: false, error: message };
   }
 }
@@ -191,7 +249,7 @@ export async function rebookAction(
 
   try {
     const result = await db.transaction(async (tx) => {
-      // Step 1: fetch original booking
+      // Step 0: fetch original booking
       const original = await tx.query.bookings.findFirst({
         where: (b, { eq, and }) =>
           and(eq(b.id, originalBookingId), eq(b.userId, session.user.id)),
@@ -199,6 +257,23 @@ export async function rebookAction(
       });
 
       if (!original) throw new Error("Original booking not found");
+
+      // Step 1: guard against duplicate active booking on the same variant
+      const existing = await tx
+        .select()
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.userId, session.user.id),
+            eq(bookings.variantId, original.variantId),
+            eq(bookings.productId, original.productId),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        throw new Error("You already have a booking for this slot");
+      }
 
       // Step 2: validate variant
       const variant = await tx.query.productVariants.findFirst({
@@ -258,6 +333,11 @@ export async function rebookAction(
       return { bookingId: newBooking.id, orderNumber: newBooking.orderNumber };
     });
 
+    await inngest.send({
+      name: "app/booking.created",
+      data: { bookingId: result.bookingId },
+    });
+
     return { success: true, data: result };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to rebook";
@@ -265,25 +345,57 @@ export async function rebookAction(
   }
 }
 
-export async function confirmBookingAction(bookingId: string) {
+export async function confirmBookingAction(
+  bookingId: string,
+): Promise<ActionResult<{ orderNumber: string }>> {
   const session = await getAuthSession();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
   const userId = session.user.id;
 
   try {
-    await db
-      .update(bookings)
-      .set({ status: "confirmed" })
-      .where(
-        and(
-          eq(bookings.id, bookingId),
-          eq(bookings.userId, userId),
-          eq(bookings.status, "pending"),
-        ),
-      );
+    const result = await db.transaction(async (tx) => {
+      // verify ownership and get data for the event
+      const booking = await tx.query.bookings.findFirst({
+        where: (b, { eq, and }) =>
+          and(eq(b.id, bookingId), eq(b.userId, userId)),
+        columns: {
+          id: true,
+          status: true,
+          productId: true,
+          variantId: true,
+          totalAmount: true,
+          orderNumber: true,
+          participantsCount: true,
+        },
+      });
 
-    return { success: true, data: undefined };
+      if (!booking) throw new Error("Booking not found");
+      if (booking.status !== "pending")
+        throw new Error(`Cannot confirm a ${booking.status} booking`);
+
+      await tx
+        .update(bookings)
+        .set({ status: "confirmed", updatedAt: new Date() })
+        .where(eq(bookings.id, bookingId));
+
+      return booking;
+    });
+
+    await inngest.send({
+      name: "app/booking.confirmed",
+      data: {
+        bookingId: result.id,
+        productId: result.productId,
+        variantId: result.variantId,
+        totalAmount: result.totalAmount,
+        participantsCount: result.participantsCount,
+        orderNumber: result.orderNumber,
+        userId,
+      },
+    });
+
+    return { success: true, data: { orderNumber: result.orderNumber } };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Failed to confirm booking";
@@ -292,8 +404,6 @@ export async function confirmBookingAction(bookingId: string) {
 }
 
 export async function getBookingLocationAction(bookingId: string) {
-
-
   try {
     const locations = await db
       .select({
@@ -304,9 +414,7 @@ export async function getBookingLocationAction(bookingId: string) {
       .innerJoin(productVariants, eq(bookings.variantId, productVariants.id))
       .innerJoin(products, eq(productVariants.productId, products.id))
       .innerJoin(location, eq(products.id, location.productId))
-      .where(
-        and(eq(bookings.id, bookingId) ,eq(location.type ,"end")),
-      );
+      .where(and(eq(bookings.id, bookingId), eq(location.type, "end")));
 
     if (!locations.length) {
       return {
