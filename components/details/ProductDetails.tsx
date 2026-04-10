@@ -10,6 +10,8 @@ import {
   Star,
   AlertCircle,
   Plus,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { ExperienceSections, Section, TransportSections } from "./ProductInfo";
 import { Alert, AlertDescription } from "../ui/alert";
@@ -18,7 +20,7 @@ import { VariantList } from "./Variants";
 import { MainInfo } from "./MainInfo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader, MessageSquareText, ShieldCheck, Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -36,6 +38,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import { useReview } from "@/hooks/useReview";
 
 type ReviewFormValues = z.infer<typeof reviewSchema>;
 
@@ -325,7 +328,11 @@ function StarRating({
 
 export function ReviewProduct({ productId }: { productId: string }) {
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "success" | "error">(
+    "idle",
+  );
+  const [pending, startTransition] = useTransition();
+  const { create, error } = useReview();
 
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
@@ -339,31 +346,88 @@ export function ReviewProduct({ productId }: { productId: string }) {
   const commentValue = form.watch("comment");
   const ratingValue = form.watch("rating");
 
-  async function onSubmit(values: ReviewFormValues) {
-    if (!productId) return;
+  function onSubmit(values: ReviewFormValues) {
+    startTransition(async () => {
+      if (!productId) return;
 
-    try {
-      setIsSubmitting(true);
-      console.log("Submitting review:", {
-        productId,
-        ...values,
-      });
+      setSubmitState("idle");
 
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      try {
+        await create(productId, values.comment, values.rating);
 
-      form.reset({
-        rating: 0,
-        comment: "",
-      });
-      setHoveredRating(0);
-    } finally {
-      setIsSubmitting(false);
-    }
+        form.reset({
+          rating: 0,
+          comment: "",
+        });
+
+        setHoveredRating(0);
+        setSubmitState("success");
+      } catch (err) {
+        setSubmitState("error");
+      }
+    });
+  }
+
+  if (submitState === "success") {
+    return (
+      <div className="h-screen bg-background pt-24 pb-16 flex items-center justify-center">
+        <main className="max-w-4xl px-4 md:px-6 mx-auto shrink-0 flex-1">
+          <div className="rounded-3xl border bg-card shadow-sm flex flex-col items-center text-center px-6 py-16 gap-5">
+            <div className="flex items-center justify-center size-16 rounded-full bg-emerald-50 dark:bg-emerald-950">
+              <CheckCircle2 className="size-8 text-emerald-500" />
+            </div>
+            <div className="space-y-1.5 max-w-sm">
+              <h2 className="text-xl font-semibold">Review submitted</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Thanks for your feedback — it helps other travellers make better
+                decisions.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={cn(
+                    "size-5",
+                    s <= ratingValue
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "fill-transparent text-muted-foreground/20",
+                  )}
+                />
+              ))}
+              <span className="ml-1 font-medium text-foreground">
+                {RATING_LABELS[ratingValue]}
+              </span>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-16">
       <main className="max-w-4xl px-4 md:px-6 mx-auto">
+        {submitState === "error" && error && (
+          <div className="flex items-start gap-2.5 mb-5 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+            <AlertTriangle className="size-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-0.5">
+                Submission failed
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">
+                {error}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSubmitState("idle")}
+              className="text-red-400 hover:text-red-600 dark:hover:text-red-300 shrink-0 text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <section className="mb-8 rounded-3xl border bg-linear-to-b from-muted/40 to-background p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
@@ -494,10 +558,10 @@ export function ReviewProduct({ productId }: { productId: string }) {
 
                     <Button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={pending}
                       className="cursor-pointer px-6"
                     >
-                      {isSubmitting ? (
+                      {pending ? (
                         <>
                           <Loader className="size-4 animate-spin" />
                           Submitting...
