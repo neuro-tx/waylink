@@ -11,7 +11,7 @@ import {
 import { inngest } from "@/inngest/client";
 import { PassengerType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
-import { and, eq } from "drizzle-orm";
+import { and, eq ,inArray } from "drizzle-orm";
 
 export type ActionResult<T = void> =
   | { success: true; data: T }
@@ -46,7 +46,6 @@ export async function createBookingAction(
 
   try {
     const result = await db.transaction(async (tx) => {
-      // Step 0: check if the user already has an active booking for this variant
       const existing = await tx
         .select()
         .from(bookings)
@@ -55,6 +54,7 @@ export async function createBookingAction(
             eq(bookings.userId, userId),
             eq(bookings.variantId, input.variantId),
             eq(bookings.productId, input.productId),
+            inArray(bookings.status, ["pending", "confirmed"]),
           ),
         )
         .limit(1);

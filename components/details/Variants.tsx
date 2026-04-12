@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   Clock,
   Users,
@@ -9,9 +9,11 @@ import {
   Minus,
   Plus,
   CalendarX2,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn, fmtDate, parseArray } from "@/lib/utils";
-import { ProductVariant } from "@/lib/all-types";
+import { PassengerType, ProductVariant } from "@/lib/all-types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "../ui/button";
+import { useBooking } from "@/hooks/useBooking";
+import { CreateBookingInput } from "@/actions/booking.action";
+import { useRouter } from "next/navigation";
+
+type Pax = { adult: number; child: number; infant: number };
+
+type Stop = {
+  locationName: string;
+  arrivalTime: string;
+  departureTime: string;
+};
+
+type BookingResult = { bookingId: string; orderNumber: string };
+
+interface VariantListProps {
+  variants: ProductVariant[];
+  onConfirmBooking?: (variant: ProductVariant, pax: Pax) => void;
+}
 
 interface VariantCardProps {
   variant: ProductVariant;
@@ -33,18 +53,27 @@ interface VariantCardProps {
   onBook: () => void;
 }
 
-type Stop = {
-  locationName: string;
-  arrivalTime: string;
-  departureTime: string;
-};
-
-interface VariantListProps {
-  variants: ProductVariant[];
-  onConfirmBooking?: (variant: ProductVariant, pax: Pax) => void;
+interface BookingConfirmDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  isPending: boolean;
+  variant: ProductVariant;
+  pax: Pax;
+  onConfirm: (input: CreateBookingInput) => void;
 }
 
-type Pax = { adult: number; child: number; infant: number };
+interface BookingSuccessDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orderNumber: string;
+}
+
+interface BookingErrorDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  message: string;
+  onRetry: () => void;
+}
 
 function fmtTime(d: string | Date) {
   return new Date(d).toLocaleTimeString("en-US", {
@@ -94,19 +123,43 @@ function computeTotal(variant: ProductVariant, pax: Pax) {
   );
 }
 
-// ─── confirm dialog ───────────────────────────────────────────────────────────
-
-interface BookingConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  variant: ProductVariant;
-  pax: Pax;
-  onConfirm: () => void;
+function BookingLoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-xs">
+      <div className="flex flex-col items-center gap-3 rounded-xl border max-w-xs w-full border-border bg-background px-8 py-6 shadow-lg">
+        <svg
+          className="size-8 animate-spin text-blue-500"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          />
+        </svg>
+        <p className="text-sm font-medium">Confirming your booking…</p>
+        <p className="text-xs text-muted-foreground">
+          Please don&apos;t close this page
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function BookingConfirmDialog({
   open,
   onOpenChange,
+  isPending,
   variant,
   pax,
   onConfirm,
@@ -117,6 +170,11 @@ function BookingConfirmDialog({
   const infantTotal = pax.infant * parseFloat(pricing?.infantPrice ?? "0");
   const grandTotal = adultTotal + childTotal + infantTotal;
   const totalPax = pax.adult + pax.child + pax.infant;
+
+  const handleOpenChange = (next: boolean) => {
+    if (isPending) return;
+    onOpenChange(next);
+  };
 
   const rows = [
     {
@@ -139,8 +197,30 @@ function BookingConfirmDialog({
     },
   ].filter((r) => r.show);
 
+  const confirm = () => {
+    const items = [
+      pax.adult > 0 && {
+        passengerType: "adult" as PassengerType,
+        quantity: pax.adult,
+        unitPrice: parseFloat(pricing?.adultPrice ?? "0"),
+      },
+      pax.child > 0 && {
+        passengerType: "child" as PassengerType,
+        quantity: pax.child,
+        unitPrice: parseFloat(pricing?.childPrice ?? "0"),
+      },
+      pax.infant > 0 && {
+        passengerType: "infant" as PassengerType,
+        quantity: pax.infant,
+        unitPrice: parseFloat(pricing?.infantPrice ?? "0"),
+      },
+    ].filter(Boolean) as CreateBookingInput["items"];
+
+    onConfirm({ variantId: variant.id, productId: variant.productId, items });
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="gap-0 p-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
           <p className="text-xs text-muted-foreground font-medium tracking-wider mb-0.5">
@@ -200,10 +280,125 @@ function BookingConfirmDialog({
         </AlertDialogHeader>
 
         <AlertDialogFooter className="px-5 pb-5 pt-4 flex-row gap-2">
-          <AlertDialogCancel className="flex-1 m-0">Cancel</AlertDialogCancel>
-          <AlertDialogAction className="flex-1" onClick={onConfirm}>
-            Confirm booking
+          <AlertDialogCancel className="flex-1 m-0" disabled={isPending}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="flex-1"
+            onClick={confirm}
+            disabled={isPending}
+          >
+            {isPending ? "Booking..." : "Confirm booking"}
           </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function BookingSuccessDialog({
+  open,
+  onOpenChange,
+  orderNumber,
+}: BookingSuccessDialogProps) {
+  const router = useRouter();
+  const createdAt = new Date().toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="gap-0 p-0 overflow-hidden">
+        <div className="flex flex-col items-center px-5 pt-7 pb-5 text-center">
+          <div className="flex items-center justify-center size-14 rounded-full bg-emerald-50 dark:bg-emerald-950 mb-4">
+            <CheckCircle2 className="size-7 text-emerald-500" />
+          </div>
+          <AlertDialogTitle className="text-base font-semibold mb-1">
+            Booking confirmed
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-muted-foreground">
+            Your spots are reserved. Confirm your order before the 15-minute
+            window expires.
+          </AlertDialogDescription>
+        </div>
+
+        <div className="mx-5 border-t border-border" />
+
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Order number</span>
+            <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-1 tracking-wider">
+              {orderNumber}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Booked on</span>
+            <span className="text-sm font-medium">{createdAt}</span>
+          </div>
+        </div>
+
+        <div className="mx-5 border-t border-border" />
+
+        <div className="flex items-start gap-2.5 mx-5 my-4 px-3 py-2.5 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+          <Clock className="size-3.5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            This booking will expire in{" "}
+            <span className="font-medium">15 minutes</span> if confirming is not
+            completed.
+          </p>
+        </div>
+
+        <AlertDialogFooter className="px-5 pb-5 pt-0">
+          <AlertDialogCancel>Close</AlertDialogCancel>
+          <AlertDialogAction onClick={() => router.push(`/account/bookings`)}>
+            View booking details
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function BookingErrorDialog({
+  open,
+  onOpenChange,
+  message,
+  onRetry,
+}: BookingErrorDialogProps) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="gap-0 p-0 overflow-hidden">
+        <div className="flex flex-col items-center px-5 pt-7 pb-5 text-center">
+          <div className="flex items-center justify-center size-14 rounded-full bg-red-50 dark:bg-red-950 mb-4">
+            <AlertTriangle className="size-7 text-red-500" />
+          </div>
+          <AlertDialogTitle className="text-base font-semibold mb-1">
+            Booking failed
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm text-muted-foreground">
+            We couldn&apos;t complete your booking. Review the error below and
+            try again.
+          </AlertDialogDescription>
+        </div>
+
+        <div className="mx-5 border-t border-border" />
+
+        <div className="flex items-start gap-2.5 mx-5 my-4 px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+          <AlertTriangle className="size-3.5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-red-800 dark:text-red-300 leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        <div className="mx-5 border-t border-border" />
+
+        <AlertDialogFooter className="px-5 pb-5 pt-4 flex-col gap-2">
+          <AlertDialogAction onClick={onRetry} variant="default">
+            Try again
+          </AlertDialogAction>
+          <AlertDialogCancel>Dismiss</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -356,7 +551,6 @@ function VariantCard({
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-muted/40 transition-colors disabled:cursor-not-allowed border-b border-border"
       >
         <DateBlock date={variant.startDate} selected={selected} />
-
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium truncate">
             {name ?? "Unnamed variant"}
@@ -370,7 +564,6 @@ function VariantCard({
             </p>
           )}
         </div>
-
         <span
           className={cn(
             "text-xs px-2.5 py-1 rounded-full font-medium shrink-0",
@@ -379,7 +572,6 @@ function VariantCard({
         >
           {statusLabel}
         </span>
-
         <span
           className={cn(
             "size-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200",
@@ -485,13 +677,13 @@ function VariantCard({
               />
               <StepperRow
                 label="Infants"
-                sub="Under 2 · lap seat"
+                sub="Under 2 · lap seat (max 6)"
                 price={pricing.infantPrice}
                 count={pax.infant}
                 onDec={() => onSetPax("infant", pax.infant - 1)}
                 onInc={() => onSetPax("infant", pax.infant + 1)}
                 decDisabled={pax.infant <= 0}
-                incDisabled={totalPax >= maxPax || pax.infant >= pax.adult}
+                incDisabled={pax.infant >= 6}
               />
             </div>
 
@@ -526,6 +718,19 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
   const [confirmVariant, setConfirmVariant] = useState<ProductVariant | null>(
     null,
   );
+  const [bookingResult, setBookingResult] = useState<BookingResult | null>(
+    null,
+  );
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [lastVariant, setLastVariant] = useState<ProductVariant | null>(null);
+  const [lastPax, setLastPax] = useState<Pax>({
+    adult: 0,
+    child: 0,
+    infant: 0,
+  });
+  const [pending, startTransition] = useTransition();
+
+  const { create } = useBooking();
 
   function handleSelect(id: string) {
     setSelectedId((prev) => (prev === id ? null : id));
@@ -542,12 +747,41 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
     }));
   }
 
-  function handleConfirm() {
+  function handleConfirmSettled() {
     if (!confirmVariant) return;
     const pax = paxMap[confirmVariant.id] ?? { adult: 0, child: 0, infant: 0 };
+    setLastVariant(confirmVariant);
+    setLastPax(pax);
     onConfirmBooking?.(confirmVariant, pax);
     setConfirmVariant(null);
     setSelectedId(null);
+  }
+
+  function handleRetry() {
+    setBookingError(null);
+    if (lastVariant) {
+      setPaxMap((prev) => ({ ...prev, [lastVariant.id]: lastPax }));
+      setSelectedId(lastVariant.id);
+      setConfirmVariant(lastVariant);
+    }
+  }
+
+  function handleCreate({ productId, variantId, items }: CreateBookingInput) {
+    startTransition(async () => {
+      await create(
+        { productId, variantId, items },
+        {
+          onSuccess(data) {
+            handleConfirmSettled();
+            setBookingResult(data);
+          },
+          onError(err) {
+            handleConfirmSettled();
+            setBookingError(err ?? "Failed to create booking");
+          },
+        },
+      );
+    });
   }
 
   const confirmPax = confirmVariant
@@ -570,6 +804,8 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
 
   return (
     <>
+      {pending && <BookingLoadingOverlay />}
+
       <div className="space-y-3">
         {variants.map((v) => (
           <VariantCard
@@ -588,9 +824,27 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
         <BookingConfirmDialog
           open={!!confirmVariant}
           onOpenChange={(open) => !open && setConfirmVariant(null)}
+          isPending={pending}
           variant={confirmVariant}
           pax={confirmPax}
-          onConfirm={handleConfirm}
+          onConfirm={handleCreate}
+        />
+      )}
+
+      {bookingResult && (
+        <BookingSuccessDialog
+          open={!!bookingResult}
+          onOpenChange={(open) => !open && setBookingResult(null)}
+          orderNumber={bookingResult.orderNumber}
+        />
+      )}
+
+      {bookingError && (
+        <BookingErrorDialog
+          open={!!bookingError}
+          onOpenChange={(open) => !open && setBookingError(null)}
+          message={bookingError}
+          onRetry={handleRetry}
         />
       )}
     </>

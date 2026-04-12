@@ -20,8 +20,7 @@ import { VariantList } from "./Variants";
 import { MainInfo } from "./MainInfo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useEffect, useState, useTransition } from "react";
 import { Loader, MessageSquareText, ShieldCheck, Sparkles } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -170,11 +169,11 @@ function ErrorState() {
 
 function ProductContent({
   product,
-  exeperinceDetails,
+  experienceDetails,
   reviews,
   transportDetails,
   variants,
-}: Omit<ReturnType<typeof useProduct>, "state">) {
+}: Omit<ReturnType<typeof useProduct>, "state" | "refetch">) {
   if (!product) return null;
 
   return (
@@ -182,7 +181,7 @@ function ProductContent({
       <div className="mian-container space-y-6">
         <MediaGallery media={product.media} />
 
-        <MainInfo product={product} exeperinceDetails={exeperinceDetails} />
+        <MainInfo product={product} exeperinceDetails={experienceDetails} />
 
         <div className="space-y-3">
           <Section title="About" icon={Compass}>
@@ -208,8 +207,8 @@ function ProductContent({
           )}
         </div>
 
-        {product.type === "experience" && exeperinceDetails && (
-          <ExperienceSections exp={exeperinceDetails} />
+        {product.type === "experience" && experienceDetails && (
+          <ExperienceSections exp={experienceDetails} />
         )}
         {product.type === "transport" && transportDetails && (
           <TransportSections tr={transportDetails} />
@@ -254,7 +253,7 @@ function ProductContent({
 export function ProductDetails({ productId }: { productId: string }) {
   const {
     product,
-    exeperinceDetails,
+    experienceDetails,
     reviews,
     transportDetails,
     variants,
@@ -267,7 +266,7 @@ export function ProductDetails({ productId }: { productId: string }) {
   return (
     <ProductContent
       product={product}
-      exeperinceDetails={exeperinceDetails}
+      experienceDetails={experienceDetails}
       reviews={reviews}
       transportDetails={transportDetails}
       variants={variants}
@@ -295,7 +294,6 @@ function StarRating({
       <div className="flex justify-center gap-2">
         {[1, 2, 3, 4, 5].map((star) => {
           const active = activeValue >= star;
-
           return (
             <button
               key={star}
@@ -331,38 +329,31 @@ export function ReviewProduct({ productId }: { productId: string }) {
   const [submitState, setSubmitState] = useState<"idle" | "success" | "error">(
     "idle",
   );
+  const [submittedRating, setSubmittedRating] = useState(0);
   const [pending, startTransition] = useTransition();
-  const { create, error } = useReview();
+  const { create, error: reviewError } = useReview();
 
   const form = useForm<ReviewFormValues>({
     resolver: zodResolver(reviewSchema),
-    defaultValues: {
-      rating: 0,
-      comment: "",
-    },
+    defaultValues: { rating: 0, comment: "" },
     mode: "onChange",
   });
 
-  const commentValue = form.watch("comment");
-  const ratingValue = form.watch("rating");
+  const { comment: commentValue, rating: ratingValue } = form.watch();
+
+  useEffect(() => {
+    if (reviewError) setSubmitState("error");
+  }, [reviewError]);
 
   function onSubmit(values: ReviewFormValues) {
     startTransition(async () => {
-      if (!productId) return;
-
-      setSubmitState("idle");
-
       try {
         await create(productId, values.comment, values.rating);
-
-        form.reset({
-          rating: 0,
-          comment: "",
-        });
-
+        setSubmittedRating(values.rating);
+        form.reset({ rating: 0, comment: "" });
         setHoveredRating(0);
         setSubmitState("success");
-      } catch (err) {
+      } catch {
         setSubmitState("error");
       }
     });
@@ -389,14 +380,14 @@ export function ReviewProduct({ productId }: { productId: string }) {
                   key={s}
                   className={cn(
                     "size-5",
-                    s <= ratingValue
+                    s <= submittedRating
                       ? "fill-yellow-400 text-yellow-400"
                       : "fill-transparent text-muted-foreground/20",
                   )}
                 />
               ))}
               <span className="ml-1 font-medium text-foreground">
-                {RATING_LABELS[ratingValue]}
+                {RATING_LABELS[submittedRating]}
               </span>
             </div>
           </div>
@@ -408,7 +399,7 @@ export function ReviewProduct({ productId }: { productId: string }) {
   return (
     <div className="min-h-screen bg-background pt-24 pb-16">
       <main className="max-w-4xl px-4 md:px-6 mx-auto">
-        {submitState === "error" && error && (
+        {submitState === "error" && (
           <div className="flex items-start gap-2.5 mb-5 px-3 py-2.5 rounded-xl bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
             <AlertTriangle className="size-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
@@ -416,7 +407,7 @@ export function ReviewProduct({ productId }: { productId: string }) {
                 Submission failed
               </p>
               <p className="text-xs text-red-700 dark:text-red-400 leading-relaxed">
-                {error}
+                {reviewError ?? "Something went wrong. Please try again."}
               </p>
             </div>
             <button
@@ -428,6 +419,7 @@ export function ReviewProduct({ productId }: { productId: string }) {
             </button>
           </div>
         )}
+
         <section className="mb-8 rounded-3xl border bg-linear-to-b from-muted/40 to-background p-4 sm:p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
@@ -435,11 +427,9 @@ export function ReviewProduct({ productId }: { productId: string }) {
                 <Sparkles className="size-3 text-primary" />
                 Verified purchase feedback
               </div>
-
               <h1 className="text-3xl font-bold tracking-tight">
                 Share your experience
               </h1>
-
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 Your review helps other shoppers make better decisions and helps
                 sellers improve their products.
@@ -456,7 +446,6 @@ export function ReviewProduct({ productId }: { productId: string }) {
                   Be honest, specific, and useful.
                 </p>
               </div>
-
               <div className="rounded-2xl border bg-card p-4">
                 <div className="mb-2 flex items-center whitespace-nowrap gap-2 text-sm font-medium">
                   <ShieldCheck className="size-4 shrink-0 text-emerald-500" />
@@ -522,7 +511,6 @@ export function ReviewProduct({ productId }: { productId: string }) {
                             {commentValue.length}/500
                           </span>
                         </div>
-
                         <FormControl>
                           <Textarea
                             {...field}
@@ -530,12 +518,10 @@ export function ReviewProduct({ productId }: { productId: string }) {
                             className="min-h-20 resize-none rounded-xl bg-background"
                           />
                         </FormControl>
-
                         <p className="text-xs text-muted-foreground">
                           Tip: the most helpful reviews mention quality, fit,
                           delivery, or customer support.
                         </p>
-
                         <FormMessage />
                       </FormItem>
                     )}

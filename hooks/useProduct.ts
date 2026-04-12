@@ -6,53 +6,62 @@ import {
   ProductVariant,
   TransportDetails,
 } from "@/lib/all-types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-type States = "idle" | "loading" | "error" | "success";
+type State = "idle" | "loading" | "error" | "success";
+
+interface ProductState {
+  product: ProductDetails | undefined;
+  reviews: ProductReview[];
+  variants: ProductVariant[];
+  transportDetails: TransportDetails | null;
+  experienceDetails: ExperienceDetails | null;
+}
+
+const INITIAL_STATE: ProductState = {
+  product: undefined,
+  reviews: [],
+  variants: [],
+  transportDetails: null,
+  experienceDetails: null,
+};
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 export default function useProduct(productId: string) {
-  const [product, setProduct] = useState<ProductDetails>();
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
-  const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [transportDetails, setTransportDetails] =
-    useState<TransportDetails | null>(null);
-  const [exeperinceDetails, setExeperinceDetails] =
-    useState<ExperienceDetails | null>(null);
-  const [state, setState] = useState<States>("idle");
+  const [data, setData] = useState<ProductState>(INITIAL_STATE);
+  const [state, setState] = useState<State>("idle");
 
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async (signal: AbortSignal) => {
     setState("loading");
-    const mainUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
     try {
-      const res = await fetch(`${mainUrl}/api/product/${productId}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch product");
-      }
-      const data = await res.json();
-      setProduct(data.data);
-      setReviews(data.data.reviews);
-      setVariants(data.data.variants);
-      setTransportDetails(data.data.transport);
-      setExeperinceDetails(data.data.experince);
+      const res = await fetch(`${API_BASE}/api/product/${productId}`, { signal });
+      if (!res.ok) throw new Error("Failed to fetch product");
+
+      const json = await res.json();
+      const d = json.data;
+
+      setData({
+        product: d,
+        reviews: d.reviews ?? [],
+        variants: d.variants ?? [],
+        transportDetails: d.transport ?? null,
+        experienceDetails: d.experience ?? null,
+      });
       setState("success");
     } catch (error) {
+      if ((error as Error).name === "AbortError") return;
       console.error(error);
       setState("error");
     }
-  };
-
-  useEffect(() => {
-    if (productId) {
-      fetchProduct();
-    }
   }, [productId]);
 
-  return {
-    product,
-    reviews,
-    variants,
-    state,
-    transportDetails,
-    exeperinceDetails,
-  };
+  useEffect(() => {
+    if (!productId) return;
+    const controller = new AbortController();
+    fetchProduct(controller.signal);
+    return () => controller.abort();
+  }, [productId, fetchProduct]);
+
+  return { ...data, state, refetch: () => fetchProduct(new AbortController().signal) };
 }

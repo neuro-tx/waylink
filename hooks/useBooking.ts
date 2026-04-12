@@ -44,12 +44,10 @@ export function useBooking() {
 
       if (!result.success) {
         setError(result.error);
-        toast.error(result.error);
         options?.onError?.(result.error);
         return;
       }
 
-      toast.success(`Booking confirmed! Order ${result.data.orderNumber}`);
       options?.onSuccess?.(result.data);
     } finally {
       setPendingAction(null);

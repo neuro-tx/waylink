@@ -1,5 +1,10 @@
 import { db } from "@/db";
-import { bookings, productStats, productVariants } from "@/db/schemas";
+import {
+  bookings,
+  productReviews,
+  productStats,
+  productVariants,
+} from "@/db/schemas";
 import { and, eq, sql } from "drizzle-orm";
 import { inngest } from "../client";
 import { sendNotification } from "@/actions/notification.action";
@@ -94,6 +99,8 @@ export const expirePendingBooking = inngest.createFunction(
     triggers: { event: "app/booking.expiry.check" },
   },
   async ({ event, step }) => {
+    let notifyUserId: string | null = null;
+
     const result = await step.run(
       "expire-pending-booking-transaction",
       async () => {
@@ -153,16 +160,34 @@ export const expirePendingBooking = inngest.createFunction(
             })
             .where(eq(productVariants.id, variant.id));
 
+          notifyUserId = booking.userId;
+
           return {
             expired: true,
             productId: booking.productId,
             variantId: booking.variantId,
             participantsCount: booking.participantsCount,
+            userId: booking.userId,
             reason: "expired" as const,
           };
         });
       },
     );
+
+    // ✅ Send cancelled notification
+    if (result.expired && notifyUserId) {
+      const userId = notifyUserId;
+
+      await step.run("send-cancel-notification", async () => {
+        await sendNotification({
+          userId,
+          type: "booking_cancelled",
+          title: "⏳ Booking Cancelled",
+          message:
+            "Your booking was cancelled because it wasn’t confirmed in time.",
+        });
+      });
+    }
 
     // If booking expired, fire the cancelled event so productStats stay in sync
     if (result.expired && result.reason === "expired") {
