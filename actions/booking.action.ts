@@ -9,9 +9,10 @@ import {
   productVariants,
 } from "@/db/schemas";
 import { inngest } from "@/inngest/client";
+import { protectAction } from "@/lib/aj-actions";
 import { PassengerType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
-import { and, eq ,inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 export type ActionResult<T = void> =
   | { success: true; data: T }
@@ -39,6 +40,15 @@ function generateOrderNumber(): string {
 export async function createBookingAction(
   input: CreateBookingInput,
 ): Promise<ActionResult<{ bookingId: string; orderNumber: string }>> {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      error: guard?.message || "Security system unavailable. Try again later.",
+      success: false,
+    };
+  }
+
   const session = await getAuthSession();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
@@ -163,6 +173,15 @@ export async function createBookingAction(
 export async function cancelBookingAction(
   bookingId: string,
 ): Promise<ActionResult> {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      error: guard?.message || "Security system unavailable. Try again later.",
+      success: false,
+    };
+  }
+
   const session = await getAuthSession();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
@@ -244,6 +263,15 @@ export async function cancelBookingAction(
 export async function rebookAction(
   originalBookingId: string,
 ): Promise<ActionResult<{ bookingId: string; orderNumber: string }>> {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      error: guard?.message || "Security system unavailable. Try again later.",
+      success: false,
+    };
+  }
+
   const session = await getAuthSession();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 
@@ -348,6 +376,15 @@ export async function rebookAction(
 export async function confirmBookingAction(
   bookingId: string,
 ): Promise<ActionResult<{ orderNumber: string }>> {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      error: guard?.message || "Security system unavailable. Try again later.",
+      success: false,
+    };
+  }
+
   const session = await getAuthSession();
   if (!session?.user?.id) return { success: false, error: "Unauthorized" };
 

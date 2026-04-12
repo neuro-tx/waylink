@@ -6,7 +6,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  return tryCatch(async () => {
+  return tryCatch(req ,async () => {
     const { id } = await params;
     const parameters = req.nextUrl.searchParams;
 

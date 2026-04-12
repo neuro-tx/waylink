@@ -5,6 +5,7 @@ import { providerService } from "@/services/provider.service";
 import { providerForm, providerFormType } from "@/validations";
 import z from "zod";
 import { sendNotification } from "./notification.action";
+import { protectAction } from "@/lib/aj-actions";
 
 type ActionResponse = {
   success: boolean;
@@ -16,6 +17,17 @@ export const createProvider = async (
   data: providerFormType,
 ): Promise<ActionResponse> => {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        message:
+          guard?.message || "Security system unavailable. Try again later.",
+        state: "warn",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session?.user?.id) {
       return {
@@ -81,6 +93,17 @@ export const updateProvider = async (
   data: providerFormType,
 ) => {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        message:
+          guard?.message || "Security system unavailable. Try again later.",
+        state: "warn",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session?.user?.id) {
       return {
@@ -123,6 +146,17 @@ export const deleteProvider = async (
   providerId: string,
 ): Promise<ActionResponse> => {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        message:
+          guard?.message || "Security system unavailable. Try again later.",
+        state: "warn",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session?.user?.id) {
       return {

@@ -3,10 +3,10 @@ import { tryCatch } from "@/lib/handler";
 import { providerController } from "@/controllers/provider.controller";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  return tryCatch(async () => {
+  return tryCatch(req ,async () => {
     const { id } = await params;
 
     const provider = await providerController.getProviderById(id);

@@ -6,7 +6,7 @@ import {
   updateNote,
 } from "@/actions/list.action";
 import { Wishlist, WishlistItem } from "@/lib/all-types";
-import { asyncHandler } from "@/lib/handler";
+import { asyncHandler } from "@/lib/asyncHandler";
 import { WishlistFormValues } from "@/validations";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";

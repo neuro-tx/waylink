@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, Number(params.get("limit") ?? 4)));
   const page = Math.max(1, Number(params.get("page") ?? 1));
 
-  return tryCatch(async () => {
+  return tryCatch(req ,async () => {
     return productSerices.featuredProducts(type, limit, page);
   });
 }

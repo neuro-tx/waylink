@@ -2,11 +2,22 @@
 
 import { db } from "@/db";
 import { wishlistItems, wishlists } from "@/db/schemas";
+import { protectAction } from "@/lib/aj-actions";
 import { getAuthSession } from "@/lib/auth-server";
 import { wishlistFormSchema, WishlistFormValues } from "@/validations";
 import { eq, and } from "drizzle-orm";
 
 export const createList = async (dataForm: WishlistFormValues) => {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      message:
+        guard?.message || "Security system unavailable. Try again later.",
+      state: "error",
+    };
+  }
+
   const session = await getAuthSession();
   if (!session) {
     return { message: "Unauthorized", state: "error" };
@@ -41,6 +52,16 @@ export const createList = async (dataForm: WishlistFormValues) => {
 };
 
 export const removeList = async (listId: string) => {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      message:
+        guard?.message || "Security system unavailable. Try again later.",
+      state: "error",
+    };
+  }
+
   const session = await getAuthSession();
   if (!session) {
     return { message: "Unauthorized", state: "error" };
@@ -61,6 +82,16 @@ export const removeList = async (listId: string) => {
 };
 
 export const updateList = async (id: string, data: WishlistFormValues) => {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      message:
+        guard?.message || "Security system unavailable. Try again later.",
+      state: "error",
+    };
+  }
+
   const session = await getAuthSession();
   if (!session) return { state: "error", message: "Unauthorized" };
 
@@ -86,6 +117,16 @@ export const updateList = async (id: string, data: WishlistFormValues) => {
 };
 
 export const deleteItem = async (listId: string, id: string) => {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      message:
+        guard?.message || "Security system unavailable. Try again later.",
+      state: "error",
+    };
+  }
+
   const session = await getAuthSession();
   if (!session) {
     return { state: "error", message: "Unauthorized" };
@@ -127,6 +168,16 @@ export const updateNote = async (
   listId: string,
   newNote: string,
 ) => {
+  const guard = await protectAction("user");
+
+  if (!guard.ok) {
+    return {
+      message:
+        guard?.message || "Security system unavailable. Try again later.",
+      state: "error",
+    };
+  }
+
   const session = await getAuthSession();
   if (!session) {
     return { state: "error", message: "Unauthorized" };

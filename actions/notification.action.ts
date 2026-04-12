@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { Notification, notifications, user } from "@/db/schemas";
+import { protectAction } from "@/lib/aj-actions";
 import { NotificationType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
 import { and, count, desc, eq } from "drizzle-orm";
@@ -17,6 +18,15 @@ export async function getNotifications(
   offset = 0,
 ): Promise<GetNotificationsResult> {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        error:
+          guard?.message || "Security system unavailable. Try again later.",
+      };
+    }
     const session = await getAuthSession();
 
     if (!session) return { success: false, error: "Unauthorized" };
@@ -62,6 +72,15 @@ export async function markAsRead(
   notificationId: string,
 ): Promise<ActionResult> {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        error:
+          guard?.message || "Security system unavailable. Try again later.",
+      };
+    }
     const session = await getAuthSession();
     if (!session) return { success: false, error: "Unauthorized" };
 
@@ -83,6 +102,16 @@ export async function markAsRead(
 
 export async function markAllAsRead(): Promise<ActionResult> {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        error:
+          guard?.message || "Security system unavailable. Try again later.",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session) return { success: false, error: "Unauthorized" };
 
@@ -106,6 +135,16 @@ export async function deleteNotification(
   notificationId: string,
 ): Promise<ActionResult> {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        error:
+          guard?.message || "Security system unavailable. Try again later.",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session) return { success: false, error: "Unauthorized" };
 
@@ -126,6 +165,16 @@ export async function deleteNotification(
 
 export async function clearReadNotifications(): Promise<ActionResult> {
   try {
+    const guard = await protectAction("user");
+
+    if (!guard.ok) {
+      return {
+        success: false,
+        error:
+          guard?.message || "Security system unavailable. Try again later.",
+      };
+    }
+
     const session = await getAuthSession();
     if (!session) return { success: false, error: "Unauthorized" };
 

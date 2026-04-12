@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-import { isApiError } from "./errors";
+import { Errors, isApiError } from "./errors";
+import { Role } from "./policies";
+import { aj } from "./arcjet";
 type Result<T, E = Error> = [T, null] | [null, E];
-type PromiseResult<T, E> = Promise<Result<T, E>>;
 
 /**
  * Value, Promise, or function that returns them
@@ -18,20 +19,29 @@ async function execute<T>(target: MaybeAsync<T>): Promise<T> {
 }
 
 export async function tryCatch<T>(
+  req: NextRequest,
   target: MaybeAsync<T>,
   options?: {
-    emptyMessage?: string;
-    successStatus?: number;
+    role?: Role;
+    arcjetRules?: any[];
   },
 ): Promise<NextResponse> {
   try {
+    const role = options?.role ?? "guest";
+    const arc = aj(role, options?.arcjetRules);
+    const decision = await arc.protect(req, { requested: 5 });
+    console.log(decision);
+    if (decision.isDenied()) {
+      throw Errors.forbidden(getArcjetMessage(decision.reason));
+    }
+
     const data = await execute(target);
 
     if (data == null || (Array.isArray(data) && data.length === 0)) {
       return NextResponse.json(
         {
           status: "empty",
-          message: options?.emptyMessage ?? "No data found",
+          message: "No data found",
           data: [],
         },
         { status: 200 },
@@ -44,7 +54,7 @@ export async function tryCatch<T>(
         data,
       },
       {
-        status: options?.successStatus ?? 200,
+        status: 200,
       },
     );
   } catch (error) {
@@ -74,13 +84,22 @@ export async function tryCatch<T>(
   }
 }
 
-export async function asyncHandler<T, E = Error>(
-  promise: Promise<T>,
-): PromiseResult<T, E> {
-  try {
-    const data = await promise;
-    return [data, null];
-  } catch (error) {
-    return [null, error as E];
+function getArcjetMessage(reason: any): string {
+  if (!reason) return "Request blocked.";
+
+  const type = reason.type || reason.name;
+
+  switch (type) {
+    case "RATE_LIMIT":
+      return "Too many requests. Please wait a moment and try again.";
+
+    case "BOT":
+      return "Automated traffic detected. Please use the app normally.";
+
+    case "SHIELD":
+      return "Suspicious request blocked for your security.";
+
+    default:
+      return "Your request was blocked by security policy.";
   }
 }

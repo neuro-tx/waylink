@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 export async function GET(req: NextRequest) {
   const url = req.url;
   
-  return tryCatch(async () => {
+  return tryCatch(req ,async () => {
     const data = await transportController.getTransports(url);
     return data
   });
