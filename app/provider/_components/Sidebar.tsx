@@ -50,6 +50,7 @@ import { useProviderContext } from "../_context/ProviderContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { GlobalSearch } from "./GlobalSearch";
 
 interface NavChild {
   title: string;
@@ -278,20 +279,7 @@ export function ProviderHeader() {
       </div>
 
       <div className="flex items-center gap-1 md:gap-3">
-        <div className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type="search"
-            placeholder="Search bookings or services…"
-            className="h-9 w-44 lg:w-80 rounded-md bg-muted/50 pl-8 pr-12 text-sm focus-visible:bg-background transition-all"
-          />
-          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-0.5 rounded border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 md:flex">
-            <span className="text-xs">⌘</span>K
-          </kbd>
-        </div>
-        <Button size="icon" variant="ghost" className="md:hidden">
-          <Search className="size-4" />
-        </Button>
+        <GlobalSearch />
 
         <Button size="icon" variant="ghost" className="relative">
           <Bell className="size-4" />
