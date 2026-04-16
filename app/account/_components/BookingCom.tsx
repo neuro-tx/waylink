@@ -22,6 +22,7 @@ import {
   BadgeCheck,
   Loader,
   Clock3,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,12 @@ const STATUS_CONFIG: Record<
     badgeClass:
       "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 border-sky-200 dark:border-sky-800",
   },
+  expired: {
+    label: "Expired",
+    icon: <XCircle className="h-3 w-3" />,
+    badgeClass:
+      "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800",
+  },
 };
 
 const PASSENGER_ICONS: Record<PassengerType, React.ReactNode> = {
@@ -149,7 +156,8 @@ export function BookingCard({
       className={cn(
         "group relative rounded-2xl border bg-card overflow-hidden",
         "shadow-sm hover:shadow-md transition-shadow duration-300",
-        booking.status === "cancelled" && "opacity-70 hover:opacity-100",
+        (booking.status === "cancelled" || booking.status === "expired") &&
+          "opacity-70! hover:opacity-100!",
       )}
     >
       <div className="flex">
@@ -233,6 +241,11 @@ export function BookingCard({
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <BadgeCheck className="h-3.5 w-3.5 text-violet-500" />
                   Booking confirmed
+                </span>
+              ) : booking.status === "expired" ? (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 text-gray-500" />
+                  Booking expired
                 </span>
               ) : (
                 booking.status === "cancelled" && (

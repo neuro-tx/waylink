@@ -16,6 +16,7 @@ type ActionResult = { success: true } | { success: false; error: string };
 export async function getNotifications(
   limit = 20,
   offset = 0,
+  id?: string,
 ): Promise<GetNotificationsResult> {
   try {
     const guard = await protectAction("user");
@@ -36,7 +37,11 @@ export async function getNotifications(
         db
           .select()
           .from(notifications)
-          .where(eq(notifications.userId, session.user.id))
+          .where(
+            and(
+              eq(notifications.recipientId, id ?? session.user.id),
+            ),
+          )
           .orderBy(desc(notifications.createdAt))
           .limit(limit)
           .offset(offset),
@@ -46,7 +51,7 @@ export async function getNotifications(
           .from(notifications)
           .where(
             and(
-              eq(notifications.userId, session.user.id),
+              eq(notifications.recipientId, id ?? session.user.id),
               eq(notifications.isRead, false),
             ),
           ),
@@ -54,7 +59,11 @@ export async function getNotifications(
         db
           .select({ value: count() })
           .from(notifications)
-          .where(eq(notifications.userId, session.user.id)),
+          .where(
+            and(
+              eq(notifications.recipientId, id ?? session.user.id),
+            ),
+          ),
       ]);
 
     return {
@@ -70,6 +79,7 @@ export async function getNotifications(
 
 export async function markAsRead(
   notificationId: string,
+  id?: string,
 ): Promise<ActionResult> {
   try {
     const guard = await protectAction("user");
@@ -90,7 +100,7 @@ export async function markAsRead(
       .where(
         and(
           eq(notifications.id, notificationId),
-          eq(notifications.userId, session.user.id),
+          eq(notifications.recipientId, id ?? session.user.id),
         ),
       );
 
@@ -100,7 +110,7 @@ export async function markAsRead(
   }
 }
 
-export async function markAllAsRead(): Promise<ActionResult> {
+export async function markAllAsRead(id?: string): Promise<ActionResult> {
   try {
     const guard = await protectAction("user");
 
@@ -120,7 +130,7 @@ export async function markAllAsRead(): Promise<ActionResult> {
       .set({ isRead: true, readAt: new Date() })
       .where(
         and(
-          eq(notifications.userId, session.user.id),
+          eq(notifications.recipientId, id ?? session.user.id),
           eq(notifications.isRead, false),
         ),
       );
@@ -133,6 +143,7 @@ export async function markAllAsRead(): Promise<ActionResult> {
 
 export async function deleteNotification(
   notificationId: string,
+  id?: string,
 ): Promise<ActionResult> {
   try {
     const guard = await protectAction("user");
@@ -153,7 +164,7 @@ export async function deleteNotification(
       .where(
         and(
           eq(notifications.id, notificationId),
-          eq(notifications.userId, session.user.id),
+          eq(notifications.recipientId, id ?? session.user.id),
         ),
       );
 
@@ -163,7 +174,9 @@ export async function deleteNotification(
   }
 }
 
-export async function clearReadNotifications(): Promise<ActionResult> {
+export async function clearReadNotifications(
+  id?: string,
+): Promise<ActionResult> {
   try {
     const guard = await protectAction("user");
 
@@ -182,7 +195,7 @@ export async function clearReadNotifications(): Promise<ActionResult> {
       .delete(notifications)
       .where(
         and(
-          eq(notifications.userId, session.user.id),
+          eq(notifications.recipientId, id ?? session.user.id),
           eq(notifications.isRead, true),
         ),
       );
@@ -194,14 +207,16 @@ export async function clearReadNotifications(): Promise<ActionResult> {
 }
 
 export async function sendNotification(payload: {
-  userId: string;
+  recipientId: string;
   type: NotificationType;
   title: string;
   message: string;
+  recipient?: "user" | "provider" | "admin";
 }): Promise<ActionResult> {
   try {
     await db.insert(notifications).values({
-      userId: payload.userId,
+      recipientId: payload.recipientId,
+      recipientType: payload.recipient || "user",
       type: payload.type,
       title: payload.title,
       message: payload.message,
@@ -216,9 +231,11 @@ export async function sendNotification(payload: {
 export async function broadcastAnnouncement({
   title,
   message,
+  scope,
 }: {
   title: string;
   message: string;
+  scope?: "user" | "provider" | "admin";
 }) {
   const session = await getAuthSession();
   if (!session || session.user.role !== "admin") {
@@ -230,10 +247,11 @@ export async function broadcastAnnouncement({
 
   await db.insert(notifications).values(
     allUsers.map((u) => ({
-      userId: u.id,
+      recipientId: u.id,
       type: "system_announcement" as const,
       title,
       message,
+      recipientType: scope ?? "user",
     })),
   );
 

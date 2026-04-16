@@ -227,7 +227,7 @@ function ProductContent({
           </TabsList>
 
           <TabsContent value="variants" className="mt-4">
-            <VariantList variants={variants} />
+            <VariantList variants={variants} providerId={product?.provider.id} />
           </TabsContent>
           <TabsContent value="reviews" className="mt-4">
             <ReviewsList reviews={reviews} />

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -71,6 +70,12 @@ const STATUS_CONFIG: Record<
     className:
       "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
     dotClassName: "bg-zinc-400",
+  },
+  rejected: {
+    label: "Rejected",
+    className:
+      "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900",
+    dotClassName: "bg-red-500",
   },
 };
 
@@ -489,86 +494,78 @@ function ApprovedState({
   );
 }
 
-// function RejectedState({
-//   provider,
-//   onResubmit,
-// }: {
-//   provider: Provider;
-//   onResubmit: () => void;
-// }) {
-//   return (
-//     <div className="flex flex-col gap-3">
-//       <Alert className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-//         <XCircle className="size-4 text-red-600 dark:text-red-400" />
-//         <AlertDescription className="text-red-800 dark:text-red-300 text-sm">
-//           <span className="font-semibold">Your request was not approved.</span>{" "}
-//           We couldn't verify the information provided. Review your details and
-//           submit a new request.
-//         </AlertDescription>
-//       </Alert>
-//       <Card>
-//         <CardHeader className="pb-0">
-//           <div className="flex items-start justify-between gap-3">
-//             <div className="flex items-center gap-3">
-//               <ProviderAvatar provider={provider} />
-//               <div>
-//                 <p className="text-[15px] font-semibold leading-tight">
-//                   {provider.name}
-//                 </p>
-//                 <p className="text-xs text-muted-foreground mt-0.5">
-//                   {provider.slug} · {SERVICE_TYPE_LABELS[provider.serviceType]}
-//                 </p>
-//               </div>
-//             </div>
-//             <StatusBadge status="rejected" />
-//           </div>
-//           <Separator className="mt-3" />
-//         </CardHeader>
-//         <CardContent className="pt-4">
-//           <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-//             <InfoRow
-//               icon={Building2}
-//               label="Business type"
-//               value={BUSINESS_TYPE_LABELS[provider.businessType]}
-//             />
-//             <InfoRow
-//               icon={Briefcase}
-//               label="Service type"
-//               value={SERVICE_TYPE_LABELS[provider.serviceType]}
-//             />
-//             <InfoRow
-//               icon={CalendarDays}
-//               label="Submitted"
-//               value={fmt(provider.createdAt)}
-//             />
-//             <InfoRow
-//               icon={CalendarDays}
-//               label="Reviewed"
-//               value={fmt(provider.updatedAt)}
-//             />
-//           </div>
+function RejectedState({
+  provider,
+}: {
+  provider: Provider;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Alert className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+        <XCircle className="size-4 text-red-600 dark:text-red-400" />
+        <AlertDescription className="text-red-800 dark:text-red-300 text-sm">
+          <span className="font-semibold">Your request was not approved.</span>{" "}
+          We couldn't verify the information provided. Review your details and
+          submit a new request.
+        </AlertDescription>
+      </Alert>
+      <Card>
+        <CardHeader className="pb-0">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <ProviderAvatar provider={provider} />
+              <div>
+                <p className="text-[15px] font-semibold leading-tight">
+                  {provider.name}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {provider.slug} · {SERVICE_TYPE_LABELS[provider.serviceType]}
+                </p>
+              </div>
+            </div>
+            <StatusBadge status="rejected" />
+          </div>
+          <Separator className="mt-3" />
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <InfoRow
+              icon={Building2}
+              label="Business type"
+              value={BUSINESS_TYPE_LABELS[provider.businessType]}
+            />
+            <InfoRow
+              icon={Briefcase}
+              label="Service type"
+              value={SERVICE_TYPE_LABELS[provider.serviceType]}
+            />
+            <InfoRow
+              icon={CalendarDays}
+              label="Submitted"
+              value={fmtDate(provider.createdAt)}
+            />
+            <InfoRow
+              icon={CalendarDays}
+              label="Reviewed"
+              value={fmtDate(provider.updatedAt)}
+            />
+          </div>
 
-//           <Separator className="my-4" />
-//           <p className="text-[11px] uppercase tracking-wide font-medium text-muted-foreground mb-2">
-//             Admin note
-//           </p>
-//           <div className="bg-muted rounded-md border border-border px-3 py-2.5 text-sm text-muted-foreground leading-relaxed">
-//             We were unable to verify your business information based on the
-//             documents provided. Please ensure that your business registration
-//             and tax information are accurate and up to date before resubmitting
-//             your application.
-//           </div>
-//         </CardContent>
-//         <CardFooter>
-//           <Button onClick={onResubmit} className="w-full gap-2">
-//             <RefreshCcw className="size-3.5" />
-//             Resubmit request
-//           </Button>
-//         </CardFooter>
-//       </Card>
-//     </div>
-//   );
-// }
+          <Separator className="my-4" />
+          <p className="text-[11px] uppercase tracking-wide font-medium text-muted-foreground mb-2">
+            Admin note
+          </p>
+          <div className="bg-muted rounded-md border border-border px-3 py-2.5 text-sm text-muted-foreground leading-relaxed">
+            We were unable to verify your business information based on the
+            documents provided. Please ensure that your business registration
+            and tax information are accurate and up to date before resubmitting
+            your application.
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function SuspendedState({ provider }: { provider: Provider }) {
   return (
@@ -680,6 +677,9 @@ export function ProviderRequest() {
 
     case "inactive":
       return <InactiveState provider={provider} />;
+
+    case "rejected":
+      return <RejectedState provider={provider}/>
 
     default:
       return null;

@@ -21,6 +21,7 @@ export type ActionResult<T = void> =
 export interface CreateBookingInput {
   variantId: string;
   productId: string;
+  providerId:string;
   items: {
     passengerType: PassengerType;
     quantity: number;
@@ -125,6 +126,7 @@ export async function createBookingAction(
         .values({
           userId,
           productId: input.productId,
+          providerId: input.providerId,
           variantId: input.variantId,
           orderNumber,
           participantsCount: totalParticipants,
@@ -329,6 +331,7 @@ export async function rebookAction(
           userId: session.user.id,
           productId: original.productId,
           variantId: original.variantId,
+          providerId: original.providerId ,
           orderNumber,
           participantsCount: original.participantsCount,
           totalAmount: original.totalAmount,

@@ -77,7 +77,7 @@ export const processBookingConfirmed = inngest.createFunction(
 
     await step.run("send-confirm-notification", async () => {
       await sendNotification({
-        userId,
+        recipientId: userId,
         type: "booking_confirmed",
         title: "Booking Confirmed 🎉",
         message: `Your booking "#${orderNumber}" has been confirmed successfully.`,
@@ -180,7 +180,7 @@ export const expirePendingBooking = inngest.createFunction(
 
       await step.run("send-cancel-notification", async () => {
         await sendNotification({
-          userId,
+          recipientId: userId,
           type: "booking_cancelled",
           title: "⏳ Booking Cancelled",
           message:
@@ -272,7 +272,7 @@ export const processBookingCompleted = inngest.createFunction(
 
     await step.run("send-completion-notification", async () => {
       await sendNotification({
-        userId,
+        recipientId: userId,
         type: "booking_completed",
         title: "Booking Completed ✅",
         message: `We hope you enjoyed your experience! Booking "#${orderNumber}" is now complete. Leave a review to share your thoughts.`,

@@ -206,10 +206,12 @@ export type NotificationType =
   | "review_received"
   | "provider_approved"
   | "provider_rejected"
+  | "provider_invite"
   | "provider_suspended"
   | "system_announcement"
   | "system_warning"
-  | "promotion";
+  | "promotion"
+  | "general";
 
 export interface User {
   id: string;
@@ -225,7 +227,12 @@ export interface User {
   updatedAt: Date;
 }
 
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "expired";
+export type BookingStatus =
+  | "pending"
+  | "confirmed"
+  | "cancelled"
+  | "completed"
+  | "expired";
 export type PassengerType = "adult" | "child" | "infant";
 export type ProductType = "experience" | "transport";
 export type ProductStatus = "draft" | "active" | "inactive";
@@ -259,7 +266,7 @@ export interface Booking {
   id: string;
   userId: string;
   productId: string;
-  providerId:string;
+  providerId: string;
   variantId: string;
   orderNumber: string;
   participantsCount: number;

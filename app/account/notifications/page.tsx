@@ -17,6 +17,8 @@ import {
   BellOff,
   ChevronLeft,
   ChevronRight,
+  Info,
+  UserPlus,
 } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Notification } from "@/db/schemas";
@@ -103,6 +105,20 @@ const TYPE_CONFIG: Record<
     color: "text-violet-600 dark:text-violet-400",
     bg: "bg-violet-50 dark:bg-violet-950/60",
     border: "border-violet-200 dark:border-violet-800/60",
+  },
+  general: {
+    icon: Info,
+    label: "General",
+    color: "text-gray-600 dark:text-gray-400",
+    bg: "bg-gray-50 dark:bg-gray-950/60",
+    border: "border-gray-200 dark:border-gray-800/60",
+  },
+  provider_invite: {
+    icon: UserPlus,
+    label: "Provider Invite",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-950/60",
+    border: "border-indigo-200 dark:border-indigo-800/60",
   },
 };
 

@@ -42,6 +42,7 @@ type BookingResult = { bookingId: string; orderNumber: string };
 interface VariantListProps {
   variants: ProductVariant[];
   onConfirmBooking?: (variant: ProductVariant, pax: Pax) => void;
+  providerId:string
 }
 
 interface VariantCardProps {
@@ -60,6 +61,7 @@ interface BookingConfirmDialogProps {
   variant: ProductVariant;
   pax: Pax;
   onConfirm: (input: CreateBookingInput) => void;
+  providerId:string
 }
 
 interface BookingSuccessDialogProps {
@@ -163,6 +165,7 @@ function BookingConfirmDialog({
   variant,
   pax,
   onConfirm,
+  providerId
 }: BookingConfirmDialogProps) {
   const { pricing, transportSchedule: schedule, name } = variant;
   const adultTotal = pax.adult * parseFloat(pricing?.adultPrice ?? "0");
@@ -216,7 +219,7 @@ function BookingConfirmDialog({
       },
     ].filter(Boolean) as CreateBookingInput["items"];
 
-    onConfirm({ variantId: variant.id, productId: variant.productId, items });
+    onConfirm({ variantId: variant.id, productId: variant.productId, items ,providerId });
   };
 
   return (
@@ -712,7 +715,7 @@ function VariantCard({
   );
 }
 
-export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
+export function VariantList({ variants, onConfirmBooking ,providerId }: VariantListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paxMap, setPaxMap] = useState<Record<string, Pax>>({});
   const [confirmVariant, setConfirmVariant] = useState<ProductVariant | null>(
@@ -769,7 +772,7 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
   function handleCreate({ productId, variantId, items }: CreateBookingInput) {
     startTransition(async () => {
       await create(
-        { productId, variantId, items },
+        { productId, variantId, items, providerId },
         {
           onSuccess(data) {
             handleConfirmSettled();
@@ -828,6 +831,7 @@ export function VariantList({ variants, onConfirmBooking }: VariantListProps) {
           variant={confirmVariant}
           pax={confirmPax}
           onConfirm={handleCreate}
+          providerId={providerId}
         />
       )}
 
