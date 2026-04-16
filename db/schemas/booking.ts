@@ -11,8 +11,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./public";
 import { products, productVariants } from "./product";
-import { timestamps } from "./enums";
+import { bookingStatusEnums, timestamps } from "./enums";
 import { sql } from "drizzle-orm";
+import { providers } from "./provider";
 
 export const bookings = pgTable(
   "bookings",
@@ -21,6 +22,10 @@ export const bookings = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+
+    providerId: uuid("provider_id")
+      .notNull()
+      .references(() => providers.id, { onDelete: "cascade" }),
 
     productId: uuid("product_id")
       .notNull()
@@ -34,10 +39,7 @@ export const bookings = pgTable(
     totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
     currency: text("currency").notNull(),
 
-    status: text("status")
-      .$type<"pending" | "confirmed" | "cancelled" | "completed">()
-      .notNull()
-      .default("pending"),
+    status: bookingStatusEnums("status").notNull().default("pending"),
 
     canceledAt: timestamp("canceled_at"),
     completedAt: timestamp("completed_at"),
@@ -51,6 +53,8 @@ export const bookings = pgTable(
     index("booking_product_status_idx").on(t.productId, t.status),
     index("booking_user_status_idx").on(t.userId, t.status),
     uniqueIndex("booking_order_number_idx").on(t.orderNumber),
+    index("booking_provider_id_idx").on(t.providerId),
+    index("booking_provider_stats_idx").on(t.providerId, t.status),
   ],
 );
 

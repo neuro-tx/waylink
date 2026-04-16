@@ -9,8 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./public";
 import { products } from "./product";
-import { notificationTypeEnum, timestamps } from "./enums";
-import { bookings } from "./booking";
+import { notificationTypeEnum, recipientTypeEnum, timestamps } from "./enums";
 
 export const wishlists = pgTable(
   "wishlists",
@@ -57,9 +56,8 @@ export const notifications = pgTable(
   "notifications",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    recipientType: recipientTypeEnum("recipient_type").notNull(),
+    recipientId: text("recipient_id").notNull(),
     type: notificationTypeEnum("type").notNull(),
     title: text("title").notNull(),
     message: text("message").notNull(),
@@ -68,7 +66,7 @@ export const notifications = pgTable(
     ...timestamps,
   },
   (t) => [
-    index("notification_user_idx").on(t.userId),
+    index("notification_recipient_idx").on(t.recipientType, t.recipientId),
     index("notification_read_idx").on(t.isRead),
     index("notification_created_idx").on(t.createdAt),
   ],

@@ -7,11 +7,11 @@ export const providerStatusEnum = pgEnum("provider_status", [
   "approved",
   "suspended",
   "inactive",
+  "rejected"
 ]);
 
 export const providerTypeEnum = pgEnum("provider_type", [
   "transport",
-  "accommodation",
   "experience",
 ]);
 
@@ -114,9 +114,11 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "provider_approved",
   "provider_rejected",
   "provider_suspended",
+  "provider_invite",
   "system_announcement",
   "system_warning",
   "promotion",
+  "general"
 ]);
 
 export const tsvector = customType<{ data: string }>({
@@ -132,3 +134,17 @@ export const timestamps = {
     .notNull()
     .$onUpdate(() => new Date()),
 };
+
+export const bookingStatusEnums = pgEnum("booking_status", [
+  "pending" , "confirmed" , "cancelled" , "completed","expired"
+]);
+
+export const recipientTypeEnum = pgEnum("recipient_type", [
+  "user",
+  "provider",
+  "admin",
+]);
+
+export const businessTypeEnums = pgEnum("businessType", [
+  "individual" , "company" , "agency"
+]);

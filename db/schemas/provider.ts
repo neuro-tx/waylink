@@ -8,7 +8,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { memberRoleEnum, providerStatusEnum, providerTypeEnum, timestamps } from "./enums";
+import { businessTypeEnums, memberRoleEnum, providerStatusEnum, providerTypeEnum, timestamps } from "./enums";
 import { user } from "./public";
 import { sql } from "drizzle-orm";
 
@@ -28,9 +28,7 @@ export const providers = pgTable(
     cover: text("cover"),
 
     serviceType: providerTypeEnum("service_type").notNull(),
-    businessType: text("business_type")
-      .$type<"individual" | "company" | "agency">()
-      .notNull(),
+    businessType: businessTypeEnums("business_type").notNull(),
 
     address: text("address"),
     status: providerStatusEnum("status").default("pending"),
@@ -75,19 +73,19 @@ export const providerInvites = pgTable(
     providerId: uuid("provider_id")
       .notNull()
       .references(() => providers.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
+    message: text("message"),
     role: memberRoleEnum("role").default("staff"),
     token: text("token").notNull().unique(),
     status: text("status")
       .$type<"pending" | "accepted" | "expired" | "cancelled">()
       .notNull()
       .default("pending"),
-    invitedBy: text("invited_by")
+    senderId: text("sender_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    acceptedBy: text("accepted_by").references(() => user.id, {
-      onDelete: "set null",
-    }),
+    receiverId: text("receiver_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     acceptedAt: timestamp("accepted_at"),
     expiresAt: timestamp("expires_at")
       .notNull()
@@ -97,12 +95,12 @@ export const providerInvites = pgTable(
   },
   (t) => [
     index("provider_invite_provider_idx").on(t.providerId),
-    index("provider_invite_email_idx").on(t.email),
     index("provider_invite_token_idx").on(t.token),
     index("provider_invite_status_idx").on(t.status),
+    index("provider_invite_sender_idx").on(t.senderId),
+    index("provider_invite_receiver_idx").on(t.receiverId),
     uniqueIndex("provider_invite_unique_pending_idx").on(
       t.providerId,
-      t.email,
       t.status,
     ),
   ],

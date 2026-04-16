@@ -15,7 +15,7 @@ import { location } from "./shared";
 import { plans, subscriptions } from "./plan";
 import { experiences, itineraries } from "./experience";
 import { transports, transportSchedules } from "./transport";
-import { notifications, wishlistItems, wishlists } from "./engagement";
+import { wishlistItems, wishlists } from "./engagement";
 
 export const userRelations = relations(user, ({ one, many }) => ({
   sessions: many(session),
@@ -23,10 +23,10 @@ export const userRelations = relations(user, ({ one, many }) => ({
   bookings: many(bookings),
   reviews: many(productReviews),
   providerMemberships: many(providerMembers),
-  providerInvitesAsInviter: many(providerInvites, {
+  sentInvites: many(providerInvites, {
     relationName: "inviter",
   }),
-  providerInvitesAsAccepter: many(providerInvites, {
+  receivedInvites: many(providerInvites, {
     relationName: "accepter",
   }),
   ownedProviders: one(providers, {
@@ -34,7 +34,6 @@ export const userRelations = relations(user, ({ one, many }) => ({
     references: [providers.ownerId],
   }),
   wishlists: many(wishlists),
-  notifications: many(notifications),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -63,6 +62,7 @@ export const providerRelations = relations(providers, ({ one, many }) => ({
   members: many(providerMembers),
   invites: many(providerInvites),
   subscriptions: many(subscriptions),
+  bookings: many(bookings)
 }));
 
 export const providerMemberRelations = relations(
@@ -79,25 +79,22 @@ export const providerMemberRelations = relations(
   }),
 );
 
-export const providerInviteRelations = relations(
-  providerInvites,
-  ({ one }) => ({
-    provider: one(providers, {
-      fields: [providerInvites.providerId],
-      references: [providers.id],
-    }),
-    inviter: one(user, {
-      fields: [providerInvites.invitedBy],
-      references: [user.id],
-      relationName: "inviter",
-    }),
-    accepter: one(user, {
-      fields: [providerInvites.acceptedBy],
-      references: [user.id],
-      relationName: "accepter",
-    }),
+export const providerInviteRelations = relations(providerInvites, ({ one }) => ({
+  provider: one(providers, {
+    fields: [providerInvites.providerId],
+    references: [providers.id],
   }),
-);
+  inviter: one(user, {
+    fields: [providerInvites.senderId],
+    references: [user.id],
+    relationName: "inviter",
+  }),
+  receiver: one(user, {
+    fields: [providerInvites.receiverId],
+    references: [user.id],
+    relationName: "accepter",
+  }),
+}));
 
 // ============================================
 // PLAN & SUBSCRIPTION RELATIONS
@@ -250,6 +247,10 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
     references: [productVariants.id],
   }),
   items: many(bookingItems),
+  provider: one(providers ,{
+    fields: [bookings.productId] ,
+    references: [providers.id]
+  })
 }));
 
 export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
@@ -278,13 +279,6 @@ export const wishlistItemRelations = relations(wishlistItems, ({ one }) => ({
   item: one(products, {
     fields: [wishlistItems.itemId],
     references: [products.id],
-  }),
-}));
-
-export const notificationRelations = relations(notifications, ({ one }) => ({
-  user: one(user, {
-    fields: [notifications.userId],
-    references: [user.id],
   }),
 }));
 

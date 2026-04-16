@@ -43,7 +43,12 @@ export interface Location {
 
 export type BusinessType = "individual" | "company" | "agency";
 export type ServiceType = "transport" | "experience";
-export type ProviderStatus = "pending" | "approved" | "inactive" | "suspended";
+export type ProviderStatus =
+  | "pending"
+  | "approved"
+  | "inactive"
+  | "suspended"
+  | "rejected";
 
 export type Provider = {
   id: string;
@@ -220,7 +225,7 @@ export interface User {
   updatedAt: Date;
 }
 
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed" | "expired";
 export type PassengerType = "adult" | "child" | "infant";
 export type ProductType = "experience" | "transport";
 export type ProductStatus = "draft" | "active" | "inactive";
@@ -254,6 +259,7 @@ export interface Booking {
   id: string;
   userId: string;
   productId: string;
+  providerId:string;
   variantId: string;
   orderNumber: string;
   participantsCount: number;
