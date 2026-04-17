@@ -416,3 +416,55 @@ export interface ProductDetails extends Product {
     averageRating: string | null;
   };
 }
+
+export type PlanTier = "free" | "pro" | "business" | "enterprise";
+export type PlanBillingCycle = "monthly" | "yearly";
+export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trialing";
+
+export interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  tier: PlanTier;
+  price: string;
+  priorityBoost: string;
+  featuredInSearch: boolean;
+  badgeLabel: string | null;
+  billingCycle: PlanBillingCycle;
+  commissionRate: string;
+  maxListings: number | null;
+  description: string | null;
+  isActive: boolean;
+  highlights: string[] | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Subscription {
+  id: string;
+  providerId: string;
+  planId: string;
+  status: SubscriptionStatus;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  trialEndsAt: Date | null;
+  listingsCount: number;
+  cancelledAt: Date | null;
+  endsAt: Date | null;
+  autoRenew: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  plan?: Plan;
+}
+
+export interface SubscribePayload {
+  planId: string;
+  billingCycle: PlanBillingCycle;
+  paymentMethodId?: string;
+}
+
+export interface ActionResult<T = void> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { Car, Compass, Route, Ticket, LucideIcon } from "lucide-react";
+import { Provider, User } from "@/lib/all-types";
 
 export type ProviderType = "transport" | "experience";
 
@@ -55,6 +56,9 @@ interface ProviderContextType {
   type: ProviderType;
   setType: (type: ProviderType) => void;
   config: ProviderConfig;
+  provider: Provider;
+  user: User;
+  role: "owner" | "manager" | "staff" | null;
 }
 
 const ProviderContext = createContext<ProviderContextType | undefined>(
@@ -63,14 +67,22 @@ const ProviderContext = createContext<ProviderContextType | undefined>(
 
 export function ProviderTypeProvider({
   children,
+  initialType,
+  provider,
+  user,
+  role,
 }: {
   children: React.ReactNode;
+  initialType: ProviderType;
+  provider: Provider;
+  user: User;
+  role: "owner" | "manager" | "staff" | null;
 }) {
-  const [type, setType] = useState<ProviderType>("experience");
+  const [type, setType] = useState<ProviderType>(initialType);
 
   return (
     <ProviderContext.Provider
-      value={{ type, setType, config: PROVIDER_CONFIG[type] }}
+      value={{ type, setType, config: PROVIDER_CONFIG[type], provider, user ,role }}
     >
       {children}
     </ProviderContext.Provider>
@@ -79,9 +91,10 @@ export function ProviderTypeProvider({
 
 export function useProviderContext() {
   const context = useContext(ProviderContext);
-  if (!context)
+  if (!context) {
     throw new Error(
-      "useProviderContext must be used within a ProviderTypeProvider",
+      "useProviderContext must be used within ProviderTypeProvider",
     );
+  }
   return context;
 }
