@@ -24,9 +24,9 @@ export const plans = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
-    slug: text("slug").notNull().unique(),
     tier: planTierEnum("tier").notNull(),
-    price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+    price: integer("price").notNull(),
+    isFree: boolean("is_free").notNull().default(false),
     priorityBoost: numeric("priority_boost", {
       precision: 3,
       scale: 2,
@@ -48,7 +48,22 @@ export const plans = pgTable(
   },
   (t) => [
     index("plan_tier_idx").on(t.tier),
-    uniqueIndex("plan_tier_cycle_idx").on(t.tier, t.billingCycle),
+    uniqueIndex("plan_unique_config_idx").on(
+      t.tier,
+      t.billingCycle,
+      t.maxListings,
+    ),
+    index("active_free_plan_idx").on(t.isFree, t.isActive),
+
+    // enforce consistency
+    sql`CHECK (
+      (is_free = true AND price = 0)
+      OR (is_free = false AND price > 0)
+    )`,
+    sql`CHECK (
+      (is_free = true AND price = 0)
+      OR (is_free = false AND billing_cycle IS NOT NULL)
+    )`,
   ],
 );
 
@@ -62,19 +77,14 @@ export const subscriptions = pgTable(
     planId: uuid("plan_id")
       .notNull()
       .references(() => plans.id, { onDelete: "restrict" }),
-    status: subscriptionStatusEnum("status").notNull().default("trialing"),
+    status: subscriptionStatusEnum("status").notNull().default("active"),
 
-    currentPeriodStart: timestamp("current_period_start")
-      .notNull()
-      .defaultNow(),
-    currentPeriodEnd: timestamp("current_period_end").notNull(),
-    // Auto-calculate: 14 days from now
-    trialEndsAt: timestamp("trial_ends_at").default(
-      sql`NOW() + INTERVAL '14 days'`,
-    ),
+    startDate: timestamp("start_date").notNull().defaultNow(),
+    endDate: timestamp("end_date"),
+
+    trialUsed: boolean("trial_used").notNull().default(false),
     listingsCount: integer("listings_count").notNull().default(0),
     cancelledAt: timestamp("cancelled_at"),
-    endsAt: timestamp("ends_at"),
     autoRenew: boolean("auto_renew").notNull().default(true),
     ...timestamps,
   },
@@ -82,7 +92,9 @@ export const subscriptions = pgTable(
     index("subscription_provider_idx").on(t.providerId),
     index("subscription_plan_idx").on(t.planId),
     index("subscription_status_idx").on(t.status),
-    index("subscription_trial_idx").on(t.trialEndsAt),
-    index("subscription_period_idx").on(t.currentPeriodEnd),
+    index("subscription_end_date_idx").on(t.endDate),
+    uniqueIndex("one_active_subscription_per_provider")
+      .on(t.providerId)
+      .where(sql`status IN ('active', 'trialing')`),
   ],
 );

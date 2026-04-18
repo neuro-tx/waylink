@@ -424,9 +424,9 @@ export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trialing"
 export interface Plan {
   id: string;
   name: string;
-  slug: string;
   tier: PlanTier;
   price: string;
+  isFree:boolean;
   priorityBoost: string;
   featuredInSearch: boolean;
   badgeLabel: string | null;
@@ -445,12 +445,11 @@ export interface Subscription {
   providerId: string;
   planId: string;
   status: SubscriptionStatus;
-  currentPeriodStart: Date;
-  currentPeriodEnd: Date;
-  trialEndsAt: Date | null;
+  startDate: Date;
+  endDate: Date;
+  trialUsed: boolean;
   listingsCount: number;
   cancelledAt: Date | null;
-  endsAt: Date | null;
   autoRenew: boolean;
   createdAt: Date;
   updatedAt: Date;

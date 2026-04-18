@@ -1,6 +1,8 @@
 import {
   boolean,
   index,
+  integer,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -8,7 +10,13 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { businessTypeEnums, memberRoleEnum, providerStatusEnum, providerTypeEnum, timestamps } from "./enums";
+import {
+  businessTypeEnums,
+  memberRoleEnum,
+  providerStatusEnum,
+  providerTypeEnum,
+  timestamps,
+} from "./enums";
 import { user } from "./public";
 import { sql } from "drizzle-orm";
 
@@ -103,5 +111,27 @@ export const providerInvites = pgTable(
       t.providerId,
       t.status,
     ),
+  ],
+);
+
+export const providerStats = pgTable(
+  "provider_stats",
+  {
+    providerId: uuid("provider_id")
+      .primaryKey()
+      .references(() => providers.id, { onDelete: "cascade" }),
+    totalProducts: integer("total_products").notNull().default(0),
+    totalReviews: integer("total_reviews").notNull().default(0),
+    avgRating: numeric("avg_rating", { precision: 3, scale: 2 }).default("0"),
+    totalRevenue: integer("total_revenue").notNull().default(0),
+    totalBookings: integer("total_bookings").notNull().default(0),
+    maxListings: integer("max_listings"),
+    remainingListings: integer("remaining_listings"),
+    canCreateListing: boolean("can_create_listing").notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    index("provider_stats_products_idx").on(t.totalProducts),
+    index("provider_stats_rating_idx").on(t.avgRating),
   ],
 );

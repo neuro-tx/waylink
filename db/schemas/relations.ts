@@ -10,7 +10,12 @@ import {
   productVariants,
 } from "./product";
 import { bookingItems, bookings } from "./booking";
-import { providerInvites, providerMembers, providers } from "./provider";
+import {
+  providerInvites,
+  providerMembers,
+  providers,
+  providerStats,
+} from "./provider";
 import { location } from "./shared";
 import { plans, subscriptions } from "./plan";
 import { experiences, itineraries } from "./experience";
@@ -62,7 +67,11 @@ export const providerRelations = relations(providers, ({ one, many }) => ({
   members: many(providerMembers),
   invites: many(providerInvites),
   subscriptions: many(subscriptions),
-  bookings: many(bookings)
+  bookings: many(bookings),
+  stats: one(providerStats, {
+    fields: [providers.id],
+    references: [providerStats.providerId],
+  }),
 }));
 
 export const providerMemberRelations = relations(
@@ -79,20 +88,30 @@ export const providerMemberRelations = relations(
   }),
 );
 
-export const providerInviteRelations = relations(providerInvites, ({ one }) => ({
+export const providerInviteRelations = relations(
+  providerInvites,
+  ({ one }) => ({
+    provider: one(providers, {
+      fields: [providerInvites.providerId],
+      references: [providers.id],
+    }),
+    inviter: one(user, {
+      fields: [providerInvites.senderId],
+      references: [user.id],
+      relationName: "inviter",
+    }),
+    receiver: one(user, {
+      fields: [providerInvites.receiverId],
+      references: [user.id],
+      relationName: "accepter",
+    }),
+  }),
+);
+
+export const providerStatsRelations = relations(providerStats, ({ one }) => ({
   provider: one(providers, {
-    fields: [providerInvites.providerId],
+    fields: [providerStats.providerId],
     references: [providers.id],
-  }),
-  inviter: one(user, {
-    fields: [providerInvites.senderId],
-    references: [user.id],
-    relationName: "inviter",
-  }),
-  receiver: one(user, {
-    fields: [providerInvites.receiverId],
-    references: [user.id],
-    relationName: "accepter",
   }),
 }));
 
@@ -247,10 +266,10 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
     references: [productVariants.id],
   }),
   items: many(bookingItems),
-  provider: one(providers ,{
-    fields: [bookings.productId] ,
-    references: [providers.id]
-  })
+  provider: one(providers, {
+    fields: [bookings.productId],
+    references: [providers.id],
+  }),
 }));
 
 export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
