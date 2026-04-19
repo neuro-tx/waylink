@@ -21,10 +21,12 @@ import {
   Loader2,
   ShieldCheck,
   Sparkles,
+  LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Plan, PlanBillingCycle } from "@/lib/all-types";
 import { subscribeToPlan } from "@/actions/plans.action";
+import Link from "next/link";
 
 interface SubscribeDialogProps {
   plan: Plan | null;
@@ -58,13 +60,8 @@ function formatPrice(price: string, cycle: PlanBillingCycle) {
   return `$${n.toFixed(0)}/${cycle === "monthly" ? "mo" : "yr"}`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Step indicators
-// ─────────────────────────────────────────────────────────────────────────────
-function StepBar({ step, isFree }: { step: Step; isFree: boolean }) {
-  const steps: Step[] = isFree
-    ? ["review", "success"]
-    : ["review", "payment", "success"];
+function StepBar({ step }: { step: Step }) {
+  const steps: Step[] = ["review", "payment", "success"];
   const current = steps.indexOf(step);
 
   return (
@@ -83,9 +80,6 @@ function StepBar({ step, isFree }: { step: Step; isFree: boolean }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Plan summary pill
-// ─────────────────────────────────────────────────────────────────────────────
 function PlanPill({
   plan,
   billingCycle,
@@ -104,47 +98,41 @@ function PlanPill({
         </Badge>
       </div>
       <span className="text-sm text-muted-foreground">
-        {formatPrice(plan.price, billingCycle)}
+        {formatPrice(String(plan.price), billingCycle)}
       </span>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Review step
-// ─────────────────────────────────────────────────────────────────────────────
 function ReviewStep({
   plan,
   billingCycle,
-  isFree,
   onNext,
   onClose,
 }: {
   plan: Plan;
   billingCycle: PlanBillingCycle;
-  isFree: boolean;
   onNext: () => void;
   onClose: () => void;
 }) {
   return (
-    <>
-      <DialogHeader className="mb-4">
+    <div className="space-y-4">
+      <DialogHeader>
         <DialogTitle className="text-lg">Review your plan</DialogTitle>
         <DialogDescription>
           Confirm what's included before{" "}
-          {isFree ? "activating" : "starting your free trial"}.
+          {plan.isFree ? "activating" : "starting your free trial"}.
         </DialogDescription>
       </DialogHeader>
 
       <PlanPill plan={plan} billingCycle={billingCycle} />
 
-      {/* Highlights */}
       {plan.highlights && plan.highlights.length > 0 && (
-        <ul className="space-y-2.5 mb-5">
+        <ul className="space-y-2.5">
           {plan.highlights.map((h, i) => (
             <li
               key={i}
-              className="flex items-center gap-2.5 text-sm text-muted-foreground"
+              className="flex items-center gap-2 text-sm text-foreground"
             >
               <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
               {h}
@@ -153,10 +141,9 @@ function ReviewStep({
         </ul>
       )}
 
-      <Separator className="mb-4" />
+      <Separator className="my-4" />
 
-      {/* Key stats */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Commission", value: `${plan.commissionRate}%` },
           { label: "Max listings", value: plan.maxListings ?? "∞" },
@@ -174,8 +161,8 @@ function ReviewStep({
         ))}
       </div>
 
-      {!isFree && (
-        <p className="text-xs text-muted-foreground text-center mb-5">
+      {!plan.isFree && (
+        <p className="text-xs text-muted-foreground text-center">
           <ShieldCheck className="inline size-3.5 mr-1 mb-0.5 text-emerald-500" />
           14-day free trial — no charge until{" "}
           <span className="font-medium text-foreground">{trialEndDate()}</span>.
@@ -183,7 +170,20 @@ function ReviewStep({
         </p>
       )}
 
-      <div className="flex gap-2">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        <span className="font-medium text-foreground">Note:</span> This plan
+        renews automatically by default. You can manage or disable auto-renewal
+        from{" "}
+        <Link
+          href="/provider/subscription"
+          className="font-medium text-primary underline underline-offset-4 hover:text-primary/80 transition-colors"
+        >
+          the subscription page
+        </Link>
+        .
+      </p>
+
+      <div className="flex gap-2 mt-5">
         <Button variant="outline" className="flex-1" onClick={onClose}>
           Cancel
         </Button>
@@ -191,13 +191,10 @@ function ReviewStep({
           Continue <ArrowRight className="ml-2 size-4" />
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Payment step
-// ─────────────────────────────────────────────────────────────────────────────
 function PaymentStep({
   plan,
   billingCycle,
@@ -244,7 +241,6 @@ function PaymentStep({
       const result = await subscribeToPlan({
         planId: plan.id,
         billingCycle,
-        // paymentMethodId: stripePaymentMethodId (wire Stripe Elements here)
       });
 
       if (!result.success) {
@@ -323,16 +319,16 @@ function PaymentStep({
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={onBack} disabled={isPending}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="size-4" /> Back
         </Button>
         <Button className="flex-1" onClick={handleSubmit} disabled={isPending}>
           {isPending ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" /> Processing…
+              <Loader2 className="animate-spin" /> Processing…
             </>
           ) : (
             <>
-              Start free trial <ArrowRight className="ml-2 size-4" />
+              Subscribe <ArrowRight className="size-4" />
             </>
           )}
         </Button>
@@ -341,9 +337,6 @@ function PaymentStep({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Free plan activation step (no payment)
-// ─────────────────────────────────────────────────────────────────────────────
 function FreeActivationStep({
   plan,
   billingCycle,
@@ -371,7 +364,7 @@ function FreeActivationStep({
 
   return (
     <>
-      <DialogHeader className="mb-4">
+      <DialogHeader className="mb-2">
         <DialogTitle className="text-lg">Activate free plan</DialogTitle>
         <DialogDescription>
           No credit card required. You can upgrade anytime.
@@ -380,7 +373,7 @@ function FreeActivationStep({
 
       <PlanPill plan={plan} billingCycle={billingCycle} />
 
-      <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-5">
+      <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-2">
         <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-1">
           What you get for free
         </p>
@@ -397,7 +390,7 @@ function FreeActivationStep({
         </ul>
       </div>
 
-      {error && <p className="text-xs text-destructive mb-3">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={onBack} disabled={isPending}>
@@ -410,7 +403,7 @@ function FreeActivationStep({
         >
           {isPending ? (
             <>
-              <Loader2 className="mr-2 size-4 animate-spin" /> Activating…
+              <Loader2 className="size-4 animate-spin" /> Activating…
             </>
           ) : (
             "Activate free plan"
@@ -421,9 +414,6 @@ function FreeActivationStep({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Success step
-// ─────────────────────────────────────────────────────────────────────────────
 function SuccessStep({
   plan,
   billingCycle,
@@ -434,7 +424,7 @@ function SuccessStep({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const isFree = parseFloat(plan.price) === 0;
+  const isFree = parseFloat(String(plan.price)) === 0 && plan.isFree;
 
   return (
     <div className="text-center py-2">
@@ -449,7 +439,6 @@ function SuccessStep({
           : `Your 14-day trial has started. No charge until ${trialEndDate()}.`}
       </p>
 
-      {/* Subscription summary */}
       <div className="grid grid-cols-2 gap-2.5 mb-6 text-left">
         {[
           { label: "Plan", value: plan.name },
@@ -463,7 +452,7 @@ function SuccessStep({
           { label: "Trial ends", value: isFree ? "N/A" : trialEndDate() },
         ].map((s) => (
           <div key={s.label} className="bg-muted/50 rounded-md px-3 py-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
               {s.label}
             </p>
             <p className="text-sm font-medium capitalize">{s.value}</p>
@@ -478,12 +467,12 @@ function SuccessStep({
           router.push("/provider/services/new");
         }}
       >
-        <Sparkles className="mr-2 size-4" />
-        Create my first listing
+        <Sparkles className="size-4" />
+        Create listing
       </Button>
 
       <Button
-        variant="ghost"
+        variant="outline"
         size="sm"
         className="w-full mt-2 text-muted-foreground"
         onClick={() => {
@@ -491,15 +480,13 @@ function SuccessStep({
           router.push("/provider");
         }}
       >
+        <LayoutDashboard />
         Go to dashboard
       </Button>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main dialog
-// ─────────────────────────────────────────────────────────────────────────────
 export function SubscribeDialog({
   plan,
   billingCycle,
@@ -508,10 +495,8 @@ export function SubscribeDialog({
 }: SubscribeDialogProps) {
   const [step, setStep] = useState<Step>("review");
 
-  const isFree = plan ? parseFloat(plan.price) === 0 : false;
   const isEnterprise = plan?.tier === "enterprise";
 
-  // Reset step when dialog opens
   function handleOpenChange(val: boolean) {
     if (val) setStep("review");
     onOpenChange(val);
@@ -519,31 +504,21 @@ export function SubscribeDialog({
 
   if (!plan || isEnterprise) return null;
 
-  function handleNext() {
-    if (isFree) {
-      // Free plan skips payment
-      setStep("success");
-    } else {
-      setStep("payment");
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <StepBar step={step} isFree={isFree} />
+      <DialogContent>
+        <StepBar step={step} />
 
         {step === "review" && (
           <ReviewStep
             plan={plan}
             billingCycle={billingCycle}
-            isFree={isFree}
-            onNext={handleNext}
+            onNext={() => setStep("payment")}
             onClose={() => onOpenChange(false)}
           />
         )}
 
-        {step === "payment" && !isFree && (
+        {step === "payment" && !plan.isFree && (
           <PaymentStep
             plan={plan}
             billingCycle={billingCycle}
@@ -552,7 +527,7 @@ export function SubscribeDialog({
           />
         )}
 
-        {step === "payment" && isFree && (
+        {step === "payment" && plan.isFree && (
           <FreeActivationStep
             plan={plan}
             billingCycle={billingCycle}

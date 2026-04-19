@@ -14,9 +14,30 @@ import { db } from "@/db";
 import { plans, subscriptions } from "@/db/schemas";
 import { getCurrentProvider } from "@/lib/provider-auth";
 
-async function requireProvider() {
-  const { provider } = await getCurrentProvider();
-  if (!provider) throw new Error("Unauthorized.");
+type TrialInput = {
+  type: "trial";
+  duration: number;
+};
+
+type PaidInput = {
+  type: "paid";
+  billingCycle: PlanBillingCycle;
+};
+
+type CalcEndDateInput = TrialInput | PaidInput;
+
+async function requireProvider(secure?: boolean) {
+  const { provider, role, status } = await getCurrentProvider();
+  if (!provider || !role) throw new Error("Unauthorized.");
+
+  if (secure) {
+    if (status !== "ok") throw new Error("Permission denied.");
+    const isPrivileged = role === "owner" || role === "manager";
+    if (!isPrivileged) {
+      throw new Error("Insufficient permissions.");
+    }
+  }
+
   return provider;
 }
 
@@ -42,7 +63,7 @@ export async function getActivePlans(
       )
       .orderBy(plans.price);
 
-    return { success: true, data: rows as Plan[] };
+    return { success: true, data: rows };
   } catch (err: any) {
     console.error("[getActivePlans]", err);
     return { success: false, error: err.message ?? "Failed to load plans." };
@@ -199,12 +220,20 @@ export async function hasActiveSubscription(): Promise<ActionResult<boolean>> {
   return { success: true, data: result.data !== null };
 }
 
-/** Check whether the provider has hit their listing limit. */
+/**
+ * Determines whether the provider has reached their listing limit.
+ * - data:
+ *    - true  → listing limit HAS been reached (cannot add more)
+ *    - false → listing limit NOT reached (can still add listings)
+ */
 export async function hasReachedListingLimit(): Promise<ActionResult<boolean>> {
   try {
     const subResult = await getActiveSubscription();
     if (!subResult.success || !subResult.data) {
-      return { success: true, data: true };
+      return {
+        success: false,
+        error: subResult.error || "Could not load the active subscription.",
+      };
     }
 
     const sub = subResult.data;
@@ -237,7 +266,6 @@ async function cancelExistingSubscriptions(providerId: string): Promise<void> {
     .set({
       status: "cancelled",
       cancelledAt: new Date(),
-      endsAt: new Date(),
       autoRenew: false,
     })
     .where(
@@ -248,33 +276,35 @@ async function cancelExistingSubscriptions(providerId: string): Promise<void> {
     );
 }
 
-/** Compute the next billing period end date from now. */
-function computePeriodEnd(billingCycle: PlanBillingCycle): Date {
-  const end = new Date();
-  if (billingCycle === "yearly") {
+function computeEndDate(input: CalcEndDateInput): Date {
+  const now = new Date();
+
+  if (input.type === "trial") {
+    if (!input.duration || input.duration <= 0) {
+      throw new Error("Trial duration must be greater than 0");
+    }
+
+    const end = new Date(now);
+    end.setDate(end.getDate() + input.duration);
+    return end;
+  }
+
+  const end = new Date(now);
+
+  if (input.billingCycle === "yearly") {
     end.setFullYear(end.getFullYear() + 1);
   } else {
     end.setMonth(end.getMonth() + 1);
   }
+
   return end;
 }
 
-/** Compute the trial end date (14 days from now). */
-function computeTrialEnd(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + 14);
-  return d;
-}
-
-/**
- * Subscribe the provider to a plan.
- * Cancels any existing active/trialing sub first (one active sub at a time).
- */
 export async function subscribeToPlan(
   payload: SubscribePayload,
 ): Promise<ActionResult<Subscription>> {
   try {
-    const provider = await requireProvider();
+    const provider = await requireProvider(true);
 
     // Validate plan
     const [plan] = await db
@@ -294,6 +324,22 @@ export async function subscribeToPlan(
     // Cancel existing subs
     await cancelExistingSubscriptions(provider.id);
 
+    const dateConfig = ():
+      | { type: "trial"; duration: number }
+      | { type: "paid"; billingCycle: PlanBillingCycle } => {
+      if (plan.trialEnabled) {
+        return {
+          type: "trial",
+          duration: plan.trialDays ?? 0,
+        };
+      }
+
+      return {
+        type: "paid",
+        billingCycle: plan.billingCycle,
+      };
+    };
+
     // Insert new subscription
     const now = new Date();
     const [newSub] = await db
@@ -301,12 +347,10 @@ export async function subscribeToPlan(
       .values({
         providerId: provider.id,
         planId: plan.id,
-        status: "trialing",
-        currentPeriodStart: now,
-        currentPeriodEnd: computePeriodEnd(payload.billingCycle),
-        trialEndsAt: computeTrialEnd(),
-        listingsCount: 0,
-        autoRenew: true,
+        status: "active",
+        startDate: now,
+        endDate: computeEndDate(dateConfig()),
+        autoRenew: plan.trialEnabled ? false : true,
       })
       .returning();
 
@@ -332,7 +376,7 @@ export async function pauseSubscription(): Promise<ActionResult> {
       .where(
         and(
           eq(subscriptions.providerId, provider.id),
-          inArray(subscriptions.status, ["active", "trialing"]),
+          eq(subscriptions.status, "active"),
         ),
       )
       .orderBy(desc(subscriptions.createdAt))
@@ -344,8 +388,8 @@ export async function pauseSubscription(): Promise<ActionResult> {
       .update(subscriptions)
       .set({
         autoRenew: false,
-        cancelledAt: new Date(),
-        endsAt: sub.currentPeriodEnd,
+        pausedAt: new Date(),
+        status: "paused",
       })
       .where(eq(subscriptions.id, sub.id));
 
@@ -358,12 +402,12 @@ export async function pauseSubscription(): Promise<ActionResult> {
 }
 
 /**
- * Resume a cancelled subscription before period end.
- * Re-enables autoRenew and clears cancelledAt.
+ * Resume a paused subscription before period end.
  */
 export async function resumeSubscription(): Promise<ActionResult> {
   try {
     const provider = await requireProvider();
+    const now = new Date();
 
     const [sub] = await db
       .select()
@@ -371,26 +415,32 @@ export async function resumeSubscription(): Promise<ActionResult> {
       .where(
         and(
           eq(subscriptions.providerId, provider.id),
-          inArray(subscriptions.status, ["active", "trialing"]),
-          eq(subscriptions.autoRenew, false),
+          eq(subscriptions.status, "paused"),
         ),
       )
       .limit(1);
 
-    if (!sub)
-      return { success: false, error: "No cancellable subscription found." };
-
-    // Only allow resume before period end
-    if (new Date() > sub.currentPeriodEnd) {
+    if (!sub || !sub.pausedAt) {
       return {
         success: false,
-        error: "Subscription has already ended. Please resubscribe.",
+        error: "No paused subscription found.",
       };
     }
 
+    const pauseDuration = now.getTime() - new Date(sub?.pausedAt).getTime();
+
+    const newEndDate = new Date(
+      new Date(sub.endDate).getTime() + pauseDuration,
+    );
+
     await db
       .update(subscriptions)
-      .set({ autoRenew: true, cancelledAt: null, endsAt: null })
+      .set({
+        autoRenew: true,
+        endDate: newEndDate,
+        pausedAt: null,
+        resumeAt: now,
+      })
       .where(eq(subscriptions.id, sub.id));
 
     revalidatePlanPaths();
@@ -401,10 +451,6 @@ export async function resumeSubscription(): Promise<ActionResult> {
   }
 }
 
-/**
- * Renew an expired or ending subscription on the same plan + cycle.
- * Called manually by the provider or by a scheduled job.
- */
 export async function renewSubscription(): Promise<ActionResult<Subscription>> {
   try {
     const subResult = await getCurrentSubscription();
@@ -440,7 +486,7 @@ export async function renewSubscription(): Promise<ActionResult<Subscription>> {
 // Listing count management
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Increment listingsCount on the active subscription by 1. */
+/** Increment listingsCount on the active subscription by 1 (on adding a service). */
 export async function incrementListingCount(): Promise<ActionResult> {
   try {
     const subResult = await getActiveSubscription();
@@ -471,7 +517,7 @@ export async function incrementListingCount(): Promise<ActionResult> {
   }
 }
 
-/** Decrement listingsCount on the active subscription by 1. */
+/** Decrement listingsCount on the active subscription by 1 (on removing a service). */
 export async function decrementListingCount(): Promise<ActionResult> {
   try {
     const subResult = await getActiveSubscription();
@@ -493,99 +539,5 @@ export async function decrementListingCount(): Promise<ActionResult> {
   } catch (err: any) {
     console.error("[decrementListingCount]", err);
     return { success: false, error: err.message ?? "Failed to update count." };
-  }
-}
-
-/** Sync listingsCount to a specific value (e.g. after bulk operations). */
-export async function syncListingCount(count: number): Promise<ActionResult> {
-  try {
-    const subResult = await getActiveSubscription();
-    if (!subResult.success || !subResult.data) {
-      return { success: false, error: "No active subscription." };
-    }
-
-    await db
-      .update(subscriptions)
-      .set({ listingsCount: Math.max(0, count) })
-      .where(eq(subscriptions.id, subResult.data.id));
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[syncListingCount]", err);
-    return { success: false, error: err.message ?? "Failed to sync count." };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Status transitions (cron / scheduled jobs)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Transition a trialing subscription to active once trial ends.
- * Call this from a cron job (e.g. Vercel Cron, Trigger.dev).
- */
-export async function activatePostTrialSubscription(): Promise<ActionResult> {
-  try {
-    const provider = await requireProvider();
-    const now = new Date();
-
-    const [sub] = await db
-      .select()
-      .from(subscriptions)
-      .where(
-        and(
-          eq(subscriptions.providerId, provider.id),
-          eq(subscriptions.status, "trialing"),
-        ),
-      )
-      .limit(1);
-
-    if (!sub)
-      return { success: false, error: "No trialing subscription found." };
-
-    // Only activate if trial has ended
-    if (sub.trialEndsAt && now < sub.trialEndsAt) {
-      return { success: false, error: "Trial period has not ended yet." };
-    }
-
-    await db
-      .update(subscriptions)
-      .set({ status: "active" })
-      .where(eq(subscriptions.id, sub.id));
-
-    revalidatePlanPaths();
-    return { success: true };
-  } catch (err: any) {
-    console.error("[activatePostTrialSubscription]", err);
-    return { success: false, error: err.message ?? "Failed to activate." };
-  }
-}
-
-/**
- * Expire subscriptions whose currentPeriodEnd has passed and autoRenew is off.
- * Call this from a cron job.
- */
-export async function expireSubscription(): Promise<ActionResult> {
-  try {
-    const provider = await requireProvider();
-    const now = new Date();
-
-    await db
-      .update(subscriptions)
-      .set({ status: "expired", endsAt: now })
-      .where(
-        and(
-          eq(subscriptions.providerId, provider.id),
-          inArray(subscriptions.status, ["active", "trialing"]),
-          eq(subscriptions.autoRenew, false),
-          sql`${subscriptions.currentPeriodEnd} <= ${now}`,
-        ),
-      );
-
-    revalidatePlanPaths();
-    return { success: true };
-  } catch (err: any) {
-    console.error("[expireSubscription]", err);
-    return { success: false, error: err.message ?? "Failed to expire." };
   }
 }

@@ -13,6 +13,7 @@ import {
   planBillingCycleEnum,
   planTierEnum,
   subscriptionStatusEnum,
+  subscriptionTypeEnum,
   timestamps,
 } from "./enums";
 import { providers } from "./provider";
@@ -44,6 +45,11 @@ export const plans = pgTable(
     description: text("description"),
     isActive: boolean("is_active").notNull().default(true),
     highlights: text("highlights").array(),
+
+    trialEnabled: boolean("trial_enabled").notNull().default(false),
+    trialDays: integer("trial_days"),
+    // Optional: If set → trial will automatically end at this timestamp :else → ended manually by the admin
+    trialEndsAt: timestamp("trial_ends_at"),
     ...timestamps,
   },
   (t) => [
@@ -54,6 +60,7 @@ export const plans = pgTable(
       t.maxListings,
     ),
     index("active_free_plan_idx").on(t.isFree, t.isActive),
+    index("free_trial_plan_idx").on(t.trialEnabled),
 
     // enforce consistency
     sql`CHECK (
@@ -64,6 +71,7 @@ export const plans = pgTable(
       (is_free = true AND price = 0)
       OR (is_free = false AND billing_cycle IS NOT NULL)
     )`,
+    sql`CHECK ((trial_enabled = false OR trial_days > 0))`,
   ],
 );
 
@@ -78,14 +86,17 @@ export const subscriptions = pgTable(
       .notNull()
       .references(() => plans.id, { onDelete: "restrict" }),
     status: subscriptionStatusEnum("status").notNull().default("active"),
+    listingsCount: integer("listings_count").notNull().default(0),
+    autoRenew: boolean("auto_renew").notNull().default(true),
 
     startDate: timestamp("start_date").notNull().defaultNow(),
-    endDate: timestamp("end_date"),
+    endDate: timestamp("end_date").notNull().defaultNow(),
 
-    trialUsed: boolean("trial_used").notNull().default(false),
-    listingsCount: integer("listings_count").notNull().default(0),
+    type: subscriptionTypeEnum("type").default("paid"),
     cancelledAt: timestamp("cancelled_at"),
-    autoRenew: boolean("auto_renew").notNull().default(true),
+
+    pausedAt: timestamp("paused_at"),
+    resumeAt: timestamp("resume_at"),
     ...timestamps,
   },
   (t) => [

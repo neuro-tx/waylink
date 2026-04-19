@@ -38,6 +38,7 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "cancelled",
   "expired",
   "trialing",
+  "paused"
 ]);
 
 export const productStatusEnum = pgEnum("product_status", [
@@ -145,6 +146,8 @@ export const recipientTypeEnum = pgEnum("recipient_type", [
   "admin",
 ]);
 
-export const businessTypeEnums = pgEnum("businessType", [
+export const businessTypeEnums = pgEnum("business_type", [
   "individual" , "company" , "agency"
 ]);
+
+export const subscriptionTypeEnum = pgEnum("sub_type" ,["trial" , "paid"]);

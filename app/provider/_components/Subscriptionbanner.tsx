@@ -10,9 +10,14 @@ import {
   XCircle,
   LayoutList,
   CalendarClock,
+  RefreshCcwDot,
+  Loader,
 } from "lucide-react";
 import { cn, fmtDate } from "@/lib/utils";
 import type { Subscription } from "@/lib/all-types";
+import { useTransition } from "react";
+import { renewSubscription } from "@/actions/plans.action";
+import { toast } from "sonner";
 
 interface SubscriptionBannerProps {
   subscription: Subscription | null;
@@ -62,7 +67,8 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
             Your account is approved. Subscribe to a plan below to start
-            creating service listings and accepting bookings(we recommend free trial at first).
+            creating service listings and accepting bookings(we recommend free
+            trial at first).
           </p>
         </div>
       </div>
@@ -80,6 +86,23 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
     ? daysUntil(subscription.trialEndsAt)
     : null;
 
+  const [pending, startTransition] = useTransition();
+
+  const handleRenew = () => {
+    startTransition(async () => {
+      try {
+        const res = await renewSubscription();
+        if (!res.success) {
+          toast.error(res.error || "Failed to renew subscription");
+          return;
+        }
+        toast.success("Subscription renewed successfully");
+      } catch {
+        toast.error("Failed to renew subscription");
+      }
+    });
+  };
+
   return (
     <div
       className={cn(
@@ -87,7 +110,6 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
         cfg.cls,
       )}
     >
-      {/* Status */}
       <div className="flex items-center gap-3">
         <Icon className="size-5 shrink-0" />
         <div>
@@ -113,25 +135,23 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
           )}
           {subscription.status === "active" && (
             <p className="text-xs opacity-80">
-              Renews {fmtDate(subscription.currentPeriodEnd)}
+              Renews {fmtDate(subscription.endDate)}
               {!subscription.autoRenew && " · Cancels at period end"}
             </p>
           )}
-          {subscription.status === "cancelled" && subscription.endsAt && (
+          {subscription.status === "cancelled" && subscription.endDate && (
             <p className="text-xs opacity-80">
-              Access until {fmtDate(subscription.endsAt)}
+              Access until {fmtDate(subscription.endDate)}
             </p>
           )}
           {subscription.status === "expired" && (
             <p className="text-xs opacity-80">
-              Expired {fmtDate(subscription.currentPeriodEnd)}. Renew to
-              restore access.
+              Expired {fmtDate(subscription.endDate)}. Renew to restore access.
             </p>
           )}
         </div>
       </div>
 
-      {/* Usage */}
       <div className="flex items-center gap-3">
         <LayoutList className="size-4 shrink-0 opacity-70" />
         <div className="flex-1 min-w-0">
@@ -156,12 +176,24 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
         </div>
       </div>
 
-      {/* Action */}
       <div className="flex justify-end">
         {(subscription.status === "expired" ||
           subscription.status === "cancelled") && (
-          <Button size="sm" variant="default">
-            Renew plan
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handleRenew}
+            disabled={pending}
+          >
+            {pending ? (
+              <>
+                <Loader className="animate-spin" /> Processing
+              </>
+            ) : (
+              <>
+                <RefreshCcwDot /> Renew plan
+              </>
+            )}
           </Button>
         )}
         {subscription.status === "trialing" && (
@@ -170,12 +202,8 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
             <br /> and higher search priority.
           </p>
         )}
-        {subscription.status === "active" && !subscription.autoRenew && (
-          <Button size="sm" variant="outline">
-            Resume subscription
-          </Button>
-        )}
-        {subscription.status === "active" && subscription.autoRenew && (
+
+        {subscription.status === "active" && (
           <p className="text-xs opacity-70 text-right">
             Switch plans below to upgrade
             <br /> or downgrade anytime.

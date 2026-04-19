@@ -1,5 +1,5 @@
 {
-  "id": "64df1a53-0406-416d-92a2-5fdcd7d5337d",
+  "id": "dbfa0651-02a3-4f73-80ab-e6d71de349e7",
   "prevId": "990f7528-c362-40e3-baa4-d903885c371c",
   "version": "7",
   "dialect": "postgresql",
@@ -781,6 +781,138 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.provider_stats": {
+      "name": "provider_stats",
+      "schema": "",
+      "columns": {
+        "provider_id": {
+          "name": "provider_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "total_products": {
+          "name": "total_products",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "total_reviews": {
+          "name": "total_reviews",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "avg_rating": {
+          "name": "avg_rating",
+          "type": "numeric(3, 2)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'0'"
+        },
+        "total_revenue": {
+          "name": "total_revenue",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "total_bookings": {
+          "name": "total_bookings",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_listings": {
+          "name": "max_listings",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "remaining_listings": {
+          "name": "remaining_listings",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "can_create_listing": {
+          "name": "can_create_listing",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "provider_stats_products_idx": {
+          "name": "provider_stats_products_idx",
+          "columns": [
+            {
+              "expression": "total_products",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "provider_stats_rating_idx": {
+          "name": "provider_stats_rating_idx",
+          "columns": [
+            {
+              "expression": "avg_rating",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "provider_stats_provider_id_providers_id_fk": {
+          "name": "provider_stats_provider_id_providers_id_fk",
+          "tableFrom": "provider_stats",
+          "tableTo": "providers",
+          "columnsFrom": [
+            "provider_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.providers": {
       "name": "providers",
       "schema": "",
@@ -837,7 +969,7 @@
         },
         "business_type": {
           "name": "business_type",
-          "type": "businessType",
+          "type": "business_type",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
@@ -1246,12 +1378,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "tier": {
           "name": "tier",
           "type": "plan_tier",
@@ -1261,9 +1387,16 @@
         },
         "price": {
           "name": "price",
-          "type": "numeric(10, 2)",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "is_free": {
+          "name": "is_free",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "priority_boost": {
           "name": "priority_boost",
@@ -1323,6 +1456,25 @@
           "primaryKey": false,
           "notNull": false
         },
+        "trial_enabled": {
+          "name": "trial_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "trial_days": {
+          "name": "trial_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trial_ends_at": {
+          "name": "trial_ends_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1354,8 +1506,8 @@
           "method": "btree",
           "with": {}
         },
-        "plan_tier_cycle_idx": {
-          "name": "plan_tier_cycle_idx",
+        "plan_unique_config_idx": {
+          "name": "plan_unique_config_idx",
           "columns": [
             {
               "expression": "tier",
@@ -1368,9 +1520,51 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
+            },
+            {
+              "expression": "max_listings",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "active_free_plan_idx": {
+          "name": "active_free_plan_idx",
+          "columns": [
+            {
+              "expression": "is_free",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "free_trial_plan_idx": {
+          "name": "free_trial_plan_idx",
+          "columns": [
+            {
+              "expression": "trial_enabled",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1378,15 +1572,7 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "plans_slug_unique": {
-          "name": "plans_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1420,27 +1606,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'trialing'"
-        },
-        "current_period_start": {
-          "name": "current_period_start",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "current_period_end": {
-          "name": "current_period_end",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "trial_ends_at": {
-          "name": "trial_ends_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "NOW() + INTERVAL '14 days'"
+          "default": "'active'"
         },
         "listings_count": {
           "name": "listings_count",
@@ -1449,24 +1615,52 @@
           "notNull": true,
           "default": 0
         },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ends_at": {
-          "name": "ends_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
         "auto_renew": {
           "name": "auto_renew",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "type": {
+          "name": "type",
+          "type": "sub_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'paid'"
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paused_at": {
+          "name": "paused_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resume_at": {
+          "name": "resume_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -1529,11 +1723,11 @@
           "method": "btree",
           "with": {}
         },
-        "subscription_trial_idx": {
-          "name": "subscription_trial_idx",
+        "subscription_end_date_idx": {
+          "name": "subscription_end_date_idx",
           "columns": [
             {
-              "expression": "trial_ends_at",
+              "expression": "end_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1544,17 +1738,18 @@
           "method": "btree",
           "with": {}
         },
-        "subscription_period_idx": {
-          "name": "subscription_period_idx",
+        "one_active_subscription_per_provider": {
+          "name": "one_active_subscription_per_provider",
           "columns": [
             {
-              "expression": "current_period_end",
+              "expression": "provider_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "status IN ('active', 'trialing')",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3874,8 +4069,8 @@
         "expired"
       ]
     },
-    "public.businessType": {
-      "name": "businessType",
+    "public.business_type": {
+      "name": "business_type",
       "schema": "public",
       "values": [
         "individual",
@@ -4029,7 +4224,16 @@
         "active",
         "cancelled",
         "expired",
-        "trialing"
+        "trialing",
+        "paused"
+      ]
+    },
+    "public.sub_type": {
+      "name": "sub_type",
+      "schema": "public",
+      "values": [
+        "trial",
+        "paid"
       ]
     },
     "public.transport_class": {

@@ -43,6 +43,13 @@
       "when": 1776298753543,
       "tag": "0005_pink_karma",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776624248775,
+      "tag": "0006_aromatic_owl",
+      "breakpoints": true
     }
   ]
 }

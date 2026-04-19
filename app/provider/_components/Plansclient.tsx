@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
-  XCircle,
   Zap,
   Star,
   Building2,
@@ -26,7 +24,6 @@ interface PlansClientProps {
   currentSubscription: Subscription | null;
 }
 
-// ── Tier metadata ─────────────────────────────────────────────────────────────
 const TIER_META: Record<
   string,
   {
@@ -67,18 +64,16 @@ function PlanCard({
   plan,
   billingCycle,
   isCurrent,
-  isActive,
   onSelect,
 }: {
   plan: Plan;
   billingCycle: PlanBillingCycle;
   isCurrent: boolean;
-  isActive: boolean;
   onSelect: (plan: Plan) => void;
 }) {
   const meta = TIER_META[plan.tier] ?? TIER_META.free;
-  const price = parseFloat(plan.price);
-  const isFree = price === 0;
+  const price = parseFloat(String(plan.price));
+  const isFree = price === 0 && plan.isFree;
   const isEnterprise = plan.tier === "enterprise";
 
   const priceNote = isEnterprise
@@ -95,18 +90,9 @@ function PlanCard({
         "relative flex flex-col rounded-xl border bg-card p-6 transition-all duration-200",
         "hover:border-border/80 hover:shadow-sm",
         isCurrent && "border-primary ring-1 ring-primary",
-        meta.popular && !isCurrent && "border-blue-200 dark:border-blue-700",
-        !isCurrent && !meta.popular && "border-border/50",
+        !isCurrent && "border-border/50",
       )}
     >
-      {meta.popular && !isCurrent && (
-        <div className="absolute -top-px left-1/2 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 rounded-b-md bg-blue-600 px-3 py-1 text-[10px] font-medium text-white">
-            <Sparkles className="size-3" /> Most popular
-          </span>
-        </div>
-      )}
-
       {isCurrent && (
         <div className="absolute -top-px left-1/2 -translate-x-1/2">
           <span className="inline-flex items-center gap-1 rounded-b-md bg-primary px-3 py-1 text-[10px] font-medium text-primary-foreground">
@@ -228,14 +214,13 @@ function PlanCard({
           className={cn("w-full", meta.ctaCls ?? "")}
           onClick={() => onSelect(plan)}
         >
-          {isFree ? "Start for free" : "Start 14-day trial"}
+          {isFree ? "Start for free" : "Get started"}
         </Button>
       )}
     </div>
   );
 }
 
-// ── Main client component ────────────────────────────────────────────────────
 export function PlansClient({
   monthlyPlans,
   yearlyPlans,
@@ -254,7 +239,6 @@ export function PlansClient({
 
   return (
     <>
-      {/* Billing toggle */}
       <div className="flex items-center justify-center gap-3 mb-8">
         <span
           className={cn(
@@ -318,10 +302,6 @@ export function PlansClient({
               plan={plan}
               billingCycle={billingCycle}
               isCurrent={currentSubscription?.planId === plan.id}
-              isActive={
-                currentSubscription?.status === "active" ||
-                currentSubscription?.status === "trialing"
-              }
               onSelect={handleSelect}
             />
           ))}

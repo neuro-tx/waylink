@@ -109,7 +109,7 @@ export default function PlansPage() {
           ].map((item) => (
             <div
               key={item.q}
-              className="rounded-lg border border-border/50 bg-muted/30 px-4 py-3"
+              className="rounded-lg border border-border/50 bg-muted/30 px-4 py-3 hover:border-border transition-all"
             >
               <p className="text-xs font-medium text-foreground mb-1">
                 {item.q}

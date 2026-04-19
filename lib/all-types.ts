@@ -419,14 +419,14 @@ export interface ProductDetails extends Product {
 
 export type PlanTier = "free" | "pro" | "business" | "enterprise";
 export type PlanBillingCycle = "monthly" | "yearly";
-export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trialing";
+export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trialing" | "paused";
 
 export interface Plan {
   id: string;
   name: string;
   tier: PlanTier;
-  price: string;
-  isFree:boolean;
+  price: number;
+  isFree: boolean;
   priorityBoost: string;
   featuredInSearch: boolean;
   badgeLabel: string | null;
@@ -436,6 +436,9 @@ export interface Plan {
   description: string | null;
   isActive: boolean;
   highlights: string[] | null;
+  trialEnabled: boolean;
+  trialEndsAt: Date | null;
+  trialDays: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -447,19 +450,20 @@ export interface Subscription {
   status: SubscriptionStatus;
   startDate: Date;
   endDate: Date;
-  trialUsed: boolean;
+  type: "trial" | "paid";
   listingsCount: number;
-  cancelledAt: Date | null;
   autoRenew: boolean;
   createdAt: Date;
   updatedAt: Date;
+  pausedAt: Date | null;
+  resumeAt: Date | null;
+  cancelledAt: Date | null;
   plan?: Plan;
 }
 
 export interface SubscribePayload {
   planId: string;
   billingCycle: PlanBillingCycle;
-  paymentMethodId?: string;
 }
 
 export interface ActionResult<T = void> {
