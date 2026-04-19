@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Sparkles,
   LayoutDashboard,
+  Rss,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Plan, PlanBillingCycle } from "@/lib/all-types";
@@ -44,20 +45,23 @@ const TIER_COLORS: Record<string, string> = {
   enterprise: "bg-secondary text-foreground",
 };
 
-function trialEndDate() {
+function getTrialEndDate(plan: Plan): Date {
   const d = new Date();
-  d.setDate(d.getDate() + 14);
-  return d.toLocaleDateString("en-US", {
+  d.setDate(d.getDate() + (plan.trialDays ?? 14));
+  return d;
+}
+
+function formatTrialEndDate(plan: Plan): string {
+  return getTrialEndDate(plan).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
 }
 
-function formatPrice(price: string, cycle: PlanBillingCycle) {
-  const n = parseFloat(price);
-  if (n === 0) return "Free";
-  return `$${n.toFixed(0)}/${cycle === "monthly" ? "mo" : "yr"}`;
+function formatPrice(plan: Plan, cycle: PlanBillingCycle): string {
+  if (plan.isFree) return "Free";
+  return `$${plan.price.toFixed(0)}/${cycle === "monthly" ? "mo" : "yr"}`;
 }
 
 function StepBar({ step }: { step: Step }) {
@@ -65,16 +69,15 @@ function StepBar({ step }: { step: Step }) {
   const current = steps.indexOf(step);
 
   return (
-    <div className="flex items-center gap-2 mb-6">
+    <div className="flex items-center gap-1.5 mb-6">
       {steps.map((s, i) => (
-        <div key={s} className="flex items-center gap-2 flex-1">
-          <div
-            className={cn(
-              "h-1.5 flex-1 rounded-full transition-all duration-300",
-              i <= current ? "bg-primary" : "bg-border",
-            )}
-          />
-        </div>
+        <div
+          key={s}
+          className={cn(
+            "h-1 flex-1 rounded-full transition-all duration-300",
+            i <= current ? "bg-primary" : "bg-border",
+          )}
+        />
       ))}
     </div>
   );
@@ -98,7 +101,7 @@ function PlanPill({
         </Badge>
       </div>
       <span className="text-sm text-muted-foreground">
-        {formatPrice(String(plan.price), billingCycle)}
+        {formatPrice(plan, billingCycle)}
       </span>
     </div>
   );
@@ -115,13 +118,15 @@ function ReviewStep({
   onNext: () => void;
   onClose: () => void;
 }) {
+  const trialDays = plan.trialDays ?? 14;
+
   return (
     <div className="space-y-4">
       <DialogHeader>
         <DialogTitle className="text-lg">Review your plan</DialogTitle>
         <DialogDescription>
           Confirm what's included before{" "}
-          {plan.isFree ? "activating" : "starting your free trial"}.
+          {plan.isFree ? "activating" : "starting your trial"}.
         </DialogDescription>
       </DialogHeader>
 
@@ -141,7 +146,7 @@ function ReviewStep({
         </ul>
       )}
 
-      <Separator className="my-4" />
+      <Separator />
 
       <div className="grid grid-cols-3 gap-3">
         {[
@@ -161,12 +166,14 @@ function ReviewStep({
         ))}
       </div>
 
-      {!plan.isFree && (
+      {plan.trialEnabled && !plan.isFree && (
         <p className="text-xs text-muted-foreground text-center">
           <ShieldCheck className="inline size-3.5 mr-1 mb-0.5 text-emerald-500" />
-          14-day free trial — no charge until{" "}
-          <span className="font-medium text-foreground">{trialEndDate()}</span>.
-          Cancel anytime.
+          {trialDays}-day free trial — no charge until{" "}
+          <span className="font-medium text-foreground">
+            {formatTrialEndDate(plan)}
+          </span>
+          . Cancel anytime.
         </p>
       )}
 
@@ -183,7 +190,7 @@ function ReviewStep({
         .
       </p>
 
-      <div className="flex gap-2 mt-5">
+      <div className="flex gap-2 pt-1">
         <Button variant="outline" className="flex-1" onClick={onClose}>
           Cancel
         </Button>
@@ -220,6 +227,7 @@ function PaymentStep({
       .replace(/(.{4})/g, "$1 ")
       .trim();
   }
+
   function fmtExp(v: string) {
     const d = v.replace(/\D/g, "").substring(0, 4);
     return d.length >= 3 ? d.slice(0, 2) + " / " + d.slice(2) : d;
@@ -238,16 +246,11 @@ function PaymentStep({
     setError(null);
 
     startTransition(async () => {
-      const result = await subscribeToPlan({
-        planId: plan.id,
-        billingCycle,
-      });
-
+      const result = await subscribeToPlan({ planId: plan.id, billingCycle });
       if (!result.success) {
         setError(result.error ?? "Something went wrong.");
         return;
       }
-
       onSuccess();
     });
   }
@@ -257,8 +260,17 @@ function PaymentStep({
       <DialogHeader className="mb-4">
         <DialogTitle className="text-lg">Payment details</DialogTitle>
         <DialogDescription>
-          Your card won't be charged until{" "}
-          <span className="font-medium text-foreground">{trialEndDate()}</span>.
+          {plan.trialEnabled ? (
+            <>
+              Your card won't be charged until{" "}
+              <span className="font-medium text-foreground">
+                {formatTrialEndDate(plan)}
+              </span>
+              .
+            </>
+          ) : (
+            "You'll be charged immediately upon subscribing."
+          )}
         </DialogDescription>
       </DialogHeader>
 
@@ -314,7 +326,8 @@ function PaymentStep({
 
       <p className="text-xs text-muted-foreground text-center mb-4">
         <ShieldCheck className="inline size-3.5 mr-1 mb-0.5 text-emerald-500" />
-        Secured by 256-bit TLS encryption. Cancel anytime before trial ends.
+        Secured by 256-bit TLS encryption.{" "}
+        {plan.trialEnabled && "Cancel anytime before trial ends."}
       </p>
 
       <div className="flex gap-2">
@@ -324,11 +337,11 @@ function PaymentStep({
         <Button className="flex-1" onClick={handleSubmit} disabled={isPending}>
           {isPending ? (
             <>
-              <Loader2 className="animate-spin" /> Processing…
+              <Loader2 className="animate-spin size-4" /> Processing…
             </>
           ) : (
             <>
-              Subscribe <ArrowRight className="size-4" />
+              <Rss className="size-4" /> Subscribe
             </>
           )}
         </Button>
@@ -373,8 +386,8 @@ function FreeActivationStep({
 
       <PlanPill plan={plan} billingCycle={billingCycle} />
 
-      <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-2">
-        <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-1">
+      <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-4">
+        <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium mb-2">
           What you get for free
         </p>
         <ul className="space-y-1.5">
@@ -390,11 +403,11 @@ function FreeActivationStep({
         </ul>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={onBack} disabled={isPending}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="size-4" /> Back
         </Button>
         <Button
           className="flex-1"
@@ -424,7 +437,6 @@ function SuccessStep({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const isFree = parseFloat(String(plan.price)) === 0 && plan.isFree;
 
   return (
     <div className="text-center py-2">
@@ -434,22 +446,33 @@ function SuccessStep({
 
       <h2 className="text-lg font-medium mb-2">You're subscribed!</h2>
       <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-        {isFree
+        {plan.isFree
           ? "Your free plan is active. Start adding your services now."
-          : `Your 14-day trial has started. No charge until ${trialEndDate()}.`}
+          : plan.trialEnabled
+            ? `Your ${plan.trialDays ?? 14}-day trial has started. No charge until ${formatTrialEndDate(plan)}.`
+            : "Your subscription is now active."}
       </p>
 
       <div className="grid grid-cols-2 gap-2.5 mb-6 text-left">
         {[
           { label: "Plan", value: plan.name },
-          { label: "Status", value: "trialing" },
+          {
+            label: "Status",
+            value: plan.trialEnabled && !plan.isFree ? "trialing" : "active",
+          },
           { label: "Billing", value: billingCycle },
           { label: "Commission", value: `${plan.commissionRate}%` },
           {
             label: "Max listings",
             value: plan.maxListings?.toString() ?? "Unlimited",
           },
-          { label: "Trial ends", value: isFree ? "N/A" : trialEndDate() },
+          {
+            label: "Trial ends",
+            value:
+              plan.trialEnabled && !plan.isFree
+                ? formatTrialEndDate(plan)
+                : "N/A",
+          },
         ].map((s) => (
           <div key={s.label} className="bg-muted/50 rounded-md px-3 py-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">
@@ -467,8 +490,7 @@ function SuccessStep({
           router.push("/provider/services/new");
         }}
       >
-        <Sparkles className="size-4" />
-        Create listing
+        <Sparkles className="size-4" /> Create listing
       </Button>
 
       <Button
@@ -480,8 +502,7 @@ function SuccessStep({
           router.push("/provider");
         }}
       >
-        <LayoutDashboard />
-        Go to dashboard
+        <LayoutDashboard className="size-4" /> Go to dashboard
       </Button>
     </div>
   );
@@ -495,17 +516,14 @@ export function SubscribeDialog({
 }: SubscribeDialogProps) {
   const [step, setStep] = useState<Step>("review");
 
-  const isEnterprise = plan?.tier === "enterprise";
+  useEffect(() => {
+    if (open) setStep("review");
+  }, [open, plan?.id]);
 
-  function handleOpenChange(val: boolean) {
-    if (val) setStep("review");
-    onOpenChange(val);
-  }
-
-  if (!plan || isEnterprise) return null;
+  if (!plan || plan.tier === "enterprise") return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <StepBar step={step} />
 

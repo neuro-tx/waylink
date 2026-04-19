@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertTriangle,
@@ -10,20 +9,25 @@ import {
   XCircle,
   LayoutList,
   CalendarClock,
-  RefreshCcwDot,
-  Loader,
+  PauseCircle,
 } from "lucide-react";
 import { cn, fmtDate } from "@/lib/utils";
-import type { Subscription } from "@/lib/all-types";
-import { useTransition } from "react";
-import { renewSubscription } from "@/actions/plans.action";
-import { toast } from "sonner";
+import type { Subscription, SubscriptionStatus } from "@/lib/all-types";
+import Link from "next/link";
 
 interface SubscriptionBannerProps {
   subscription: Subscription | null;
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<
+  SubscriptionStatus,
+  {
+    icon: any;
+    label: string;
+    cls: string;
+    badgeCls: string;
+  }
+> = {
   trialing: {
     icon: Clock,
     label: "Trial active",
@@ -49,6 +53,13 @@ const STATUS_CONFIG = {
     cls: "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-800 dark:text-red-200",
     badgeCls: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
   },
+  paused: {
+    icon: PauseCircle,
+    label: "Paused",
+    cls: "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200",
+    badgeCls:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300",
+  },
 };
 
 function daysUntil(d: Date | string) {
@@ -66,9 +77,9 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
             No active plan
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
-            Your account is approved. Subscribe to a plan below to start
-            creating service listings and accepting bookings(we recommend free
-            trial at first).
+            Your account is approved. Choose a plan below to start creating
+            service listings and accepting bookings — a free trial may be
+            available depending on the plan.
           </p>
         </div>
       </div>
@@ -82,26 +93,17 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
   const listingsPct = maxListings
     ? Math.round((listingsUsed / maxListings) * 100)
     : 0;
-  const trialDaysLeft = subscription.trialEndsAt
-    ? daysUntil(subscription.trialEndsAt)
-    : null;
+  const trialDaysLeft =
+    subscription.status === "trialing" ? daysUntil(subscription.endDate) : null;
 
-  const [pending, startTransition] = useTransition();
-
-  const handleRenew = () => {
-    startTransition(async () => {
-      try {
-        const res = await renewSubscription();
-        if (!res.success) {
-          toast.error(res.error || "Failed to renew subscription");
-          return;
-        }
-        toast.success("Subscription renewed successfully");
-      } catch {
-        toast.error("Failed to renew subscription");
-      }
-    });
+  const progressColor = {
+    normal: "[&>div]:bg-emerald-500",
+    warning: "[&>div]:bg-amber-500",
+    danger: "[&>div]:bg-red-500",
   };
+
+  const usageState =
+    listingsPct >= 90 ? "danger" : listingsPct >= 70 ? "warning" : "normal";
 
   return (
     <div
@@ -130,7 +132,7 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
               {trialDaysLeft === 0
                 ? "today"
                 : `in ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""}`}{" "}
-              · {fmtDate(subscription.trialEndsAt!)}
+              · {fmtDate(subscription.endDate!)}
             </p>
           )}
           {subscription.status === "active" && (
@@ -164,11 +166,7 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
           {maxListings ? (
             <Progress
               value={listingsPct}
-              className={cn(
-                "h-1.5",
-                listingsPct >= 90 && "[&>div]:bg-red-500",
-                listingsPct >= 70 && listingsPct < 90 && "[&>div]:bg-amber-500",
-              )}
+              className={cn("h-1.5", progressColor[usageState])}
             />
           ) : (
             <div className="h-1.5 rounded-full bg-current opacity-20" />
@@ -179,22 +177,16 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
       <div className="flex justify-end">
         {(subscription.status === "expired" ||
           subscription.status === "cancelled") && (
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleRenew}
-            disabled={pending}
-          >
-            {pending ? (
-              <>
-                <Loader className="animate-spin" /> Processing
-              </>
-            ) : (
-              <>
-                <RefreshCcwDot /> Renew plan
-              </>
-            )}
-          </Button>
+          <p className="text-xs opacity-70 text-right">
+            Your subscription is no longer active.
+            <br />
+            <Link
+              href="/provider/subscription"
+              className="font-medium underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              View subscription details
+            </Link>
+          </p>
         )}
         {subscription.status === "trialing" && (
           <p className="text-xs opacity-70 text-right">
@@ -205,8 +197,22 @@ export function SubscriptionBanner({ subscription }: SubscriptionBannerProps) {
 
         {subscription.status === "active" && (
           <p className="text-xs opacity-70 text-right">
-            Switch plans below to upgrade
-            <br /> or downgrade anytime.
+            Your subscription is active and optimized for your usage.
+            <br />
+            You can fine-tune or upgrade it anytime below.
+          </p>
+        )}
+
+        {subscription.status === "paused" && (
+          <p className="text-xs opacity-70 text-right">
+            Your subscription is currently paused.
+            <br />
+            <Link
+              href="/provider/subscription"
+              className="font-medium underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Manage or resume it here
+            </Link>
           </p>
         )}
       </div>

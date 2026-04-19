@@ -341,16 +341,18 @@ export async function subscribeToPlan(
     };
 
     // Insert new subscription
+    const subState = plan.trialEnabled ? "trialing" : "active";
     const now = new Date();
     const [newSub] = await db
       .insert(subscriptions)
       .values({
         providerId: provider.id,
         planId: plan.id,
-        status: "active",
+        status: subState,
         startDate: now,
         endDate: computeEndDate(dateConfig()),
         autoRenew: plan.trialEnabled ? false : true,
+        type: plan.trialEnabled ? "trial" : "paid",
       })
       .returning();
 

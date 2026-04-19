@@ -4,6 +4,7 @@ import { getActivePlans, getCurrentSubscription } from "@/actions/plans.action";
 import { SubscriptionBanner } from "../_components/Subscriptionbanner";
 import { PlansClient } from "../_components/Plansclient";
 import Link from "next/link";
+import { HelpCircle } from "lucide-react";
 
 function PlansSkeleton() {
   return (
@@ -37,7 +38,6 @@ function PlansSkeleton() {
   );
 }
 
-// Plans content (async)
 async function PlansContent() {
   const [monthlyResult, yearlyResult, subResult] = await Promise.all([
     getActivePlans("monthly"),
@@ -86,34 +86,40 @@ export default function PlansPage() {
             Plans & billing
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-xl">
-            Choose the plan that fits your business. All paid plans include a
-            14-day free trial — no charge until the trial ends. Upgrade,
-            downgrade, or cancel anytime.
+            Choose a plan that fits your business needs. If a free trial is
+            included, billing will begin automatically after the trial ends.
+            When the trial ends, access to features may be paused until you
+            select an active plan. You can manage, upgrade, or cancel your
+            subscription at any time..
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
           {[
             {
-              q: "What happens after the trial?",
-              a: "You'll be charged on your chosen billing cycle. Cancel before the trial ends and you won't be billed.",
+              q: "What happens after the trial ends?",
+              a: "If a trial is included in your plan, billing will begin automatically after it ends. If no active plan is selected, access to features may be paused until you choose a plan.",
             },
             {
-              q: "Can I change plans later?",
-              a: "Yes — upgrade or downgrade at any time. Changes take effect immediately.",
+              q: "Can I change my plan later?",
+              a: "Yes. You can upgrade or downgrade your plan at any time from your account. Changes take effect based on your current billing cycle or immediately, depending on the plan change.",
             },
             {
               q: "How does the listing limit work?",
-              a: "Each active service listing counts toward your plan's max. Archived listings don't count.",
+              a: "Each active plan includes a maximum number of service listings. Only active listings count toward your limit. You can manage or archive listings at any time.",
             },
           ].map((item) => (
             <div
               key={item.q}
-              className="rounded-lg border border-border/50 bg-muted/30 px-4 py-3 hover:border-border transition-all"
+              className="group relative rounded-xl border border-border/40 bg-muted/20 p-4 transition-all hover:border-border hover:bg-muted/40 shadow-xs"
             >
-              <p className="text-xs font-medium text-foreground mb-1">
-                {item.q}
-              </p>
+              <div className="mb-3 flex items-center gap-2">
+                <HelpCircle className="size-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <p className="text-xs font-semibold text-foreground leading-snug">
+                  {item.q}
+                </p>
+              </div>
+
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {item.a}
               </p>
