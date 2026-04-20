@@ -5,6 +5,22 @@ import { SubscriptionBanner } from "../_components/Subscriptionbanner";
 import { PlansClient } from "../_components/Plansclient";
 import Link from "next/link";
 import { HelpCircle } from "lucide-react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pricing & Plans | Waylink",
+  description:
+    "Explore Waylink pricing plans for service providers. Compare features, listing limits, and choose the plan that fits your business. Flexible subscriptions with optional free trials.",
+
+  keywords: [
+    "Waylink pricing",
+    "Waylink plans",
+    "subscription plans",
+    "service provider pricing",
+    "booking platform pricing",
+    "SaaS plans Waylink",
+  ],
+};
 
 function PlansSkeleton() {
   return (

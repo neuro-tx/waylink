@@ -20,6 +20,7 @@ import {
   Loader2,
   User,
   LogOut,
+  Plus,
 } from "lucide-react";
 
 import {
@@ -45,7 +46,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { useProviderContext } from "../../../components/providers/ProviderContext";
+import {
+  ProviderType,
+  useProviderContext,
+} from "../../../components/providers/ProviderContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "./GlobalSearch";
@@ -61,6 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface NavChild {
   title: string;
@@ -75,12 +80,8 @@ interface NavItem {
 }
 
 export function ProviderSidebar() {
-  const pathname = usePathname();
-  const { type, config, provider } = useProviderContext();
+  const { type, config, provider, role } = useProviderContext();
   const { setOpen } = useSidebar();
-
-  const isActive = (href: string): boolean =>
-    pathname === href || pathname.startsWith(href + "/");
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -159,39 +160,10 @@ export function ProviderSidebar() {
     },
   ];
 
-  const renderNavItem = (item: NavItem) => {
-    const active = isActive(item.href);
-
-    return (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton
-          asChild
-          isActive={active}
-          tooltip={item.title}
-          className={`
-            group relative transition-all duration-150
-            hover:bg-sidebar-accent/60
-            ${active ? `bg-sidebar-accent ${config.twTextColor} font-medium` : "text-muted-foreground hover:text-foreground"}
-          `}
-        >
-          <Link href={item.href} className="flex items-center gap-3">
-            {active && (
-              <span
-                className={`absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.75 rounded-r-full ${config.twBgColor}`}
-              />
-            )}
-            <item.icon
-              className={`size-4 shrink-0 transition-colors ${
-                active
-                  ? config.twTextColor
-                  : "text-muted-foreground group-hover:text-foreground"
-              }`}
-            />
-            <span className="flex-1 truncate text-sm">{item.title}</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
+  const ROLE_STYLES = {
+    owner: "text-purple-600",
+    manager: "text-blue-600",
+    staff: "text-emerald-600",
   };
 
   return (
@@ -226,19 +198,19 @@ export function ProviderSidebar() {
 
       <SidebarContent className="py-2 flex flex-col gap-1">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 px-3 mb-1 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-3 mb-1 group-data-[collapsible=icon]:hidden">
             Main Menu
           </SidebarGroupLabel>
-          <SidebarMenu>{NAV_MAIN.map(renderNavItem)}</SidebarMenu>
+          <NavMain items={NAV_MAIN} type={type} />
         </SidebarGroup>
 
         <div className="mx-3 border-t border-border/30 group-data-[collapsible=icon]:mx-2" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 px-3 mb-1 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-3 mb-1 group-data-[collapsible=icon]:hidden">
             Account
           </SidebarGroupLabel>
-          <SidebarMenu>{NAV_ACCOUNT.map(renderNavItem)}</SidebarMenu>
+          <NavMain items={NAV_ACCOUNT} type={type} />
         </SidebarGroup>
       </SidebarContent>
 
@@ -264,8 +236,19 @@ export function ProviderSidebar() {
                     <span className="truncate text-sm font-medium">
                       {provider.name}
                     </span>
-                    <span className="truncate text-xs text-muted-foreground capitalize">
-                      {type} Partner
+                    <span
+                      className={cn(
+                        "truncate text-xs capitalize",
+                        ROLE_STYLES[role || "staff"],
+                      )}
+                    >
+                      {role && type ? (
+                        <span className="capitalize">
+                          {type} / {role}
+                        </span>
+                      ) : (
+                        "not detected"
+                      )}
                     </span>
                   </div>
                 </SidebarMenuButton>
@@ -412,5 +395,87 @@ export function ProviderHeader() {
         )}
       </div>
     </header>
+  );
+}
+
+const NAV_THEME: Record<
+  ProviderType,
+  {
+    activeText: string;
+    activeBg: string;
+    hoverBg: string;
+    iconActive: string;
+  }
+> = {
+  transport: {
+    activeText: "text-blue-10!",
+    activeBg: "bg-blue-10/15! hover:bg-blue-10/20!",
+    hoverBg: "hover:bg-blue-10/10!",
+    iconActive: "text-blue-10",
+  },
+  experience: {
+    activeText: "text-orange-3!",
+    activeBg: "bg-orange-3/15! hover:bg-orange-3/20!",
+    hoverBg: "hover:bg-orange-3/10!",
+    iconActive: "text-orange-3!",
+  },
+};
+
+function NavMain({
+  items,
+  type,
+}: {
+  items: {
+    title: string;
+    href: string;
+    icon?: LucideIcon;
+  }[];
+  type: ProviderType;
+}) {
+  const pathname = usePathname();
+
+  const theme = NAV_THEME[type];
+
+  const isActive = (href: string): boolean => pathname === href;
+
+  return (
+    <SidebarMenu>
+      {items.map((item) => {
+        const active = isActive(item.href);
+
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton
+              tooltip={item.title}
+              asChild
+              className={cn(
+                "h-9 px-2 rounded-md transition-all duration-300",
+                "flex items-center gap-2",
+
+                active
+                  ? cn(theme.activeText, theme.activeBg, "font-medium")
+                  : cn("text-muted-foreground", theme.hoverBg),
+              )}
+            >
+              <Link href={item.href} className="flex items-center gap-2 w-full">
+                {item.icon && (
+                  <item.icon
+                    className={cn(
+                      "size-4 transition-all duration-200",
+                      active
+                        ? theme.iconActive
+                        : "opacity-80 group-hover:opacity-100",
+                    )}
+                  />
+                )}
+                <span className="transition-all duration-200">
+                  {item.title}
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
+    </SidebarMenu>
   );
 }
