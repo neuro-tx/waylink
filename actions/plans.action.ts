@@ -11,7 +11,7 @@ import type {
   PlanTier,
 } from "@/lib/all-types";
 import { db } from "@/db";
-import { plans, subscriptions } from "@/db/schemas";
+import { plans, subscriptionRelations, subscriptions } from "@/db/schemas";
 import { getCurrentProvider } from "@/lib/provider-auth";
 
 type TrialInput = {
@@ -453,15 +453,14 @@ export async function resumeSubscription(): Promise<ActionResult> {
   }
 }
 
-export async function renewSubscription(): Promise<ActionResult<Subscription>> {
+export async function renewSubscription(subId:string): Promise<ActionResult<Subscription>> {
   try {
-    const subResult = await getCurrentSubscription();
-    if (!subResult.success || !subResult.data) {
+    const [subResult] = await db.select().from(subscriptions).where(eq(subscriptions.id ,subId)).limit(1);
+    if (!subResult) {
       return { success: false, error: "No subscription to renew." };
     }
 
-    const sub = subResult.data;
-    const planResult = await getPlanById(sub.planId);
+    const planResult = await getPlanById(subResult.planId);
     if (!planResult.success || !planResult.data) {
       return { success: false, error: "Could not load plan." };
     }
@@ -481,6 +480,42 @@ export async function renewSubscription(): Promise<ActionResult<Subscription>> {
   } catch (err: any) {
     console.error("[renewSubscription]", err);
     return { success: false, error: err.message ?? "Failed to renew." };
+  }
+}
+
+/**
+ * Cancel active/trialing subscriptions for the current provider.
+ */
+export async function cancelSubscription(): Promise<
+  ActionResult<Subscription>
+> {
+  try {
+    const provider = await requireProvider(true);
+
+    const [row] = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.providerId, provider.id),
+          inArray(subscriptions.status, ["active", "trialing"]),
+        ),
+      )
+      .limit(1);
+
+    if (!row) throw new Error("this subscription not avaliable");
+
+    await db.update(subscriptions).set({
+      autoRenew: false,
+      cancelledAt: new Date(),
+      status: "cancelled",
+    });
+
+    revalidatePlanPaths();
+    return { success: true };
+  } catch (err: any) {
+    console.error("[cancelSubscription]", err);
+    return { success: false, error: err.message ?? "Failed to cancel." };
   }
 }
 
