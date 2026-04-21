@@ -1,6 +1,7 @@
 "use server";
 
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { revalidatePath } from "next/cache";
 import type {
   Plan,
@@ -11,20 +12,32 @@ import type {
   PlanTier,
 } from "@/lib/all-types";
 import { db } from "@/db";
-import { plans, subscriptionRelations, subscriptions } from "@/db/schemas";
+import { plans, subscriptions } from "@/db/schemas";
 import { getCurrentProvider } from "@/lib/provider-auth";
+import { detectSubscriptionAction, isExpired } from "@/lib/utils";
 
-type TrialInput = {
-  type: "trial";
-  duration: number;
+type DBTX = NodePgDatabase<any>;
+
+const rules = {
+  subscribe: (status?: string) =>
+    !status || status === "cancelled" || status === "expired",
+  cancel: (status?: string) =>
+    !!status && status !== "cancelled" && status !== "expired",
+  pause: (status?: string) => status === "active",
+  resume: (status?: string) => status === "paused",
+  upgrade: (status?: string) => status === "active",
+  renew: (status?: string) => status === "expired" || status === "cancelled",
 };
 
-type PaidInput = {
-  type: "paid";
-  billingCycle: PlanBillingCycle;
-};
+function applyRules(actionType: keyof typeof rules, status?: string) {
+  const isValid = rules[actionType](status);
 
-type CalcEndDateInput = TrialInput | PaidInput;
+  if (!isValid) {
+    throw new Error(
+      `Invalid action "${actionType}" for status "${status ?? "none"}"`,
+    );
+  }
+}
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -177,7 +190,7 @@ export async function getActiveSubscription(): Promise<
       .where(
         and(
           eq(subscriptions.providerId, provider.id),
-          inArray(subscriptions.status, ["active", "trialing"]),
+          inArray(subscriptions.status, ["active", "trialing", "paused"]),
         ),
       )
       .orderBy(desc(subscriptions.createdAt))
@@ -260,8 +273,8 @@ export async function hasReachedListingLimit(): Promise<ActionResult<boolean>> {
  * Cancel all active/trialing subscriptions for the current provider.
  * Internal helper — called before creating a new subscription.
  */
-async function cancelExistingSubscriptions(providerId: string): Promise<void> {
-  await db
+async function cancelExistingSubscriptions(tx: DBTX, providerId: string) {
+  await tx
     .update(subscriptions)
     .set({
       status: "cancelled",
@@ -276,7 +289,7 @@ async function cancelExistingSubscriptions(providerId: string): Promise<void> {
     );
 }
 
-function computeEndDate(input: CalcEndDateInput): Date {
+function computeEndDate(input: any): Date {
   const now = new Date();
 
   if (input.type === "trial") {
@@ -306,64 +319,76 @@ export async function subscribeToPlan(
   try {
     const provider = await requireProvider(true);
 
-    // Validate plan
-    const [plan] = await db
-      .select()
-      .from(plans)
-      .where(
-        and(
-          eq(plans.id, payload.planId),
-          eq(plans.isActive, true),
-          eq(plans.billingCycle, payload.billingCycle),
-        ),
-      )
-      .limit(1);
+    return await db.transaction(async (tx) => {
+      // 0. check if there is an active plan (active / trialing/ paused)
+      const existing = await tx
+        .select()
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.providerId, provider.id),
+            inArray(subscriptions.status, ["active", "trialing", "paused"]),
+          ),
+        )
+        .limit(1);
 
-    if (!plan) return { success: false, error: "Plan not found or inactive." };
-
-    // Cancel existing subs
-    await cancelExistingSubscriptions(provider.id);
-
-    const dateConfig = ():
-      | { type: "trial"; duration: number }
-      | { type: "paid"; billingCycle: PlanBillingCycle } => {
-      if (plan.trialEnabled) {
-        return {
-          type: "trial",
-          duration: plan.trialDays ?? 0,
-        };
+      if (existing.length) {
+        throw new Error("Active subscription already exists");
       }
 
-      return {
-        type: "paid",
-        billingCycle: plan.billingCycle,
-      };
-    };
+      // 1. Validate plan
+      const [plan] = await tx
+        .select()
+        .from(plans)
+        .where(
+          and(
+            eq(plans.id, payload.planId),
+            eq(plans.isActive, true),
+            eq(plans.billingCycle, payload.billingCycle),
+          ),
+        )
+        .limit(1);
 
-    // Insert new subscription
-    const subState = plan.trialEnabled ? "trialing" : "active";
-    const now = new Date();
-    const [newSub] = await db
-      .insert(subscriptions)
-      .values({
-        providerId: provider.id,
-        planId: plan.id,
-        status: subState,
-        startDate: now,
-        endDate: computeEndDate(dateConfig()),
-        autoRenew: plan.trialEnabled ? false : true,
-        type: plan.trialEnabled ? "trial" : "paid",
-      })
-      .returning();
+      if (!plan) {
+        throw new Error("Plan not found or inactive.");
+      }
 
-    revalidatePlanPaths();
-    return { success: true, data: newSub as Subscription };
+      // 2. Cancel existing (safe inside tx)
+      await cancelExistingSubscriptions(tx, provider.id);
+
+      // 3. Compute dates
+      const config = plan.trialEnabled
+        ? { type: "trial", duration: plan.trialDays ?? 0 }
+        : { type: "paid", billingCycle: plan.billingCycle };
+
+      const endDate = computeEndDate(config);
+
+      // 4. Insert new sub
+      const [newSub] = await tx
+        .insert(subscriptions)
+        .values({
+          providerId: provider.id,
+          planId: plan.id,
+          status: plan.trialEnabled ? "trialing" : "active",
+          startDate: new Date(),
+          endDate,
+          autoRenew: plan.trialEnabled ? false : true,
+          type: plan.trialEnabled ? "trial" : "paid",
+        })
+        .returning();
+
+      return { success: true, data: newSub as Subscription };
+    });
   } catch (err: any) {
     console.error("[subscribeToPlan]", err);
-    return { success: false, error: err.message ?? "Failed to subscribe." };
+    return {
+      success: false,
+      error: err.message ?? "Failed to subscribe.",
+    };
+  } finally {
+    revalidatePlanPaths();
   }
 }
-
 /**
  * pause the provider's active subscription at period end.
  * The sub stays active until currentPeriodEnd — provider keeps access.
@@ -385,6 +410,14 @@ export async function pauseSubscription(): Promise<ActionResult> {
       .limit(1);
 
     if (!sub) return { success: false, error: "No active subscription found." };
+    if (isExpired(sub.endDate)) {
+      return {
+        success: false,
+        error: "Subscription already ended",
+      };
+    }
+
+    applyRules("pause", sub.status);
 
     await db
       .update(subscriptions)
@@ -429,6 +462,8 @@ export async function resumeSubscription(): Promise<ActionResult> {
       };
     }
 
+    applyRules("resume", sub.status);
+
     const pauseDuration = now.getTime() - new Date(sub?.pausedAt).getTime();
 
     const newEndDate = new Date(
@@ -453,12 +488,19 @@ export async function resumeSubscription(): Promise<ActionResult> {
   }
 }
 
-export async function renewSubscription(subId:string): Promise<ActionResult<Subscription>> {
+export async function renewSubscription(
+  subId: string,
+): Promise<ActionResult<Subscription>> {
   try {
-    const [subResult] = await db.select().from(subscriptions).where(eq(subscriptions.id ,subId)).limit(1);
+    const [subResult] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, subId))
+      .limit(1);
     if (!subResult) {
       return { success: false, error: "No subscription to renew." };
     }
+    applyRules("renew", subResult.status);
 
     const planResult = await getPlanById(subResult.planId);
     if (!planResult.success || !planResult.data) {
@@ -486,9 +528,9 @@ export async function renewSubscription(subId:string): Promise<ActionResult<Subs
 /**
  * Cancel active/trialing subscriptions for the current provider.
  */
-export async function cancelSubscription(): Promise<
-  ActionResult<Subscription>
-> {
+export async function cancelSubscription(
+  subId: string,
+): Promise<ActionResult<Subscription>> {
   try {
     const provider = await requireProvider(true);
 
@@ -498,18 +540,23 @@ export async function cancelSubscription(): Promise<
       .where(
         and(
           eq(subscriptions.providerId, provider.id),
-          inArray(subscriptions.status, ["active", "trialing"]),
+          eq(subscriptions.id, subId),
         ),
       )
       .limit(1);
 
     if (!row) throw new Error("this subscription not avaliable");
+    applyRules("cancel", row.status);
+    const nextStatus = isExpired(row.endDate) ? "expired" : "cancelled";
 
-    await db.update(subscriptions).set({
-      autoRenew: false,
-      cancelledAt: new Date(),
-      status: "cancelled",
-    });
+    await db
+      .update(subscriptions)
+      .set({
+        autoRenew: false,
+        cancelledAt: new Date(),
+        status: nextStatus,
+      })
+      .where(eq(subscriptions.id, row.id));
 
     revalidatePlanPaths();
     return { success: true };
@@ -519,6 +566,90 @@ export async function cancelSubscription(): Promise<
   }
 }
 
+export async function upgradeSubscription(
+  targetPlanId: string,
+): Promise<ActionResult<Subscription>> {
+  try {
+    return await db.transaction(async (tx) => {
+      const provider = await requireProvider(true);
+
+      // 1. get current subscription + target plan
+      const [[current], [targetPlan]] = await Promise.all([
+        tx
+          .select()
+          .from(subscriptions)
+          .where(
+            and(
+              eq(subscriptions.providerId, provider.id),
+              inArray(subscriptions.status, ["active", "trialing", "paused"]),
+            ),
+          )
+          .limit(1),
+
+        tx.select().from(plans).where(eq(plans.id, targetPlanId)).limit(1),
+      ]);
+
+      if (!targetPlan) {
+        throw new Error("Target plan not found");
+      }
+
+      // 2. get current plan safely
+      const currentPlan = current
+        ? await tx
+            .select()
+            .from(plans)
+            .where(eq(plans.id, current.planId))
+            .limit(1)
+            .then(([p]) => p)
+        : null;
+
+      // 3. detect action
+      const action = detectSubscriptionAction({
+        currentTier: currentPlan?.tier,
+        targetTier: targetPlan.tier,
+      });
+
+      if (action === "same") {
+        throw new Error("You are already on this plan");
+      }
+
+      // 4. replace subscription
+      await cancelExistingSubscriptions(tx, provider.id);
+
+      const config = targetPlan.trialEnabled
+        ? { type: "trial", duration: targetPlan.trialDays ?? 0 }
+        : { type: "paid", billingCycle: targetPlan.billingCycle };
+
+      const endDate = computeEndDate(config);
+
+      const [newSub] = await tx
+        .insert(subscriptions)
+        .values({
+          providerId: provider.id,
+          planId: targetPlan.id,
+          status: targetPlan.trialEnabled ? "trialing" : "active",
+          startDate: new Date(),
+          endDate,
+          autoRenew: !targetPlan.trialEnabled,
+          type: targetPlan.trialEnabled ? "trial" : "paid",
+        })
+        .returning();
+
+      return {
+        success: true,
+        data: newSub as Subscription,
+      };
+    });
+  } catch (err: any) {
+    console.error("[upgradeSubscription]", err);
+    return {
+      success: false,
+      error: err.message ?? "Failed to upgrade subscription",
+    };
+  } finally {
+    revalidatePlanPaths();
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // Listing count management
 // ─────────────────────────────────────────────────────────────────────────────

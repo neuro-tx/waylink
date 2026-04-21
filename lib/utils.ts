@@ -128,8 +128,8 @@ export function timeAgo(date: Date | string): string {
     { limit: 60, value: 1, suffix: "just now" },
     { limit: 3600, value: 60, suffix: "m" },
     { limit: 86400, value: 3600, suffix: "h" },
-    { limit: 604800, value: 86400, suffix: "d" },   
-    { limit: 2592000, value: 604800, suffix: "w" }, 
+    { limit: 604800, value: 86400, suffix: "d" },
+    { limit: 2592000, value: 604800, suffix: "w" },
     { limit: 31536000, value: 2592000, suffix: "mo" },
   ];
 
@@ -164,8 +164,8 @@ export function parseArray<T>(stops: unknown): T[] {
     try {
       const fixed = stops
         .trim()
-        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') 
-        .replace(/,\s*([}\]])/g, "$1"); 
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+        .replace(/,\s*([}\]])/g, "$1");
 
       const parsed = JSON.parse(fixed);
       return Array.isArray(parsed) ? parsed : [];
@@ -173,4 +173,39 @@ export function parseArray<T>(stops: unknown): T[] {
       return [];
     }
   }
+}
+
+export function isExpired(endDate?: Date | string | null): boolean {
+  if (!endDate) return true; // treat missing as expired
+  return new Date(endDate).getTime() <= Date.now();
+}
+
+const PLAN_RANK: Record<string, number> = {
+  free: 0,
+  pro: 1,
+  business: 2,
+  enterprise: 3,
+};
+
+type SubscriptionAction = "start" | "upgrade" | "downgrade" | "same";
+
+export function detectSubscriptionAction(input: {
+  currentTier?: string;
+  targetTier: string;
+}): SubscriptionAction {
+  const { currentTier, targetTier } = input;
+
+  const currentRank = currentTier ? PLAN_RANK[currentTier] : undefined;
+  const targetRank = PLAN_RANK[targetTier];
+
+  if (targetRank === undefined) {
+    throw new Error("Invalid target plan configuration");
+  }
+
+  if (currentRank === undefined) return "start";
+
+  if (targetRank > currentRank) return "upgrade";
+  if (targetRank < currentRank) return "downgrade";
+
+  return "same";
 }
