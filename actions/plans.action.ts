@@ -27,6 +27,7 @@ const rules = {
   resume: (status?: string) => status === "paused",
   upgrade: (status?: string) => status === "active",
   renew: (status?: string) => status === "expired" || status === "cancelled",
+  expire: (status?: string) => status !== "expired",
 };
 
 function applyRules(actionType: keyof typeof rules, status?: string) {
@@ -344,7 +345,9 @@ export async function subscribeToPlan(
           and(
             eq(plans.id, payload.planId),
             eq(plans.isActive, true),
-            eq(plans.billingCycle, payload.billingCycle),
+            payload.billingCycle
+              ? eq(plans.billingCycle, payload.billingCycle)
+              : undefined,
           ),
         )
         .limit(1);
@@ -455,7 +458,7 @@ export async function resumeSubscription(): Promise<ActionResult> {
       )
       .limit(1);
 
-    if (!sub || !sub.pausedAt) {
+    if (!sub || !sub.pausedAt || sub.status !== "paused") {
       return {
         success: false,
         error: "No paused subscription found.",
@@ -477,6 +480,7 @@ export async function resumeSubscription(): Promise<ActionResult> {
         endDate: newEndDate,
         pausedAt: null,
         resumeAt: now,
+        status:"active"
       })
       .where(eq(subscriptions.id, sub.id));
 
@@ -530,6 +534,7 @@ export async function renewSubscription(
  */
 export async function cancelSubscription(
   subId: string,
+  immediate = false,
 ): Promise<ActionResult<Subscription>> {
   try {
     const provider = await requireProvider(true);
@@ -546,15 +551,29 @@ export async function cancelSubscription(
       .limit(1);
 
     if (!row) throw new Error("this subscription not avaliable");
-    applyRules("cancel", row.status);
-    const nextStatus = isExpired(row.endDate) ? "expired" : "cancelled";
+    applyRules(immediate ? "expire":"cancel", row.status);
+
+    const now = new Date();
+
+    let nextStatus: "cancelled" | "expired";
+    let cancelledAt: Date | null = null;
+    let endDate: Date | undefined = undefined;
+
+    if (immediate || isExpired(row.endDate)) {
+      nextStatus = "expired";
+      endDate = now;
+    } else {
+      nextStatus = "cancelled";
+      cancelledAt = now;
+    }
 
     await db
       .update(subscriptions)
       .set({
-        autoRenew: false,
-        cancelledAt: new Date(),
         status: nextStatus,
+        autoRenew: false,
+        cancelledAt,
+        ...(endDate && { endDate }),
       })
       .where(eq(subscriptions.id, row.id));
 

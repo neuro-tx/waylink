@@ -79,14 +79,14 @@ export function SubscriptionClient({
 
   const filtered =
     filter === "all"
-      ? subscriptions
+      ? [...subscriptions].sort((a, b) => {
+          if (a.status === "active" && b.status !== "active") return -1;
+          if (a.status !== "active" && b.status === "active") return 1;
+          return 0;
+        })
       : subscriptions.filter((s) => s.status === filter);
 
   const selected = subscriptions.find((s) => s.id === selectedId) ?? null;
-
-  const handleMutate = useCallback(() => {
-    router.refresh();
-  }, [router]);
 
   function countFor(f: SubscriptionStatus | "all") {
     if (f === "all") return subscriptions.length;
@@ -198,7 +198,7 @@ export function SubscriptionClient({
         )}
 
         {selected ? (
-          <SubscriptionDetail subscription={selected} onMutate={handleMutate} />
+          <SubscriptionDetail subscription={selected} />
         ) : (
           <NothingSelected />
         )}

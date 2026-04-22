@@ -463,7 +463,7 @@ export interface Subscription {
 
 export interface SubscribePayload {
   planId: string;
-  billingCycle: PlanBillingCycle;
+  billingCycle?: PlanBillingCycle;
 }
 
 export interface ActionResult<T = void> {

@@ -23,6 +23,7 @@ import {
   daysSince,
 } from "./SubscriptionRow";
 import type { Subscription, PlanTier } from "@/lib/all-types";
+import { SubscriptionActions } from "./Subscriptionactions";
 
 function DetailRow({
   icon: Icon,
@@ -66,15 +67,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-interface SubscriptionDetailProps {
-  subscription: Subscription;
-  onMutate: () => void;
-}
-
 export function SubscriptionDetail({
   subscription: sub,
-  onMutate,
-}: SubscriptionDetailProps) {
+}: {
+  subscription: Subscription;
+}) {
   const router = useRouter();
 
   const plan = sub.plan;
@@ -84,8 +81,9 @@ export function SubscriptionDetail({
   const tierCfg = TIER_CONFIG[tier];
   const TierIcon = tierCfg.icon;
 
-  const { isLive, isCancelled, isExpired, isTrialing } =
-    getSubscriptionFlags(sub.status);
+  const { isLive, isCancelled, isExpired, isTrialing } = getSubscriptionFlags(
+    sub.status,
+  );
 
   const maxListings = plan?.maxListings ?? null;
   const listingsPct = maxListings
@@ -93,8 +91,13 @@ export function SubscriptionDetail({
     : 0;
 
   const trialDaysLeft = sub.endDate ? daysUntil(sub.endDate) : null;
-  const periodDaysLeft = daysUntil(sub.startDate);
   const startedDaysAgo = daysSince(sub.startDate);
+  const periodDaysLeft = sub.endDate ? daysUntil(sub.endDate) : 0;
+
+  const total = startedDaysAgo + periodDaysLeft;
+
+  const progress =
+    total === 0 ? 100 : Math.round((startedDaysAgo / total) * 100);
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -135,7 +138,7 @@ export function SubscriptionDetail({
         </p>
       </div>
 
-      <div className="flex-1 px-6 py-4 space-y-0 overflow-y-auto">
+      <div className="flex-1 px-5 py-4 space-y-0 overflow-y-auto">
         {/* Trial countdown */}
         {isTrialing && trialDaysLeft !== null && (
           <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3.5 py-3 mb-4">
@@ -338,21 +341,25 @@ export function SubscriptionDetail({
                 <span className="text-xs">Period progress</span>
               </div>
               <span className="text-xs font-medium text-muted-foreground">
-                {periodDaysLeft}d remaining
+                {periodDaysLeft <= 0
+                  ? "Expired"
+                  : `${periodDaysLeft}d remaining`}
               </span>
             </div>
             <Progress
-              value={Math.min(
-                100,
-                Math.round(
-                  (startedDaysAgo / (startedDaysAgo + periodDaysLeft)) * 100,
-                ),
-              )}
+              value={Math.min(100, progress)}
               className="h-1.5 [&>div]:bg-primary"
             />
           </div>
         )}
       </div>
+
+      <SubscriptionActions
+        subId={sub.id}
+        status={sub.status}
+        planId={sub.planId}
+        billingCycle={plan?.billingCycle}
+      />
     </div>
   );
 }

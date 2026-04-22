@@ -3,6 +3,7 @@ import { inngest } from "../client";
 import { db } from "@/db";
 import { plans, subscriptions } from "@/db/schemas";
 import { and, lte, inArray, eq } from "drizzle-orm";
+import { renewSubscription } from "@/actions/plans.action";
 
 const expireEndedSubscriptions = inngest.createFunction(
   {
@@ -13,26 +14,31 @@ const expireEndedSubscriptions = inngest.createFunction(
     await step.run("expire-subscriptions", async () => {
       const now = new Date();
 
-      const result = await db
-        .update(subscriptions)
-        .set({
-          status: "expired",
-          autoRenew: false,
+      const subs = await db
+        .select({
+          id: subscriptions.id,
+          autoRenew: subscriptions.autoRenew,
+          status: subscriptions.status,
         })
+        .from(subscriptions)
         .where(
           and(
             lte(subscriptions.endDate, now),
-            inArray(subscriptions.status, ["active", "trialing"]),
+            inArray(subscriptions.status, ["active", "trialing" ,"cancelled"]),
+            eq(subscriptions.autoRenew, false),
           ),
-        )
-        .returning({
-          id: subscriptions.id,
-        });
+        );
 
-      return {
-        expiredCount: result.length,
-        dateTime: now,
-      };
+      for (const sub of subs) {
+        if (sub.autoRenew) {
+          await renewSubscription(sub.id);
+        } else {
+          await db
+            .update(subscriptions)
+            .set({ status: "expired", autoRenew: false })
+            .where(eq(subscriptions.id, sub.id));
+        }
+      }
     });
   },
 );
