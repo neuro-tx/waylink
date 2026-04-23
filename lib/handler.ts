@@ -29,7 +29,7 @@ export async function tryCatch<T>(
   try {
     const role = options?.role ?? "guest";
     const arc = aj(role, options?.arcjetRules);
-    const decision = await arc.protect(req, { requested: 5 });
+    const decision = await arc.protect(req, { requested: 1 });
     console.log(decision);
     if (decision.isDenied()) {
       throw Errors.forbidden(getArcjetMessage(decision.reason));
@@ -57,7 +57,7 @@ export async function tryCatch<T>(
         status: 200,
       },
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("[API]", error);
 
     if (isApiError(error)) {
@@ -77,7 +77,7 @@ export async function tryCatch<T>(
       {
         status: "error",
         code: "SERVER_ERROR",
-        message: "Internal server error",
+        message: error.message || "Internal server error",
       },
       { status: 500 },
     );
