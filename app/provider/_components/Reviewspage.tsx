@@ -402,7 +402,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const tabFromUrl = searchParams.get("tab") ?? "all";
+  const productFromUrl = searchParams.get("product") ?? "all";
   const sortFromUrl = (searchParams.get("sort") ?? "newest") as SortOption;
   const ratingFromUrl = searchParams.get("rating") ?? "all";
   const pageFromUrl = Number(searchParams.get("page") ?? "1");
@@ -447,10 +447,11 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
   const setTab = useCallback(
     (v: string) => {
       safePush({
-        tab: v,
+        product: v,
         page: "1",
         rating: null,
         sort: null,
+        
       });
     },
     [safePush],
@@ -489,7 +490,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
     try {
       const p = new URLSearchParams();
       p.set("provider", providerId);
-      if (tabFromUrl !== "all") p.set("productId", tabFromUrl);
+      if (productFromUrl !== "all") p.set("product", productFromUrl);
       if (ratingFromUrl !== "all") p.set("rating", ratingFromUrl);
       p.set("sort", sortFromUrl);
       p.set("page", String(pageFromUrl));
@@ -511,7 +512,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [providerId, tabFromUrl, ratingFromUrl, sortFromUrl, pageFromUrl]);
+  }, [providerId, productFromUrl, ratingFromUrl, sortFromUrl, pageFromUrl]);
 
   useEffect(() => {
     fetchReviews();
@@ -526,12 +527,21 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
   return (
     <div className="space-y-6 w-full px-4 md:px-6 overflow-x-hidden py-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {product
-            ? `Viewing reviews for "${product.title}"`
-            : "Manage and respond to all customer reviews"}
-        </p>
+        {loading ? (
+          <div className="space-y-1">
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {product
+                ? `Viewing reviews for "${product.title}"`
+                : "Manage and respond to all customer reviews"}
+            </p>
+          </>
+        )}
       </div>
 
       {stats ? (
@@ -549,7 +559,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
               onClick={() => setTab("all")}
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs border transition",
-                tabFromUrl === "all"
+                productFromUrl === "all"
                   ? "bg-foreground text-background border-foreground font-medium"
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
@@ -561,7 +571,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
               onClick={() => setTab(product.id)}
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs border transition max-w-50 truncate",
-                tabFromUrl === product.id
+                productFromUrl === product.id
                   ? "bg-foreground text-background border-foreground font-medium"
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
@@ -600,7 +610,11 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
           </div>
 
           <div>
-            <Select value={sortFromUrl} onValueChange={setSort} disabled={loading}>
+            <Select
+              value={sortFromUrl}
+              onValueChange={setSort}
+              disabled={loading}
+            >
               <SelectTrigger className="h-8 text-xs max-w-36">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>

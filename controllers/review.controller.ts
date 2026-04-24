@@ -44,10 +44,9 @@ async function getReviewsController(req: NextRequest) {
   const providerId = searchParams.get("provider");
   if (!providerId) throw new Error("Missing required param: provider");
 
-  const productId =
-    searchParams.get("tab") !== "all"
-      ? (searchParams.get("tab") ?? searchParams.get("productId"))
-      : null;
+  const rawProduct = searchParams.get("product");
+
+  const productId = rawProduct && rawProduct !== "all" ? rawProduct : null;
 
   const rawRating = searchParams.get("rating");
   const rating =
@@ -74,4 +73,22 @@ async function getReviewsController(req: NextRequest) {
   return result;
 }
 
-export const reviewController = { newReview, getReviewsController };
+async function deleteReview(reviewId: string) {
+  if (!reviewId) throw new Error("Missing review ID");
+
+  return await reviewService.deleteReview(reviewId);
+}
+
+async function updateReview(reviewId: string, body: any) {
+  if (!body || typeof body !== "object")
+    throw new Error("Invalid request body");
+
+  return await reviewService.updateReview(reviewId, body);
+}
+
+export const reviewController = {
+  newReview,
+  getReviewsController,
+  deleteReview,
+  updateReview,
+};

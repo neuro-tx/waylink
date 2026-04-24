@@ -9,6 +9,12 @@ import {
 import { Pagination } from "@/lib/all-types";
 import { and, eq, sql, count, desc, asc } from "drizzle-orm";
 
+type UpdateReviewInput = {
+  comment?: string;
+  rating?: number;
+  providerResponse?: string;
+};
+
 const createReview = async (
   userId: string,
   productId: string,
@@ -167,7 +173,7 @@ const getProviderReviews = async ({
       })
       .from(products)
       .leftJoin(productReviews, eq(productReviews.productId, products.id))
-      .where(eq(products.providerId, providerId)),
+      .where(where),
 
     db
       .select({ total: count() })
@@ -206,4 +212,62 @@ const getProviderReviews = async ({
   };
 };
 
-export const reviewService = { createReview, getProviderReviews };
+const updateReview = async (reviewId: string, data: UpdateReviewInput) => {
+  const [review] = await db
+    .select()
+    .from(productReviews)
+    .where(eq(productReviews.id, reviewId));
+
+  if (!review) throw new Error("Review not found");
+
+  const newData: Partial<typeof productReviews.$inferInsert> = {};
+
+  if (data.comment !== undefined) {
+    newData.comment = data.comment;
+  }
+
+  if (data.rating !== undefined) {
+    newData.rating = data.rating;
+  }
+
+  if (data.providerResponse !== undefined) {
+    newData.providerResponse = data.providerResponse;
+    newData.respondedAt = data.providerResponse
+      ? new Date()
+      : review.respondedAt;
+  }
+
+  if (Object.keys(newData).length === 0) {
+    throw new Error("No valid fields to update");
+  }
+
+  const [res] = await db
+    .update(productReviews)
+    .set(newData)
+    .where(eq(productReviews.id, reviewId))
+    .returning();
+
+  if (!res) throw new Error("Failed to update the review");
+
+  return res;
+};
+
+const deleteReview = async (reviewId: string) => {
+  const res = await db
+    .delete(productReviews)
+    .where(eq(productReviews.id, reviewId))
+    .returning({ id: productReviews.id });
+
+  if (!res.length) {
+    throw new Error("Review not found or already deleted");
+  }
+
+  return true;
+};
+
+export const reviewService = {
+  createReview,
+  getProviderReviews,
+  updateReview,
+  deleteReview,
+};
