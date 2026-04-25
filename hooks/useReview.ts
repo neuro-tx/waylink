@@ -3,7 +3,7 @@ import { useState } from "react";
 type UpdateReviewInput = {
   comment?: string;
   rating?: number;
-  providerResponse?: string;
+  providerResponse?: string | null;
 };
 
 export function useReview() {
@@ -88,5 +88,7 @@ export function useReview() {
   return {
     create,
     error,
+    update,
+    remove,
   };
 }

@@ -20,15 +20,16 @@ export async function DELETE(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   return tryCatch(
     req,
     async () => {
-      const body = req.json();
-      const id = params.id;
+      const body = await req.json();
+      const id = (await params).id;
 
-      await reviewController.updateReview(id, body);
+      const updated = await reviewController.updateReview(id, body);
+      return updated;
     },
     { role: "provider" },
   );

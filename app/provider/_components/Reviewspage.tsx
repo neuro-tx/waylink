@@ -46,6 +46,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useReview } from "@/hooks/useReview";
+import { toast } from "sonner";
 
 export type ReviewsApiResponse = {
   reviews: ProductReview[];
@@ -159,11 +161,13 @@ function ReplyForm({
   onSubmit,
   onCancel,
   submitLabel,
+  error
 }: {
   initial?: string;
   onSubmit: (text: string) => void;
   onCancel: () => void;
   submitLabel: string;
+  error: boolean
 }) {
   const [value, setValue] = useState(initial ?? "");
   const [pending, startT] = useTransition();
@@ -176,7 +180,7 @@ function ReplyForm({
   return (
     <div className="mt-3 space-y-2">
       <Textarea
-        className="min-h-22 text-sm resize-none"
+        className={cn("min-h-22 text-sm resize-none" ,error && "border-destructive")}
         placeholder="Write your response to this review…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -198,14 +202,17 @@ function ReviewCard({
   onReplySubmit,
   onReplyEdit,
   onReplyDelete,
+  errMes,
 }: {
   review: ProductReview;
   onReplySubmit: (id: string, text: string) => Promise<void>;
   onReplyEdit: (id: string, text: string) => Promise<void>;
   onReplyDelete: (id: string) => Promise<void>;
+  errMes: string|null;
 }) {
   const [mode, setMode] = useState<"idle" | "replying" | "editing">("idle");
   const hasResponse = !!review.providerResponse;
+  const hasError = !!errMes;
 
   const initials = review.user.name
     .split(" ")
@@ -219,6 +226,8 @@ function ReviewCard({
       className={cn(
         "transition-all duration-200 gap-5",
         hasResponse && "border-l-2 border-l-emerald-500",
+        hasError &&
+          "border-destructive ring-1 ring-destructive/40 animate-shake",
       )}
     >
       <CardHeader className="pb-2">
@@ -270,6 +279,11 @@ function ReviewCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {hasError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {errMes}
+          </div>
+        )}
         {review.comment ? (
           <p className="text-sm text-foreground leading-relaxed">
             {review.comment}
@@ -347,6 +361,7 @@ function ReviewCard({
             }}
             onCancel={() => setMode("idle")}
             submitLabel="Save changes"
+            error={hasError}
           />
         )}
 
@@ -370,6 +385,7 @@ function ReviewCard({
             }}
             onCancel={() => setMode("idle")}
             submitLabel="Post response"
+            error={hasError}
           />
         )}
       </CardContent>
@@ -416,6 +432,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
     null,
   );
   const [isPending, startTransition] = useTransition();
+  const { update, error: reviewError } = useReview();
 
   const safePush = useCallback(
     (patch: Record<string, string | null>) => {
@@ -451,7 +468,6 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
         page: "1",
         rating: null,
         sort: null,
-        
       });
     },
     [safePush],
@@ -518,11 +534,25 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
     fetchReviews();
   }, [fetchReviews]);
 
-  async function handleReplySubmit(reviewId: string, text: string) {}
+  async function handleReply(reviewId: string, text: string) {
+    const updated = await update(reviewId, {
+      providerResponse: text,
+    });
 
-  async function handleReplyEdit(reviewId: string, text: string) {}
+    setReviews((prev) =>
+      prev.map((r) => (r.id === reviewId ? { ...r, ...updated } : r)),
+    );
+  }
 
-  async function handleReplyDelete(reviewId: string) {}
+  async function handleReplyDelete(reviewId: string) {
+        const updated = await update(reviewId, {
+          providerResponse: null,
+        });
+
+        setReviews((prev) =>
+          prev.map((r) => (r.id === reviewId ? { ...r, ...updated } : r)),
+        );
+  }
 
   return (
     <div className="space-y-6 w-full px-4 md:px-6 overflow-x-hidden py-6">
@@ -658,9 +688,10 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
             <ReviewCard
               key={rv.id}
               review={rv}
-              onReplySubmit={handleReplySubmit}
-              onReplyEdit={handleReplyEdit}
+              onReplySubmit={handleReply}
+              onReplyEdit={handleReply}
               onReplyDelete={handleReplyDelete}
+              errMes={"reviewError"}
             />
           ))
         )}
