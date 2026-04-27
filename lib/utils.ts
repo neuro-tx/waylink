@@ -209,3 +209,23 @@ export function detectSubscriptionAction(input: {
 
   return "same";
 }
+
+export function toCSV<T extends Record<string, any>>(rows: T[]): string {
+  if (!rows.length) throw new Error("No data to export");
+
+  const headers = Object.keys(rows[0]);
+
+  const csvLines = [
+    headers.join(","),
+    ...rows.map((row) =>
+      headers
+        .map((h) => {
+          const v = String(row[h] ?? "").replace(/"/g, '""');
+          return `"${v}"`;
+        })
+        .join(","),
+    ),
+  ];
+
+  return csvLines.join("\n");
+}

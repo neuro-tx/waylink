@@ -8,6 +8,7 @@ import type {
 } from "@/lib/all-types";
 import { db } from "@/db";
 import { bookings, products, user } from "@/db/schemas";
+import { toCSV } from "@/lib/utils";
 
 export const getProviderCustomers = async ({
   providerId,
@@ -26,11 +27,11 @@ export const getProviderCustomers = async ({
       userId: bookings.userId,
       totalOrders: sql<number>`count(${bookings.id})`.as("total_orders"),
       completedOrders:
-        sql<number>`count(${bookings.id}) filter (where ${bookings.status} = 'completed')`.as(
+        sql<number>`count(${bookings.id}) filter (where ${bookings.status} = 'confirmed')`.as(
           "completed_orders",
         ),
       lifetimeValue:
-        sql<number>`coalesce(sum(${bookings.totalAmount}) filter (where ${bookings.status} = 'completed'), 0)`.as(
+        sql<number>`coalesce(sum(${bookings.totalAmount}) filter (where ${bookings.status} in ('confirmed', 'completed')), 0)`.as(
           "lifetime_value",
         ),
       lastOrderAt: sql<Date>`max(${bookings.createdAt})`.as("last_order_at"),
@@ -203,3 +204,32 @@ export const getProviderCustomers = async ({
 
   return { customers, stats, pagination };
 };
+
+export const getProviderCustomersExport = async (providerId: string) => {
+  const { customers } = await getProviderCustomers({
+    providerId,
+    page: 1,
+    limit: 10_000,
+  });
+
+  return customers.map((c) => ({
+    Name: c.name,
+    Email: c.email,
+    Status: c.status,
+    Segment: c.segment,
+    TotalOrders: c.totalOrders,
+    CompletedOrders: c.completedOrders,
+    LifetimeValue: c.lifetimeValue,
+    Currency: c.currency,
+    FirstOrder: c.firstOrderAt ? new Date(c.firstOrderAt).toISOString() : "",
+    LastOrder: c.lastOrderAt ? new Date(c.lastOrderAt).toISOString() : "",
+  }));
+};
+
+export async function exportProviderCustomersCsv(
+  providerId: string,
+): Promise<string> {
+  const rows = await getProviderCustomersExport(providerId);
+
+  return toCSV(rows);
+}

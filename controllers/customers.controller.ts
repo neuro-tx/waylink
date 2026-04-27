@@ -6,7 +6,10 @@ import type {
   CustomerSegment,
 } from "@/lib/all-types";
 import { getCurrentProvider } from "@/lib/provider-auth";
-import { getProviderCustomers } from "@/services/customers.service";
+import {
+  exportProviderCustomersCsv,
+  getProviderCustomers,
+} from "@/services/customers.service";
 
 const VALID_SORTS = new Set<CustomerSortOption>([
   "newest",
@@ -73,4 +76,18 @@ export async function getCustomersController(req: NextRequest) {
   });
 
   return result;
+}
+
+export async function exportCustomersCsvController() {
+  const { provider } = await getCurrentProvider();
+  if (!provider?.id) throw new Error("Unauthorized");
+
+  const csv = await exportProviderCustomersCsv(provider.id);
+  return new NextResponse(csv, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": `attachment; filename="customers-${provider.id}-${Date.now()}.csv"`,
+    },
+  });
 }
