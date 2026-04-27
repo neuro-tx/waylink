@@ -47,7 +47,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useReview } from "@/hooks/useReview";
-import { toast } from "sonner";
 
 export type ReviewsApiResponse = {
   reviews: ProductReview[];
@@ -161,13 +160,13 @@ function ReplyForm({
   onSubmit,
   onCancel,
   submitLabel,
-  error
+  error,
 }: {
   initial?: string;
   onSubmit: (text: string) => void;
   onCancel: () => void;
   submitLabel: string;
-  error: boolean
+  error: boolean;
 }) {
   const [value, setValue] = useState(initial ?? "");
   const [pending, startT] = useTransition();
@@ -180,7 +179,8 @@ function ReplyForm({
   return (
     <div className="mt-3 space-y-2">
       <Textarea
-        className={cn("min-h-22 text-sm resize-none" ,error && "border-destructive")}
+        className="min-h-22 text-sm resize-none"
+        aria-invalid={error}
         placeholder="Write your response to this review…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -208,7 +208,7 @@ function ReviewCard({
   onReplySubmit: (id: string, text: string) => Promise<void>;
   onReplyEdit: (id: string, text: string) => Promise<void>;
   onReplyDelete: (id: string) => Promise<void>;
-  errMes: string|null;
+  errMes: string | null;
 }) {
   const [mode, setMode] = useState<"idle" | "replying" | "editing">("idle");
   const hasResponse = !!review.providerResponse;
@@ -295,7 +295,7 @@ function ReviewCard({
         )}
 
         {hasResponse && mode !== "editing" && (
-          <div className="rounded-lg bg-muted/60 border border-border px-3 py-2.5 space-y-1.5">
+          <div className="rounded-lg bg-muted/50 border border-border px-3 py-2.5 space-y-1.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <MessageSquareReply size={12} />
@@ -341,7 +341,7 @@ function ReviewCard({
                 </AlertDialog>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm leading-relaxed">
               {review.providerResponse}
             </p>
             {review.respondedAt && (
@@ -545,13 +545,13 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
   }
 
   async function handleReplyDelete(reviewId: string) {
-        const updated = await update(reviewId, {
-          providerResponse: null,
-        });
+    const updated = await update(reviewId, {
+      providerResponse: null,
+    });
 
-        setReviews((prev) =>
-          prev.map((r) => (r.id === reviewId ? { ...r, ...updated } : r)),
-        );
+    setReviews((prev) =>
+      prev.map((r) => (r.id === reviewId ? { ...r, ...updated } : r)),
+    );
   }
 
   return (
@@ -691,7 +691,7 @@ export default function ReviewsPage({ providerId }: { providerId: string }) {
               onReplySubmit={handleReply}
               onReplyEdit={handleReply}
               onReplyDelete={handleReplyDelete}
-              errMes={"reviewError"}
+              errMes={reviewError}
             />
           ))
         )}

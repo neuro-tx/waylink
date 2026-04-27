@@ -419,7 +419,12 @@ export interface ProductDetails extends Product {
 
 export type PlanTier = "free" | "pro" | "business" | "enterprise";
 export type PlanBillingCycle = "monthly" | "yearly";
-export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trialing" | "paused";
+export type SubscriptionStatus =
+  | "active"
+  | "cancelled"
+  | "expired"
+  | "trialing"
+  | "paused";
 
 export interface Plan {
   id: string;
@@ -470,4 +475,65 @@ export interface ActionResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+export type CustomerStatus = "active" | "blocked" | "churned";
+export type CustomerSegment = "new" | "returning" | "loyal";
+export type OrderStatus = BookingStatus;
+
+export interface CustomerOrder {
+  id: string;
+  status: OrderStatus;
+  totalAmount: number;
+  currency: string;
+  createdAt: string | Date;
+  productName: string;
+}
+
+export interface Customer extends Pick<
+  User,
+  "id" | "name" | "image" | "email"
+> {
+  status: CustomerStatus;
+  segment: CustomerSegment;
+  lifetimeValue: number;
+  totalOrders: number;
+  completedOrders: number;
+  lastOrderAt: string | Date | null;
+  firstOrderAt: string | Date | null;
+  currency: string;
+  orders: CustomerOrder[];
+}
+
+export interface CustomerStats {
+  total: number;
+  active: number;
+  blocked: number;
+  churned: number;
+  avgLifetimeValue: number;
+  totalRevenue: number;
+}
+
+export type CustomerSortOption =
+  | "newest"
+  | "oldest"
+  | "highest_ltv"
+  | "lowest_ltv"
+  | "most_orders"
+  | "recent_order";
+
+export interface GetCustomersParams {
+  providerId: string;
+  page?: number;
+  limit?: number;
+  status?: CustomerStatus | null;
+  segment?: CustomerSegment | null;
+  search?: string | null;
+  sort?: CustomerSortOption;
+}
+
+export interface CustomersApiResponse {
+  customers: Customer[];
+  stats: CustomerStats;
+  pagination: Pagination;
 }
