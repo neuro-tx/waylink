@@ -76,7 +76,12 @@ const [[stats], [{ total }], rows] = await Promise.all([
     .from(bookings)
     .where(eq(bookings.providerId, providerId)),
 
-  db.select({ total: count() }).from(bookings).where(where),
+  db
+    .select({ total: count() })
+    .from(bookings)
+    .innerJoin(products, eq(bookings.productId, products.id))
+    .leftJoin(user, eq(bookings.userId, user.id))
+    .where(where),
 
   db
     .select({

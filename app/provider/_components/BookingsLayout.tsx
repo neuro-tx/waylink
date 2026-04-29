@@ -29,6 +29,7 @@ import {
   Ban,
   RefreshCw,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import { fmtCurrency } from "@/lib/helpers";
 import { Card, CardContent } from "@/components/ui/card";
@@ -236,9 +237,11 @@ export function BookingsStatsBar({ stats }: { stats: BookingStats | null }) {
 export function StatusActions({
   booking,
   onTransition,
+  pending,
 }: {
   booking: ProviderBookingShape;
   onTransition: (id: string, status: BookingStatus) => Promise<void>;
+  pending: boolean;
 }) {
   const allowed = STATUS_TRANSITIONS[booking.status];
   if (allowed.length === 0) return null;
@@ -264,8 +267,17 @@ export function StatusActions({
                 size="sm"
                 className="gap-1.5 text-xs h-8"
               >
-                <Icon size={13} />
-                {cfg.label}
+                {pending ? (
+                  <>
+                    <Icon size={13} />
+                    {cfg.label}
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Processing...
+                  </>
+                )}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>

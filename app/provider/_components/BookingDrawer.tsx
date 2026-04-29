@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +11,23 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Baby,
   CalendarDays,
   Clock,
@@ -19,6 +35,10 @@ import {
   RefreshCw,
   UserRound,
   ArrowLeft,
+  CheckCircle2,
+  Ban,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
@@ -27,16 +47,10 @@ import {
   ProviderBookingShape,
   STATUS_TRANSITIONS,
 } from "@/lib/panel-types";
-import { BookingStatus } from "@/lib/all-types";
 import { statusConfig } from "./BookingTable";
 import { fmtCurrency, fmtDateTime, initials } from "@/lib/helpers";
-import { StatusActions } from "./BookingsLayout";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useBooking } from "@/hooks/useBooking";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const passengerIcons: Record<
   BookingItem["passengerType"],
@@ -51,20 +65,186 @@ interface BookingDrawerProps {
   booking: ProviderBookingShape;
   open: boolean;
   onClose: () => void;
+  onOptimisticUpdate: (
+    bookingId: string,
+    patch: Partial<ProviderBookingShape>,
+  ) => void;
 }
 
-export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
-  const [pending, startT] = useTransition();
+interface ActionButtonProps {
+  label: string;
+  loadingLabel: string;
+  icon: React.ElementType;
+  variant: "default" | "destructive" | "outline" | "ghost";
+  isLoading: boolean;
+  anyPending: boolean;
+  onClick: () => void;
+  className?: string;
+}
+
+function ActionButton({
+  label,
+  loadingLabel,
+  icon: Icon,
+  variant,
+  isLoading,
+  anyPending,
+  onClick,
+  className,
+}: ActionButtonProps) {
+  return (
+    <Button
+      variant={variant}
+      size="sm"
+      className={cn("gap-2 text-xs h-9 min-w-35 relative", className)}
+      disabled={anyPending}
+      onClick={onClick}
+    >
+      {isLoading ? (
+        <span className="absolute inset-0 flex items-center justify-center gap-1.5">
+          <Loader2 className="animate-spin size-4" />
+          {loadingLabel}
+        </span>
+      ) : (
+        <>
+          <span className={cn("flex items-center gap-1.5")}>
+            <Icon size={13} />
+            {label}
+          </span>
+        </>
+      )}
+    </Button>
+  );
+}
+
+function CancelAction({
+  booking,
+  onConfirmedCancel,
+  isLoading,
+  anyPending,
+}: {
+  booking: ProviderBookingShape;
+  onConfirmedCancel: () => void;
+  isLoading: boolean;
+  anyPending: boolean;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="gap-1.5 text-xs h-9 min-w-30"
+          disabled={anyPending}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 size={13} className="animate-spin shrink-0" />
+              Cancelling…
+            </>
+          ) : (
+            <>
+              <Ban size={13} className="shrink-0" />
+              Cancel booking
+            </>
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Cancel booking #{booking.orderNumber}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This booking will be permanently cancelled. This action cannot be
+            undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep booking</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            onClick={onConfirmedCancel}
+          >
+            Yes, cancel it
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+export function BookingDrawer({
+  booking,
+  open,
+  onClose,
+  onOptimisticUpdate,
+}: BookingDrawerProps) {
+  const { cancel, confirm, pendingAction, pendingBookingId, complete } =
+    useBooking();
+
+  const isThisBooking = pendingBookingId === booking?.id;
+  const isConfirming = isThisBooking && pendingAction === "confirm";
+  const isCancelling = isThisBooking && pendingAction === "cancel";
+  const isCompleting = isThisBooking && pendingAction === "complete";
+  const anyPending = pendingAction !== null;
 
   if (!booking) return null;
 
   const sc = statusConfig[booking.status];
   const StatusIcon = sc.icon;
+  const allowed = STATUS_TRANSITIONS[booking.status];
   const canReschedule =
     booking.status === "pending" || booking.status === "confirmed";
 
-  async function onTransition(bookingId: string, status: BookingStatus) {
-    //
+  function handleConfirm() {
+    confirm(booking.id, {
+      onSuccess(data) {
+        onOptimisticUpdate(booking.id, {
+          ...data,
+        });
+      },
+      onError() {
+        onOptimisticUpdate(booking.id, {
+          status: booking.status,
+          canceledAt: booking.canceledAt ?? null,
+        });
+      },
+    });
+  }
+
+  function handleCancel() {
+    cancel(booking.id, {
+      role: "provider",
+      onSuccess: () => {
+        onOptimisticUpdate(booking.id, {
+          status: "cancelled",
+          canceledAt: new Date(),
+        });
+      },
+      onError() {
+        onOptimisticUpdate(booking.id, {
+          status: booking.status,
+          canceledAt: booking.canceledAt ?? null,
+        });
+      },
+    });
+  }
+
+  function handleComplete() {
+    complete(booking.id, {
+      onSuccess: (data) => {
+        onOptimisticUpdate(booking.id, {
+          ...data,
+        });
+      },
+      onError() {
+        onOptimisticUpdate(booking.id, {
+          status: booking.status,
+          completedAt: booking.completedAt ?? null,
+        });
+      },
+    });
   }
 
   return (
@@ -73,7 +253,6 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
         side="right"
         className="w-full sm:max-w-120 overflow-y-auto p-0"
       >
-        {/* ── header */}
         <div className="sticky top-0 z-10 bg-background border-b border-border">
           <SheetHeader>
             <div className="flex items-start justify-between gap-3">
@@ -105,7 +284,6 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
                 </div>
               </div>
 
-              {/* Status */}
               <span
                 className={cn(
                   "text-[11px] font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 shrink-0",
@@ -141,6 +319,28 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
 
           <Separator />
 
+          {booking.status === "pending" && (
+            <Alert className="border-yellow-300 bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300">
+              <AlertTriangle className="h-4 w-4" />
+
+              <AlertTitle className="text-sm font-medium">
+                Pending booking
+              </AlertTitle>
+
+              <AlertDescription className="text-xs">
+                This booking will be automatically cancelled after 15 minutes.
+                It will expire at{" "}
+                <span className="font-medium">
+                  {fmtDateTime(
+                    new Date(
+                      new Date(booking.createdAt).getTime() + 15 * 60 * 1000,
+                    ),
+                  )}
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* ── Product & variant ── */}
           <section>
             <SectionLabel>Product & Schedule</SectionLabel>
@@ -148,7 +348,7 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
               <Field label="Product">{booking.productTitle}</Field>
               <Field label="Variant">{booking.variant.name}</Field>
 
-              {(booking.variant.startDate || booking.variant.startDate) && (
+              {(booking.variant.startDate || booking.variant.endDate) && (
                 <div className="flex items-center gap-4 flex-wrap">
                   {booking.variant.startDate && (
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -171,7 +371,6 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
               )}
             </div>
 
-            {/* Reschedule */}
             {canReschedule && (
               <div className="mt-2">
                 <Button
@@ -260,7 +459,7 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
                 .map((t) => (
                   <div key={t.label} className="flex justify-between">
                     <span className="text-muted-foreground">{t.label}</span>
-                    <span className="font-medium">{t.value}</span>
+                    <span className="font-medium tabular-nums">{t.value}</span>
                   </div>
                 ))}
             </div>
@@ -268,11 +467,47 @@ export function BookingDrawer({ booking, open, onClose }: BookingDrawerProps) {
 
           <Separator />
 
+          {/* ── Actions ── */}
           <section>
             <SectionLabel>Actions</SectionLabel>
-            <StatusActions booking={booking} onTransition={onTransition} />
-            {STATUS_TRANSITIONS[booking.status].length === 0 && (
-              <p className="text-xs text-muted-foreground">
+
+            <div className="flex flex-wrap gap-2">
+              {allowed.includes("confirmed") && (
+                <ActionButton
+                  label="Confirm booking"
+                  loadingLabel="Confirming…"
+                  icon={CheckCircle2}
+                  variant="default"
+                  isLoading={isConfirming}
+                  anyPending={anyPending}
+                  onClick={handleConfirm}
+                />
+              )}
+
+              {allowed.includes("completed") && (
+                <ActionButton
+                  label="Complete booking"
+                  loadingLabel="Completing…"
+                  icon={CheckCircle2}
+                  variant="default"
+                  isLoading={isCompleting}
+                  anyPending={anyPending}
+                  onClick={handleComplete}
+                />
+              )}
+
+              {allowed.includes("cancelled") && (
+                <CancelAction
+                  booking={booking}
+                  onConfirmedCancel={handleCancel}
+                  isLoading={isCancelling}
+                  anyPending={anyPending}
+                />
+              )}
+            </div>
+
+            {allowed.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
                 No further actions available for a {booking.status} booking.
               </p>
             )}

@@ -69,12 +69,12 @@ export const statusConfig: Record<
 function TableSkeleton() {
   return (
     <>
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i}>
           <TableCell className="py-3">
             <Skeleton className="h-3 w-28" />
           </TableCell>
-          {[1, 2, 3, 4, 5, 6].map((j) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((j) => (
             <TableCell key={j} className="py-3">
               <Skeleton className="h-3 w-20" />
             </TableCell>
@@ -85,7 +85,7 @@ function TableSkeleton() {
   );
 }
 
-export function BookingsTable({ providerId }: { providerId: string }) {
+export function BookingsTable() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -110,7 +110,6 @@ export function BookingsTable({ providerId }: { providerId: string }) {
   const [drawerBooking, setDrawerBooking] =
     useState<ProviderBookingShape | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [variants] = useState<{ id: string; name: string }[]>([]);
 
   const mainUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -119,7 +118,6 @@ export function BookingsTable({ providerId }: { providerId: string }) {
     setError(null);
     try {
       const p = new URLSearchParams();
-      p.set("provider", providerId);
       if (statusFromUrl !== "all") p.set("status", statusFromUrl);
       if (debouncedSearch) p.set("search", debouncedSearch);
       p.set("sort", sortFromUrl);
@@ -140,7 +138,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [providerId, statusFromUrl, debouncedSearch, sortFromUrl, pageFromUrl]);
+  }, [statusFromUrl, debouncedSearch, sortFromUrl, pageFromUrl]);
 
   /* Page navigation */
   function setPage(v: number) {
@@ -148,6 +146,22 @@ export function BookingsTable({ providerId }: { providerId: string }) {
     if (v === 1) p.delete("page");
     else p.set("page", String(v));
     router.push(`${pathname}?${p.toString()}`, { scroll: false });
+  }
+
+  function handleOptimisticUpdate(
+    bookingId: string,
+    patch: Partial<ProviderBookingShape>,
+  ) {
+    const applyPatch = (b: ProviderBookingShape): ProviderBookingShape => ({
+      ...b,
+      ...patch,
+    });
+    setBookings((prev) =>
+      prev.map((b) => (b.id === bookingId ? applyPatch(b) : b)),
+    );
+    setDrawerBooking((prev) =>
+      prev?.id === bookingId ? applyPatch(prev) : prev,
+    );
   }
 
   function openDrawer(booking: ProviderBookingShape) {
@@ -176,6 +190,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
               <TableHead className="text-xs h-10">Participants</TableHead>
               <TableHead className="text-xs h-10">Amount</TableHead>
               <TableHead className="text-xs h-10">Date</TableHead>
+              <TableHead className="text-xs h-10">Last Update</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -183,7 +198,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
               <TableSkeleton />
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-16 text-center">
+                <TableCell colSpan={9} className="py-16 text-center">
                   <p className="text-sm text-destructive">{error}</p>
                   <Button
                     variant="outline"
@@ -198,7 +213,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
             ) : bookings.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="py-16 text-center text-muted-foreground"
                 >
                   <PackageSearch
@@ -217,7 +232,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
                 return (
                   <TableRow
                     key={booking.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => openDrawer(booking)}
                   >
                     <TableCell className="py-3">
@@ -230,18 +245,23 @@ export function BookingsTable({ providerId }: { providerId: string }) {
                       <div className="flex items-center gap-2.5">
                         <Avatar className="h-7 w-7 shrink-0">
                           <AvatarImage src={booking.user.image ?? undefined} />
-                          <AvatarFallback className="text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                          <AvatarFallback className="text-[10px] font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-100">
                             {initials(booking.user.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <p className="text-xs font-medium truncate max-w-30 hidden sm:block">
-                          {booking.user.name}
-                        </p>
+                        <div className="">
+                          <p className="text-xs font-medium truncate max-w-30 hidden sm:block">
+                            {booking.user.name}
+                          </p>
+                          <p className="font-mono text-[10px] text-muted-foreground">
+                            {booking.user.email}
+                          </p>
+                        </div>
                       </div>
                     </TableCell>
 
                     <TableCell className="py-3">
-                      <p className="text-xs truncate max-w-35">
+                      <p className="text-xs truncate max-w-35 hover:bg-muted p-1 rounded-full font-mono">
                         {booking.productTitle}
                       </p>
                     </TableCell>
@@ -260,7 +280,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
                     <TableCell className="py-3">
                       <span
                         className={cn(
-                          "text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
+                          "text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
                           sc.pill,
                         )}
                       >
@@ -275,7 +295,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
                         {booking.participantsCount}
                       </div>
                       {booking.items.length > 0 && (
-                        <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">
                           {booking.items
                             .map((i) => `${i.quantity} ${i.passengerType}`)
                             .join(", ")}
@@ -289,8 +309,18 @@ export function BookingsTable({ providerId }: { providerId: string }) {
                       </span>
                     </TableCell>
 
-                    <TableCell className="py-3 text-xs text-muted-foreground">
-                      {fmtDate(booking.createdAt)}
+                    <TableCell className="py-3 text-xs leading-tight font-mono">
+                      <p className="text-muted-foreground">Created</p>
+                      <p className="font-medium">
+                        {fmtDate(booking.createdAt)}
+                      </p>
+                    </TableCell>
+
+                    <TableCell className="py-3 text-xs leading-tight font-mono">
+                      <p className="text-muted-foreground">Updated</p>
+                      <p className="font-medium text-muted">
+                        {fmtDate(booking.updatedAt)}
+                      </p>
                     </TableCell>
                   </TableRow>
                 );
@@ -332,6 +362,7 @@ export function BookingsTable({ providerId }: { providerId: string }) {
           booking={drawerBooking}
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
+          onOptimisticUpdate={handleOptimisticUpdate}
         />
       )}
     </>

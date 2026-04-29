@@ -10,8 +10,10 @@ import {
   type CreateBookingInput,
   confirmBookingAction,
   getBookingLocationAction,
+  completeBookingAction,
 } from "@/actions/booking.action";
 import { getGoogleMapsUrl } from "@/lib/utils";
+import { Role } from "@/lib/policies";
 
 interface BookingState {
   isPending: boolean;
@@ -22,7 +24,7 @@ export function useBooking() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<
-    "create" | "cancel" | "rebook" | "confirm" | "viewMap" | null
+    "create" | "cancel" | "rebook" | "confirm" | "viewMap" | "complete" | null
   >(null);
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
@@ -59,13 +61,14 @@ export function useBooking() {
     options?: {
       onSuccess?: () => void;
       onError?: (error: string) => void;
+      role?: Role;
     },
   ) {
     setPendingAction("cancel");
     setPendingBookingId(bookingId);
     setError(null);
     try {
-      const result = await cancelBookingAction(bookingId);
+      const result = await cancelBookingAction(bookingId, options?.role);
 
       if (!result.success) {
         setError(result.error);
@@ -112,7 +115,13 @@ export function useBooking() {
     }
   }
 
-  async function confirm(bookingId: string) {
+  async function confirm(
+    bookingId: string,
+    options?: {
+      onSuccess?: (data: any) => void;
+      onError?: (error: string) => void;
+    },
+  ) {
     setPendingAction("confirm");
     setPendingBookingId(bookingId);
     try {
@@ -120,10 +129,12 @@ export function useBooking() {
 
       if (!result.success) {
         toast.error(result.error);
+        options?.onError?.(result.error);
         return;
       }
 
       toast.success("Booking confirmed!");
+      options?.onSuccess?.(result.data);
       router.refresh();
     } finally {
       setPendingAction(null);
@@ -159,6 +170,41 @@ export function useBooking() {
     }
   }
 
+  async function complete(
+    bookingId: string,
+    options?: {
+      onSuccess?: (data: any) => void;
+      onError?: (error: string) => void;
+    },
+  ) {
+    setPendingAction("complete");
+    setPendingBookingId(bookingId);
+
+    try {
+      const res = await completeBookingAction(bookingId);
+
+      if (!res.success) {
+        const message = res.error || "Something went wrong";
+
+        setError(message);
+        toast.error(message);
+        options?.onError?.(message);
+        return;
+      }
+
+      toast.success("Booking completed successfully");
+
+      options?.onSuccess?.({
+        booking: res.data,
+      });
+
+      router.refresh();
+    } finally {
+      setPendingAction(null);
+      setPendingBookingId(null);
+    }
+  }
+
   return {
     error,
     create,
@@ -168,5 +214,6 @@ export function useBooking() {
     viewMap,
     pendingAction,
     pendingBookingId,
+    complete,
   };
 }

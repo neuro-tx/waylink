@@ -1,14 +1,6 @@
-import { getCurrentProvider } from "@/lib/provider-auth";
 import { BookingsTable } from "../_components/BookingTable";
 
 export default async function BookingsPage() {
-  const { provider } = await getCurrentProvider();
-  const providerId = provider?.id;
-
-  if (!providerId) {
-    return;
-  }
-
   return (
     <div className="space-y-6 py-6 w-full md:px-6 px-4">
       <div>
@@ -18,7 +10,7 @@ export default async function BookingsPage() {
         </p>
       </div>
 
-      <BookingsTable providerId={providerId} />
+      <BookingsTable />
     </div>
   );
 }

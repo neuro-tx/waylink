@@ -212,8 +212,14 @@ export const expirePendingBooking = inngest.createFunction(
 export const processBookingCancelled = inngest.createFunction(
   { id: "booking-cancelled", triggers: { event: "app/booking.cancelled" } },
   async ({ event, step }) => {
-    const { productId, variantId, participantsCount, wasConfirmed } =
-      event.data;
+    const {
+      productId,
+      variantId,
+      participantsCount,
+      wasConfirmed,
+      role,
+      bookingId,
+    } = event.data;
 
     // Always update the cancelled count in stats
     await step.run("update-product-stats-on-cancel", async () => {
@@ -252,30 +258,71 @@ export const processBookingCancelled = inngest.createFunction(
           .where(eq(productVariants.id, variantId));
       });
     }
+
+    if (role === "provider") {
+      await step.run("send-cancelled-notification", async () => {
+        const booking = await db.query.bookings.findFirst({
+          columns: {
+            orderNumber: true,
+            userId: true,
+          },
+          with: {
+            product: {
+              columns: { title: true },
+            },
+          },
+          where: (b, { eq }) => eq(b.id, bookingId),
+        });
+
+        if (!booking) return;
+
+        await sendNotification({
+          title: "Booking cancelled by provider",
+          message: `Your booking (#${booking.orderNumber}) for "${booking.product.title}" was cancelled by the provider. Any payment will be handled according to the cancellation policy.`,
+          type: "booking_cancelled",
+          recipientId: booking.userId,
+          recipient: "user",
+        });
+      });
+    }
   },
 );
 
 export const processBookingCompleted = inngest.createFunction(
   { id: "booking-completed", triggers: { event: "app/booking.completed" } },
   async ({ event, step }) => {
-    const { productId, userId, orderNumber } = event.data;
+    const { productId, bookingId } = event.data;
 
     await step.run("update-product-stats-on-complete", async () => {
       await db
         .update(productStats)
         .set({
           completedBookingsCount: sql`${productStats.completedBookingsCount} + 1`,
-          updatedAt: new Date(),
         })
         .where(eq(productStats.productId, productId));
     });
 
     await step.run("send-completion-notification", async () => {
+      const booking = await db.query.bookings.findFirst({
+        columns: {
+          orderNumber: true,
+          userId: true,
+        },
+        with: {
+          product: {
+            columns: { title: true },
+          },
+        },
+        where: (b, { eq }) => eq(b.id, bookingId),
+      });
+
+      if (!booking) return;
+
       await sendNotification({
-        recipientId: userId,
+        recipientId: booking.userId,
         type: "booking_completed",
         title: "Booking Completed ✅",
-        message: `We hope you enjoyed your experience! Booking "#${orderNumber}" is now complete. Leave a review to share your thoughts.`,
+        message: `We hope you enjoyed your experience! Booking "#${booking.orderNumber}" for (${booking.product.title}) is now complete. Leave a review to share your thoughts.`,
       });
     });
   },

@@ -12,6 +12,8 @@ import { inngest } from "@/inngest/client";
 import { protectAction } from "@/lib/aj-actions";
 import { PassengerType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
+import { Role } from "@/lib/policies";
+import { getCurrentProvider } from "@/lib/provider-auth";
 import { and, eq, inArray } from "drizzle-orm";
 
 export type ActionResult<T = void> =
@@ -21,7 +23,7 @@ export type ActionResult<T = void> =
 export interface CreateBookingInput {
   variantId: string;
   productId: string;
-  providerId:string;
+  providerId: string;
   items: {
     passengerType: PassengerType;
     quantity: number;
@@ -174,83 +176,26 @@ export async function createBookingAction(
 
 export async function cancelBookingAction(
   bookingId: string,
+  role: Role = "user",
 ): Promise<ActionResult> {
-  const guard = await protectAction("user");
+  const auth = await authCore(role);
 
-  if (!guard.ok) {
-    return {
-      error: guard?.message || "Security system unavailable. Try again later.",
-      success: false,
-    };
+  if (!auth.success) {
+    throw new Error(
+      auth?.error || "Security system unavailable. Try again later.",
+    );
   }
 
-  const session = await getAuthSession();
-  if (!session?.user?.id) return { success: false, error: "Unauthorized" };
+  if (!auth.actorId) {
+    throw new Error("missing actor id");
+  }
 
   try {
-    const res = await db.transaction(async (tx) => {
-      // Step 1: validate
-      const booking = await tx.query.bookings.findFirst({
-        where: (b, { eq, and }) =>
-          and(eq(b.id, bookingId), eq(b.userId, session.user.id)),
-        columns: {
-          id: true,
-          status: true,
-          variantId: true,
-          participantsCount: true,
-          productId: true,
-        },
-      });
-
-      if (!booking) throw new Error("Booking not found");
-      if (!["pending", "confirmed"].includes(booking.status)) {
-        throw new Error(`A ${booking.status} booking cannot be cancelled`);
-      }
-
-      const wasConfirmed = booking.status === "confirmed";
-
-      // Step 2: cancel booking
-      await tx
-        .update(bookings)
-        .set({ status: "cancelled", canceledAt: new Date() })
-        .where(eq(bookings.id, bookingId));
-
-      // Step 3: decrement bookedCount
-      const variant = await tx.query.productVariants.findFirst({
-        where: (v, { eq }) => eq(v.id, booking.variantId),
-        columns: { bookedCount: true, capacity: true, status: true },
-      });
-
-      if (!variant) return;
-
-      const newBookedCount = Math.max(
-        0,
-        variant.bookedCount - booking.participantsCount,
-      );
-
-      // Step 4: restore availability if it was sold_out
-      const newVariantStatus =
-        variant.status === "sold_out" && newBookedCount < variant.capacity
-          ? "available"
-          : variant.status;
-
-      await tx
-        .update(productVariants)
-        .set({ bookedCount: newBookedCount, status: newVariantStatus })
-        .where(eq(productVariants.id, booking.variantId));
-
-      return {
-        productId: booking.productId,
-        variantId: booking.variantId,
-        participantsCount: booking.participantsCount,
-        wasConfirmed,
-        variantAlreadyRestored: true,
-      };
-    });
+    const res = await cancelBookingCore(bookingId);
 
     await inngest.send({
       name: "app/booking.cancelled",
-      data: res,
+      data: { ...res, role: auth.role },
     });
 
     return { success: true, data: undefined };
@@ -297,6 +242,7 @@ export async function rebookAction(
             eq(bookings.userId, session.user.id),
             eq(bookings.variantId, original.variantId),
             eq(bookings.productId, original.productId),
+            inArray(bookings.status ,["pending" ,"confirmed"])
           ),
         )
         .limit(1);
@@ -331,7 +277,7 @@ export async function rebookAction(
           userId: session.user.id,
           productId: original.productId,
           variantId: original.variantId,
-          providerId: original.providerId ,
+          providerId: original.providerId,
           orderNumber,
           participantsCount: original.participantsCount,
           totalAmount: original.totalAmount,
@@ -397,8 +343,7 @@ export async function confirmBookingAction(
     const result = await db.transaction(async (tx) => {
       // verify ownership and get data for the event
       const booking = await tx.query.bookings.findFirst({
-        where: (b, { eq, and }) =>
-          and(eq(b.id, bookingId), eq(b.userId, userId)),
+        where: (b, { eq, and }) => eq(b.id, bookingId),
         columns: {
           id: true,
           status: true,
@@ -416,7 +361,7 @@ export async function confirmBookingAction(
 
       await tx
         .update(bookings)
-        .set({ status: "confirmed", updatedAt: new Date() })
+        .set({ status: "confirmed" })
         .where(eq(bookings.id, bookingId));
 
       return booking;
@@ -469,4 +414,164 @@ export async function getBookingLocationAction(bookingId: string) {
       err instanceof Error ? err.message : "Failed to get location";
     return { success: false, error: message };
   }
+}
+
+export async function completeBookingAction(bookingId: string) {
+  const auth = await authCore("provider");
+
+  if (!auth.success || !auth.actorId) {
+    return {
+      success: false,
+      error: auth.error || "Unauthorized",
+    };
+  }
+
+  try {
+    const res = await db.transaction(async (tx) => {
+      // 1. validate + OWNERSHIP check
+      const booking = await tx.query.bookings.findFirst({
+        where: (b, { eq, and }) =>
+          and(eq(b.id, bookingId), eq(b.providerId, auth.actorId)),
+        columns: {
+          id: true,
+          status: true,
+          variantId: true,
+          participantsCount: true,
+          productId: true,
+          userId: true,
+        },
+      });
+
+      if (!booking) throw new Error("Booking not found");
+      if (booking.status !== "confirmed") {
+        throw new Error(
+          `A ${booking.status} booking cannot be completed unless confirmed`,
+        );
+      }
+
+      // 2. update booking
+      const [updated] = await tx
+        .update(bookings)
+        .set({
+          status: "completed",
+          completedAt: new Date(),
+          canceledAt: null,
+        })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+
+      return updated;
+    });
+
+    if (!res) {
+      return { success: false, error: "Failed to complete booking" };
+    }
+
+    // 3. Send Event
+    await inngest.send({
+      name: "app/booking.completed",
+      data: {
+        bookingId: res.id,
+        productId: res.productId,
+      },
+    });
+
+    return {
+      success: true,
+      data: res,
+    };
+  } catch (err: any) {
+    const message =
+      err instanceof Error ? err.message : "Failed to confirm booking";
+    return { success: false, error: message };
+  }
+}
+
+async function cancelBookingCore(bookingId: string) {
+  return await db.transaction(async (tx) => {
+    // Step 1: validate
+    const booking = await tx.query.bookings.findFirst({
+      where: (b, { eq }) => eq(b.id, bookingId),
+      columns: {
+        id: true,
+        status: true,
+        variantId: true,
+        participantsCount: true,
+        productId: true,
+        userId: true,
+      },
+    });
+
+    if (!booking) throw new Error("Booking not found");
+    if (!["pending", "confirmed"].includes(booking.status)) {
+      throw new Error(`A ${booking.status} booking cannot be cancelled`);
+    }
+
+    const wasConfirmed = booking.status === "confirmed";
+
+    // Step 2: cancel booking
+    await tx
+      .update(bookings)
+      .set({ status: "cancelled", canceledAt: new Date() })
+      .where(eq(bookings.id, bookingId));
+
+    // Step 3: decrement bookedCount
+    const variant = await tx.query.productVariants.findFirst({
+      where: (v, { eq }) => eq(v.id, booking.variantId),
+      columns: { bookedCount: true, capacity: true, status: true },
+    });
+
+    if (!variant) throw new Error("Variant not found");
+
+    const newBookedCount = Math.max(
+      0,
+      variant.bookedCount - booking.participantsCount,
+    );
+
+    // Step 4: restore availability if it was sold_out
+    const newVariantStatus =
+      variant.status === "sold_out" && newBookedCount < variant.capacity
+        ? "available"
+        : variant.status;
+
+    await tx
+      .update(productVariants)
+      .set({ bookedCount: newBookedCount, status: newVariantStatus })
+      .where(eq(productVariants.id, booking.variantId));
+
+    return {
+      bookingId,
+      productId: booking.productId,
+      variantId: booking.variantId,
+      participantsCount: booking.participantsCount,
+      wasConfirmed,
+    };
+  });
+}
+
+async function authCore(role: Role) {
+  const guard = await protectAction(role);
+  if (!guard.ok) {
+    return { success: false, error: guard.message };
+  }
+
+  if (role === "user") {
+    const session = await getAuthSession();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    return { success: true, actorId: session.user.id, role };
+  }
+
+  if (role === "provider") {
+    const { provider } = await getCurrentProvider();
+    if (!provider?.id) {
+      return { success: false, error: "Access denied" };
+    }
+
+    return { success: true, actorId: provider.id, role };
+  }
+
+  return { success: false, error: "Invalid role" };
 }
