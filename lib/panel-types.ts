@@ -49,6 +49,7 @@ export interface BookingStats {
   confirmed: number;
   completed: number;
   cancelled: number;
+  expired: number;
   totalRevenue: number;
   pendingRevenue: number;
   currency: string;
