@@ -83,5 +83,75 @@ export const STATUS_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   confirmed: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
-  expired: []
+  expired: [],
 };
+
+export interface ProviderStats {
+  createdAt: Date;
+  updatedAt: Date;
+  providerId: string;
+  totalProducts: number;
+  totalReviews: number;
+  avgRating: string | null;
+  totalRevenue: number;
+  totalBookings: number;
+  maxListings: number | null;
+  remainingListings: number | null;
+  canCreateListing: boolean;
+}
+
+export interface LatestBooking {
+  id: string;
+  createdAt: Date;
+  customerName: string;
+  image: string | null;
+  amount: number;
+  status: BookingStatus;
+}
+
+export interface TopProduct {
+  id: string;
+  name: string;
+  revenue: number;
+  bookings: number;
+  avgRating: number;
+  lastBookingAt: Date | string | null;
+  avgOrders: number;
+}
+
+export interface RevenueDataPoint {
+  date: Date | string;
+  revenue: number;
+  bookings: number;
+}
+
+export interface BookingStatusBreakdown {
+  status: BookingStatus;
+  count: number;
+  percentage: number;
+}
+
+export type GrowthMetric = {
+  value: number | null;
+  direction: "up" | "down" | "flat" | "n/a";
+  formatted: string;
+};
+
+export interface ProviderKPIs {
+  repeatCustomerRate: number;
+  avgRevenuePerBooking: number;
+  revenueGrowth: GrowthMetric;
+  bookingGrowth: GrowthMetric;
+  cancellationRate: number;
+}
+
+export interface ProviderDashboardData {
+  stats: ProviderStats;
+  kpis: ProviderKPIs;
+  recentBookings: LatestBooking[];
+  topProducts: TopProduct[];
+  revenueTimeSeries: RevenueDataPoint[];
+  bookingStatusBreakdown: BookingStatusBreakdown[];
+}
+
+export type DateRange = "7d" | "30d" | "90d" | "1y";

@@ -1,4 +1,5 @@
 import { Location, Media } from "./all-types";
+import { GrowthMetric } from "./panel-types";
 
 export const displayMedia = (media: Media[]) => {
   const images: string[] = [];
@@ -91,4 +92,30 @@ export function initials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+export function calculateGrowthMetric(
+  current: number,
+  previous: number,
+): GrowthMetric {
+  const curr = Number(current ?? 0);
+  const prev = Number(previous ?? 0);
+
+  if (prev === 0) {
+    return {
+      value: null,
+      direction: curr > 0 ? "up" : "flat",
+      formatted: curr > 0 ? "+100%" : "0%",
+    };
+  }
+
+  const value = ((curr - prev) / prev) * 100;
+
+  const direction = value > 0 ? "up" : value < 0 ? "down" : "flat";
+
+  return {
+    value,
+    direction,
+    formatted: `${value > 0 ? "+" : ""}${value.toFixed(1)}%`,
+  };
 }
