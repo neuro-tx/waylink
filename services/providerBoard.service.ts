@@ -126,7 +126,8 @@ async function getRevenueTimeSeries(
           between(bookings.createdAt, from, to),
         ),
       )
-      .groupBy(sql`date(${bookings.createdAt})`);
+      .groupBy(sql`date(${bookings.createdAt})`)
+      .orderBy(sql`date(${bookings.createdAt})`);
   } catch (error) {
     console.error("[ProviderService] getRevenueTimeSeries:", error);
     throw error;

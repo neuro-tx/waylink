@@ -33,15 +33,7 @@ export default async function ProviderLayout({
     redirect("/");
   }
 
-  if (status === "no-provider") {
-    redirect("/onboarding");
-  }
-
-  if (status === "banned") {
-    redirect("/banned");
-  }
-
-  if (status !== "ok" || !provider || !user) {
+  if (!provider || !user) {
     redirect("/");
   }
 
