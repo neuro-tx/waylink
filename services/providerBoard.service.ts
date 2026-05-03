@@ -1,8 +1,11 @@
 import { db } from "@/db";
 import {
   bookings,
+  location,
+  productMedia,
   products,
   productStats,
+  providers,
   providerStats,
   user,
 } from "@/db/schemas";
@@ -16,7 +19,16 @@ import type {
   ProviderKPIs,
   DateRange,
 } from "@/lib/panel-types";
-import { and, between, desc, eq, sql, not } from "drizzle-orm";
+import {
+  and,
+  between,
+  desc,
+  eq,
+  sql,
+  not,
+  SQL,
+  getTableColumns,
+} from "drizzle-orm";
 
 function getDateRange(range: DateRange): { from: Date; to: Date } {
   const to = new Date();
@@ -254,6 +266,87 @@ async function getProviderKPIs(
   }
 }
 
+async function getServices(
+  providerId: string,
+  whereClause: any,
+  orderByClause: any,
+  limitation?: { limit: number; offset: number },
+) {
+  const { limit = 20, offset = 0 } = limitation ?? {};
+  const { searchVector, ...productColumns } = getTableColumns(products);
+
+  const baseWhere = and(eq(products.providerId, providerId), whereClause);
+
+  const [countResult, data] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(products)
+      .where(baseWhere),
+
+    db
+      .select({
+        ...productColumns,
+        media: sql`
+          COALESCE(
+            json_agg(DISTINCT ${productMedia})
+            FILTER (WHERE ${productMedia.id} IS NOT NULL),
+            '[]'
+          )
+        `.as("media"),
+        locations: sql`
+          COALESCE(
+            json_agg(DISTINCT ${location})
+            FILTER (WHERE ${location.id} IS NOT NULL),
+            '[]'
+          )
+        `.as("locations"),
+        provider: {
+          id: providers.id,
+          name: providers.name,
+          logo: providers.logo,
+          isVerified: providers.isVerified,
+        },
+        reviews: productStats.reviewsCount,
+        bookings: productStats.bookingsCount,
+        avgRate: productStats.averageRating,
+      })
+      .from(products)
+      .innerJoin(productStats, eq(products.id, productStats.productId))
+      .leftJoin(providers, eq(products.providerId, providers.id))
+      .leftJoin(productMedia, eq(products.id, productMedia.productId))
+      .leftJoin(location, eq(products.id, location.productId))
+      .where(baseWhere)
+      .groupBy(
+        products.id,
+        providers.id,
+        productStats.productId,
+        productStats.reviewsCount,
+        productStats.bookingsCount,
+        productStats.averageRating,
+      )
+      .orderBy(desc(productStats.averageRating), ...orderByClause)
+      .limit(limit)
+      .offset(offset),
+  ]);
+
+  const total = Number(countResult[0]?.count ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.min(Math.floor(offset / limit) + 1, totalPages);
+
+  return {
+    data,
+    pagination: {
+      total,
+      limit,
+      offset,
+      page,
+      totalPages,
+      hasNextPage: offset + limit < total,
+      hasPrevPage: offset > 0,
+    },
+  };
+}
+
 export const providerDashboard = {
   getProviderStats,
   getProviderKPIs,
@@ -261,4 +354,5 @@ export const providerDashboard = {
   getTopProducts,
   getBookingStatusBreakdown,
   getRevenueTimeSeries,
+  getServices,
 };

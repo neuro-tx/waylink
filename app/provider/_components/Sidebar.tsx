@@ -21,6 +21,7 @@ import {
   User,
   LogOut,
   Plus,
+  LifeBuoy,
 } from "lucide-react";
 
 import {
@@ -106,14 +107,9 @@ export function ProviderSidebar() {
 
   const NAV_MAIN: NavItem[] = [
     {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/provider",
-    },
-    {
-      title: "Analytics",
-      icon: BarChart3,
-      href: "/provider/analytics",
+      title: "services",
+      icon: LifeBuoy,
+      href: "/provider/services",
     },
     {
       title: "Bookings",
@@ -132,7 +128,7 @@ export function ProviderSidebar() {
     },
     {
       title: "Subscription",
-      icon: Layers,
+      icon: CreditCard,
       href: "/provider/subscription",
     },
     {
@@ -144,11 +140,6 @@ export function ProviderSidebar() {
 
   const NAV_ACCOUNT: NavItem[] = [
     {
-      title: "Billing",
-      icon: CreditCard,
-      href: "/provider/billing",
-    },
-    {
       title: "Settings",
       icon: Settings,
       href: "/provider/settings",
@@ -157,6 +148,19 @@ export function ProviderSidebar() {
       title: "Help & Support",
       icon: HelpCircle,
       href: "/provider/support",
+    },
+  ];
+
+  const OVER_VIEW: NavItem[] = [
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/provider",
+    },
+    {
+      title: "Analytics",
+      icon: BarChart3,
+      href: "/provider/analytics",
     },
   ];
 
@@ -198,7 +202,14 @@ export function ProviderSidebar() {
 
       <SidebarContent className="py-2 flex flex-col gap-1">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-3 mb-1 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest px-3 mb-1 group-data-[collapsible=icon]:hidden">
+            Overview
+          </SidebarGroupLabel>
+          <NavMain items={OVER_VIEW} type={type} />
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest px-3 mb-1 group-data-[collapsible=icon]:hidden">
             Main Menu
           </SidebarGroupLabel>
           <NavMain items={NAV_MAIN} type={type} />
@@ -207,7 +218,7 @@ export function ProviderSidebar() {
         <div className="mx-3 border-t border-border/30 group-data-[collapsible=icon]:mx-2" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-3 mb-1 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest px-3 mb-1 group-data-[collapsible=icon]:hidden">
             Account
           </SidebarGroupLabel>
           <NavMain items={NAV_ACCOUNT} type={type} />

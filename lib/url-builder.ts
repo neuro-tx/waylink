@@ -39,6 +39,14 @@ interface TopRatedURL {
   limit: number;
 }
 
+interface ServiceURL {
+  search: string;
+  status?: "pending" | "approved" | "inactive" | "suspended";
+  sort?: string;
+  page?: number;
+  limit?: number;
+}
+
 export default function transportUrlBuilder(params: Partial<TransportURL>) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
@@ -192,6 +200,28 @@ export function TopRatedURL(params: Partial<TopRatedURL>) {
   }
   if (limit !== undefined) {
     url.searchParams.append("limit", String(limit));
+  }
+
+  return url.toString();
+}
+
+export function serviceUrl(params: Partial<ServiceURL>) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const url = new URL("/provider/panel/service", baseUrl);
+
+  const { search, sort, status, page } = params || {};
+
+  if (search) {
+    url.searchParams.append("search", search);
+  }
+  if (status) {
+    url.searchParams.append("status", status);
+  }
+  if (sort && sort !== "all") {
+    url.searchParams.append("sort", sort);
+  }
+  if (page) {
+    url.searchParams.append("page", String(page));
   }
 
   return url.toString();

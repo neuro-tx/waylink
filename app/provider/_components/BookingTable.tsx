@@ -69,12 +69,12 @@ export const statusConfig: Record<
 function TableSkeleton() {
   return (
     <>
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <TableRow key={i}>
           <TableCell className="py-3">
             <Skeleton className="h-3 w-28" />
           </TableCell>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((j) => (
+          {[1, 2, 3, 4, 5, 6, 7].map((j) => (
             <TableCell key={j} className="py-3">
               <Skeleton className="h-3 w-20" />
             </TableCell>
@@ -190,7 +190,6 @@ export function BookingsTable() {
               <TableHead className="text-xs h-10">Participants</TableHead>
               <TableHead className="text-xs h-10">Amount</TableHead>
               <TableHead className="text-xs h-10">Date</TableHead>
-              <TableHead className="text-xs h-10">Last Update</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -198,7 +197,7 @@ export function BookingsTable() {
               <TableSkeleton />
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={9} className="py-16 text-center">
+                <TableCell colSpan={8} className="py-16 text-center">
                   <p className="text-sm text-destructive">{error}</p>
                   <Button
                     variant="outline"
@@ -213,7 +212,7 @@ export function BookingsTable() {
             ) : bookings.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={8}
                   className="py-16 text-center text-muted-foreground"
                 >
                   <PackageSearch
@@ -313,13 +312,6 @@ export function BookingsTable() {
                       <p className="text-muted-foreground">Created</p>
                       <p className="font-medium">
                         {fmtDate(booking.createdAt)}
-                      </p>
-                    </TableCell>
-
-                    <TableCell className="py-3 text-xs leading-tight font-mono">
-                      <p className="text-muted-foreground">Updated</p>
-                      <p className="font-medium text-muted">
-                        {fmtDate(booking.updatedAt)}
                       </p>
                     </TableCell>
                   </TableRow>

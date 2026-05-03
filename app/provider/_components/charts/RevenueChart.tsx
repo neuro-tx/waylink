@@ -24,14 +24,20 @@ import { useProviderContext } from "@/components/providers/ProviderContext";
 export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
   const { config } = useProviderContext();
   const baseColr = config?.themeColor || "blue";
+
   const formattedData = useMemo(() => {
-    return data.map((d) => ({
-      ...d,
-      dateFormatted: new Date(d.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    }));
+    return data.map((d) => {
+      const dateObj = new Date(d.date);
+
+      return {
+        ...d,
+        dateObj,
+        dateFormatted: dateObj.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+      };
+    });
   }, [data]);
 
   const formatCompactCurrency = (val: number) =>
@@ -71,6 +77,23 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                     <stop offset="95%" stopColor={baseColr} stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={baseColr} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={baseColr} stopOpacity={0} />
+                  </linearGradient>
+
+                  <linearGradient
+                    id="colorBookings"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
 
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -79,7 +102,13 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                 />
 
                 <XAxis
-                  dataKey="dateFormatted"
+                  dataKey="dateObj"
+                  tickFormatter={(date) =>
+                    new Date(date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  }
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
@@ -88,6 +117,7 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                 />
 
                 <YAxis
+                  yAxisId="left"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
@@ -96,28 +126,60 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                   tick={{ fill: baseColr, fontSize: 15, fontWeight: "500" }}
                 />
 
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  width={40}
+                  tick={{ fill: baseColr, opacity: 0.6, fontSize: 13 }}
+                />
+
                 <Tooltip
                   cursor={{
                     stroke: baseColr,
                     strokeWidth: 1,
                     strokeDasharray: "4 4",
                   }}
-                  content={({ active, payload, label }) => {
+                  content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
+
+                    const revenue = payload.find(
+                      (p) => p.dataKey === "revenue",
+                    );
+                    const bookings = payload.find(
+                      (p) => p.dataKey === "bookings",
+                    );
+
+                    const label = payload[0]?.payload?.dateFormatted;
 
                     return (
                       <div className="rounded-xl border border-border/50 bg-background/95 p-3 shadow-xl backdrop-blur-sm sm:p-4">
                         <p className="mb-2 text-[13px] font-medium text-muted-foreground">
                           {label}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="size-2 rounded-full"
-                            style={{ background: baseColr }}
-                          />
-                          <p className="text-sm font-bold tracking-tight text-foreground sm:text-base">
-                            {formatFullCurrency(payload[0].value as number)}
-                          </p>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="size-2 rounded-full"
+                              style={{ background: baseColr }}
+                            />
+                            <p className="text-sm font-bold text-foreground">
+                              {formatFullCurrency(revenue?.value as number)}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="size-2 rounded-full"
+                              style={{ background: "#22c55e" }}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {bookings?.value} bookings
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -125,6 +187,7 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                 />
 
                 <Area
+                  yAxisId="left"
                   type="monotone"
                   dataKey="revenue"
                   stroke={baseColr}
@@ -132,6 +195,16 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
                   fillOpacity={1}
                   fill="url(#colorRevenue)"
                   activeDot={{ r: 6, strokeWidth: 0, fill: baseColr }}
+                />
+
+                <Area
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorBookings)"
+                  activeDot={{ r: 5, strokeWidth: 0, fill: "#22c55e" }}
                 />
               </AreaChart>
             </ResponsiveContainer>

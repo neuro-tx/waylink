@@ -1,5 +1,13 @@
+import { products } from "@/db/schemas";
 import { DateRange } from "@/lib/panel-types";
 import { getCurrentProvider } from "@/lib/provider-auth";
+import { parseQuery } from "@/lib/query_parser/analyzer";
+import {
+  buildOrderBy,
+  buildSearchQuery,
+  buildWhereConditions,
+  mergeWhere,
+} from "@/lib/query_parser/helpers";
 import { providerDashboard } from "@/services/providerBoard.service";
 import { unstable_cache } from "next/cache";
 const {
@@ -9,6 +17,7 @@ const {
   getRecentBookings,
   getRevenueTimeSeries,
   getTopProducts,
+  getServices,
 } = providerDashboard;
 
 const STATS_TTL = 60;
@@ -78,4 +87,27 @@ export async function getDashboardDataController(range: DateRange = "30d") {
     revenueTimeSeries: timeSeriesResult,
     bookingStatusBreakdown: statusBreakdownResult,
   };
+}
+
+export async function getServicesController(url: string) {
+  const { provider } = await getCurrentProvider();
+  if (!provider) {
+    throw new Error("Provider not authenticated");
+  }
+  const providerId = provider.id;
+
+  const { query } = parseQuery(url);
+  const limit = Math.min(Number(query?.limit ?? 20), 50);
+  const offset = Number(query?.offset ?? 0);
+
+  const whereSQl = buildWhereConditions(query?.where ?? {}, products);
+  const searchSQl = buildSearchQuery(
+    products.searchVector,
+    query?.search?.term,
+    "fts",
+  );
+  const final = mergeWhere(whereSQl, searchSQl);
+  const mainOrder = buildOrderBy(query?.orderBy ?? [], products);
+
+  return await getServices(providerId ,final, mainOrder, { limit, offset });
 }
