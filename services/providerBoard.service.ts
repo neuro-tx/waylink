@@ -317,7 +317,7 @@ async function getServices(
         productStats.bookingsCount,
         productStats.averageRating,
       )
-      .orderBy(desc(productStats.averageRating), ...orderByClause)
+      .orderBy(...orderByClause)
       .limit(limit)
       .offset(offset),
   ]);

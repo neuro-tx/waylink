@@ -15,6 +15,10 @@ import {
   Pencil,
   Navigation,
   Compass,
+  Search,
+  X,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useSelect } from "@/hooks/useSelect";
 import { Media, Product } from "@/lib/all-types";
@@ -32,6 +36,22 @@ import { useProviderContext } from "@/components/providers/ProviderContext";
 import { Separator } from "@/components/ui/separator";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 import { RouteBadge } from "@/components/Transport";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
 
 export interface ProductProps extends Product {
   reviews: number;
@@ -39,6 +59,29 @@ export interface ProductProps extends Product {
   avgRate: string;
   revenue: string;
 }
+type Option<T> = {
+  value: T;
+  label?: string;
+};
+
+type ServicesToolbarProps<SortKey extends string, Status extends string> = {
+  search: string;
+  onSearchChange: (value: string) => void;
+  sort: SortKey;
+  onSortChange: (value: SortKey) => void;
+  sortOptions: Option<SortKey>[];
+  status: Status;
+  onStatusChange: (value: Status) => void;
+  statusOptions: Option<Status>[];
+  view: "grid" | "list";
+  onViewChange: (view: "grid" | "list") => void;
+};
+type SortDropdownProps<T extends string> = {
+  value: T;
+  onChange: (value: T) => void;
+  options: Option<T>[];
+  placeholder?: string;
+};
 
 type ProductStatus = "active" | "draft" | "paused" | "archived";
 
@@ -116,7 +159,7 @@ function StatusBadge({ status }: { status: ProductStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border",
+        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border backdrop-blur",
         cfg.color,
       )}
     >
@@ -131,11 +174,13 @@ export function ServiceListRow({
   selected,
   onSelect,
   onToggleStatus,
+  onEdit,
 }: {
   service: ProductProps;
   selected: boolean;
   onSelect: () => void;
   onToggleStatus: () => void;
+  onEdit: () => void;
 }) {
   const { config } = useProviderContext();
   const { cover } = displayMedia(service.media);
@@ -253,6 +298,7 @@ export function ServiceListRow({
             borderColor: `${config.themeColor}40`,
             background: `${config.themeColor}08`,
           }}
+          onClick={onEdit}
         >
           Edit
         </motion.button>
@@ -295,16 +341,14 @@ export function ServiceGridCard({
   service,
   selected,
   onSelect,
-  onDelete,
   onEdit,
-  onToggleStatus,
+  isFirst,
 }: {
   service: ProductProps;
   selected: boolean;
   onSelect: () => void;
-  onToggleStatus: () => void;
-  onDelete: () => void;
   onEdit: () => void;
+  isFirst: boolean;
 }) {
   const { config } = useProviderContext();
   const { to } = normalizeLocation(service.locations);
@@ -312,139 +356,124 @@ export function ServiceGridCard({
     onSelect,
   });
 
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("multi-select-hint");
+    if (!seen && isFirst) {
+      setShowHint(true);
+      localStorage.setItem("multi-select-hint", "1");
+    }
+  }, []);
+
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.18 }}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-      onClick={handleClick}
-      className={cn(
-        "group relative overflow-hidden rounded-xl border cursor-pointer",
-        "bg-card/50 border-border",
-        "transition-all duration-300",
-      )}
-      style={{
-        borderColor: selected ? config.themeColor : undefined,
-      }}
-    >
-      <TopHeader service={service} />
-
-      <div className="p-4 flex flex-col gap-3">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="truncate text-[15px] font-semibold leading-tight">
-            {service.title}
-          </h3>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center justify-center text-muted-foreground hover:text-foreground transition">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align="end"
-              className="bg-popover text-popover-foreground border border-border shadow-lg"
-            >
-              <DropdownMenuItem
-                onClick={onEdit}
-                className="gap-2 cursor-pointer"
-              >
-                <Edit2 className="w-4 h-4" /> Edit
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={onToggleStatus}
-                className="gap-2 cursor-pointer"
-              >
-                {service.status === "active" ? (
-                  <>
-                    <ToggleLeft className="w-4 h-4" /> Deactivate
-                  </>
-                ) : (
-                  <>
-                    <ToggleRight className="w-4 h-4" /> Activate
-                  </>
-                )}
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="gap-2 text-destructive focus:text-destructive cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground line-clamp-2">
-          {service.shortDescription}
-        </p>
-
-        {/* Meta Row */}
-        <div className="flex items-center justify-between">
-          {service.type === "experience" && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="size-3.5 opacity-70" />
-              <span className="truncate max-w-24">
-                {to?.city}, {to?.country}
-              </span>
-            </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.97 }}
+          transition={{ duration: 0.18 }}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+          onClick={handleClick}
+          className={cn(
+            "group relative overflow-hidden rounded-xl border",
+            "bg-card/50 border-border",
+            "transition-all duration-300",
           )}
+          style={{
+            borderColor: selected ? config.themeColor : undefined,
+          }}
+        >
+          <TopHeader service={service} />
 
-          {/* Bookings Chip */}
-          <div
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition",
-              service.bookings > 0
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
-            <Users className="size-3.5" />
-            {service.bookings > 0 ? `${service.bookings}+` : "0"}
-          </div>
-        </div>
+          <div className="p-4 flex flex-col gap-3">
+            {/* Header */}
+            <h3 className="truncate text-[15px] font-semibold leading-tight">
+              {service.title}
+            </h3>
 
-        <Separator />
+            {/* Description */}
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {service.shortDescription}
+            </p>
 
-        {/* Footer */}
-        <div className="flex items-end justify-between">
-          <div>
-            <span className="text-xs text-muted-foreground">Starting from</span>
-            <div className="flex items-baseline gap-1">
-              <span className={cn("text-xs font-medium", config.twTextColor)}>
-                {service.currency}
-              </span>
-              <span className="text-lg font-semibold">{service.basePrice}</span>
+            {/* Meta Row */}
+            <div className="flex items-center justify-between">
+              {service.type === "experience" && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="size-3.5 opacity-70" />
+                  <span className="truncate max-w-24">
+                    {to?.city}, {to?.country}
+                  </span>
+                </div>
+              )}
+
+              {/* Bookings Chip */}
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition",
+                  service.bookings > 0
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <Users className="size-3.5" />
+                {service.bookings > 0 ? `${service.bookings}+` : "0"}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Footer */}
+            <div className="flex items-end justify-between">
+              <div>
+                <span className="text-xs text-muted-foreground">
+                  Starting from
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <span
+                    className={cn("text-xs font-medium", config.twTextColor)}
+                  >
+                    {service.currency}
+                  </span>
+                  <span className="text-lg font-semibold">
+                    {service.basePrice}
+                  </span>
+                </div>
+              </div>
+
+              {/* CTA */}
+              <motion.button
+                onClick={onEdit}
+                whileTap={{ scale: 0.96 }}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer"
+                style={{
+                  color: config.themeColor,
+                  borderColor: `${config.themeColor}50`,
+                  background: `${config.themeColor}10`,
+                }}
+              >
+                Edit
+              </motion.button>
             </div>
           </div>
-
-          {/* CTA */}
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200"
-            style={{
-              color: config.themeColor,
-              borderColor: `${config.themeColor}50`,
-              background: `${config.themeColor}10`,
-            }}
-          >
-            Edit
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
+        </motion.div>
+      </TooltipTrigger>
+      {showHint && !selected && (
+        <TooltipContent side="top" className="text-xs max-w-55">
+          <p>
+            <span className="font-medium">Ctrl</span> /{" "}
+            <span className="font-medium">Cmd</span> to multi-select.
+            <br />
+            Long press on mobile.
+          </p>
+        </TooltipContent>
+      )}
+    </Tooltip>
   );
 }
 
@@ -458,7 +487,9 @@ function TopHeader({ service }: { service: ProductProps }) {
           <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white backdrop-blur">
             <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
             <span>{service.avgRate}</span>
-            <span className="text-muted-foreground">({service.reviews})</span>
+            <span className="text-neutral-300 dark:text-muted-foreground">
+              ({service.reviews})
+            </span>
           </div>
         )}
 
@@ -513,5 +544,99 @@ function CoverPlaceholder({
         <Compass className="w-8 h-8 text-orange-500 dark:text-orange-400/40" />
       )}
     </div>
+  );
+}
+
+export function ServicesToolbar<SortKey extends string, Status extends string>({
+  search,
+  onSearchChange,
+  sort,
+  onSortChange,
+  sortOptions,
+  status,
+  onStatusChange,
+  statusOptions,
+  view,
+  onViewChange,
+}: ServicesToolbarProps<SortKey, Status>) {
+  return (
+    <div className="flex flex-col md:flex-row gap-2 mb-4">
+      {/* Search */}
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search services..."
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full pl-9 pr-4 rounded-lg focus:border-emerald-500 transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => onSearchChange("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2">
+        <SortDropdown<Status>
+          value={status}
+          onChange={onStatusChange}
+          options={statusOptions}
+          placeholder="Filter by Status..."
+        />
+
+        <SortDropdown<SortKey>
+          value={sort}
+          onChange={onSortChange}
+          options={sortOptions}
+        />
+
+        {/* View toggle */}
+        <div className="flex border shrink-0 rounded-lg overflow-hidden w-fit">
+          <button
+            onClick={() => onViewChange("grid")}
+            className={cn("p-2", view === "grid" && "bg-muted")}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            onClick={() => onViewChange("list")}
+            className={cn("p-2 border-l", view === "list" && "bg-muted")}
+          >
+            <List className="size-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SortDropdown<T extends string>({
+  value,
+  onChange,
+  options,
+  placeholder = "Sort...",
+}: SortDropdownProps<T>) {
+  return (
+    <Select value={value} onValueChange={(v) => onChange(v as T)}>
+      <SelectTrigger className="w-full max-w-48">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+
+      <SelectContent>
+        <SelectGroup>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label ?? option.value}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   );
 }
