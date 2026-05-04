@@ -274,7 +274,6 @@ async function getServices(
 ) {
   const { limit = 20, offset = 0 } = limitation ?? {};
   const { searchVector, ...productColumns } = getTableColumns(products);
-
   const baseWhere = and(eq(products.providerId, providerId), whereClause);
 
   const [countResult, data] = await Promise.all([
@@ -300,15 +299,10 @@ async function getServices(
             '[]'
           )
         `.as("locations"),
-        provider: {
-          id: providers.id,
-          name: providers.name,
-          logo: providers.logo,
-          isVerified: providers.isVerified,
-        },
         reviews: productStats.reviewsCount,
         bookings: productStats.bookingsCount,
         avgRate: productStats.averageRating,
+        revenue: productStats.totalRevenue,
       })
       .from(products)
       .innerJoin(productStats, eq(products.id, productStats.productId))
@@ -318,7 +312,6 @@ async function getServices(
       .where(baseWhere)
       .groupBy(
         products.id,
-        providers.id,
         productStats.productId,
         productStats.reviewsCount,
         productStats.bookingsCount,

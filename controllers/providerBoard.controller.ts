@@ -1,4 +1,4 @@
-import { products } from "@/db/schemas";
+import { products, productStats } from "@/db/schemas";
 import { DateRange } from "@/lib/panel-types";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import { parseQuery } from "@/lib/query_parser/analyzer";
@@ -108,6 +108,9 @@ export async function getServicesController(url: string) {
   );
   const final = mergeWhere(whereSQl, searchSQl);
   const mainOrder = buildOrderBy(query?.orderBy ?? [], products);
+  const statsOrder = buildOrderBy(query?.orderBy ?? [], productStats);
 
-  return await getServices(providerId ,final, mainOrder, { limit, offset });
+  const orderBy = [...mainOrder, ...statsOrder];
+
+  return await getServices(providerId ,final, orderBy, { limit, offset });
 }

@@ -41,7 +41,7 @@ interface TopRatedURL {
 
 interface ServiceURL {
   search: string;
-  status?: "pending" | "approved" | "inactive" | "suspended";
+  status?: "draft" | "active" | "paused" | "archived" | "all";
   sort?: string;
   page?: number;
   limit?: number;
@@ -207,22 +207,14 @@ export function TopRatedURL(params: Partial<TopRatedURL>) {
 
 export function serviceUrl(params: Partial<ServiceURL>) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const url = new URL("/provider/panel/service", baseUrl);
+  const url = new URL("/api/provider/panel/services", baseUrl);
 
   const { search, sort, status, page } = params || {};
 
-  if (search) {
-    url.searchParams.append("search", search);
-  }
-  if (status) {
-    url.searchParams.append("status", status);
-  }
-  if (sort && sort !== "all") {
-    url.searchParams.append("sort", sort);
-  }
-  if (page) {
-    url.searchParams.append("page", String(page));
-  }
+  if (search) url.searchParams.set("search", search);
+  if (status && status !== "all") url.searchParams.set("status", status);
+  if (sort && sort !== "all") url.searchParams.set("sort", sort);
+  if (page) url.searchParams.set("page", String(page));
 
   return url.toString();
 }

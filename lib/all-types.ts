@@ -8,10 +8,9 @@ export interface Product {
   shortDescription: string;
   basePrice: string;
   currency: string;
-  status: "active" | "inactive" | "draft";
+  status: "active" | "draft" | "paused" | "archived";
   createdAt: string;
   updatedAt: string;
-  finalScore: number;
   media: Media[];
   locations: Location[];
 }
