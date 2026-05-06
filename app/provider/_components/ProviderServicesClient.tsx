@@ -220,7 +220,7 @@ export default function ProviderServicesClient() {
         </div>
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => router.push("/provider/services/new")}
+          onClick={() => router.push("/provider/services/create")}
           className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-semibold text-white transition-colors hover:opacity-90 cursor-pointer"
           style={{ background: config.themeColor }}
         >
