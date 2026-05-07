@@ -99,6 +99,9 @@ export function SubscriptionDetail({
   const progress =
     total === 0 ? 100 : Math.round((startedDaysAgo / total) * 100);
 
+  const isCancellationActive =
+    isCancelled && sub.endDate && new Date(sub.endDate) > new Date();
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-5 pt-6 pb-4 border-b border-border">
@@ -157,7 +160,7 @@ export function SubscriptionDetail({
         )}
 
         {/* Cancelled warning */}
-        {isCancelled && sub.endDate && new Date(sub.endDate) > new Date() && (
+        {isCancellationActive && (
           <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3.5 py-3 mb-4">
             <AlertTriangle className="size-4 text-amber-500 shrink-0" />
             <div className="flex-1 min-w-0">

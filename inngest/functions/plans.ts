@@ -25,17 +25,21 @@ const expireEndedSubscriptions = inngest.createFunction(
           and(
             lte(subscriptions.endDate, now),
             inArray(subscriptions.status, ["active", "trialing" ,"cancelled"]),
-            eq(subscriptions.autoRenew, false),
           ),
         );
 
       for (const sub of subs) {
-        if (sub.autoRenew) {
+        const shouldRenew = sub.status === "active" && sub.autoRenew;
+
+        if (shouldRenew) {
           await renewSubscription(sub.id);
         } else {
           await db
             .update(subscriptions)
-            .set({ status: "expired", autoRenew: false })
+            .set({
+              status: "expired",
+              autoRenew: false,
+            })
             .where(eq(subscriptions.id, sub.id));
         }
       }

@@ -42,7 +42,7 @@ type BookingResult = { bookingId: string; orderNumber: string };
 interface VariantListProps {
   variants: ProductVariant[];
   onConfirmBooking?: (variant: ProductVariant, pax: Pax) => void;
-  providerId:string
+  providerId: string;
 }
 
 interface VariantCardProps {
@@ -61,7 +61,7 @@ interface BookingConfirmDialogProps {
   variant: ProductVariant;
   pax: Pax;
   onConfirm: (input: CreateBookingInput) => void;
-  providerId:string
+  providerId: string;
 }
 
 interface BookingSuccessDialogProps {
@@ -117,11 +117,17 @@ function availFill(pct: number) {
 }
 
 function computeTotal(variant: ProductVariant, pax: Pax) {
-  if (!variant.pricing) return 0;
+  const pricing: Record<PassengerType, number> = {
+    adult: Number(variant.adultPrice ?? 0),
+    child: Number(variant.childPrice ?? 0),
+    infant: Number(variant.infantPrice ?? 0),
+  };
+
+  if (!pricing) return 0;
   return (
-    pax.adult * parseFloat(variant.pricing.adultPrice) +
-    pax.child * parseFloat(variant.pricing.childPrice) +
-    pax.infant * parseFloat(variant.pricing.infantPrice)
+    pax.adult * parseFloat(pricing.adult.toString()) +
+    pax.child * parseFloat(pricing.child.toString()) +
+    pax.infant * parseFloat(pricing.infant.toString())
   );
 }
 
@@ -165,12 +171,18 @@ function BookingConfirmDialog({
   variant,
   pax,
   onConfirm,
-  providerId
+  providerId,
 }: BookingConfirmDialogProps) {
-  const { pricing, transportSchedule: schedule, name } = variant;
-  const adultTotal = pax.adult * parseFloat(pricing?.adultPrice ?? "0");
-  const childTotal = pax.child * parseFloat(pricing?.childPrice ?? "0");
-  const infantTotal = pax.infant * parseFloat(pricing?.infantPrice ?? "0");
+  const {
+    transportSchedule: schedule,
+    name,
+    adultPrice,
+    childPrice,
+    infantPrice,
+  } = variant;
+  const adultTotal = pax.adult * parseFloat(adultPrice ?? "0");
+  const childTotal = pax.child * parseFloat(childPrice ?? "0");
+  const infantTotal = pax.infant * parseFloat(infantPrice ?? "0");
   const grandTotal = adultTotal + childTotal + infantTotal;
   const totalPax = pax.adult + pax.child + pax.infant;
 
@@ -205,21 +217,23 @@ function BookingConfirmDialog({
       pax.adult > 0 && {
         passengerType: "adult" as PassengerType,
         quantity: pax.adult,
-        unitPrice: parseFloat(pricing?.adultPrice ?? "0"),
       },
       pax.child > 0 && {
         passengerType: "child" as PassengerType,
         quantity: pax.child,
-        unitPrice: parseFloat(pricing?.childPrice ?? "0"),
       },
       pax.infant > 0 && {
         passengerType: "infant" as PassengerType,
         quantity: pax.infant,
-        unitPrice: parseFloat(pricing?.infantPrice ?? "0"),
       },
     ].filter(Boolean) as CreateBookingInput["items"];
 
-    onConfirm({ variantId: variant.id, productId: variant.productId, items ,providerId });
+    onConfirm({
+      variantId: variant.id,
+      productId: variant.productId,
+      items,
+      providerId,
+    });
   };
 
   return (
@@ -420,7 +434,7 @@ function StepperRow({
 }: {
   label: string;
   sub: string;
-  price: string;
+  price: number;
   count: number;
   onDec: () => void;
   onInc: () => void;
@@ -435,7 +449,7 @@ function StepperRow({
       </div>
       <div className="flex items-center gap-3">
         <span className="text-xs text-muted-foreground w-14 text-right">
-          {fmtMoneyStr(price)}
+          {fmtMoneyStr(price.toString())}
         </span>
         <div className="flex items-center gap-2.5">
           <Button
@@ -513,7 +527,6 @@ function VariantCard({
 }: VariantCardProps) {
   const {
     transportSchedule: sc,
-    pricing,
     status,
     capacity,
     bookedCount,
@@ -526,6 +539,12 @@ function VariantCard({
   const total = computeTotal(variant, pax);
   const disabled = status !== "available";
   const stops = parseArray<Stop>(sc?.stops);
+
+  const pricing: Record<PassengerType, number> = {
+    adult: Number(variant.adultPrice ?? 0),
+    child: Number(variant.childPrice ?? 0),
+    infant: Number(variant.infantPrice ?? 0),
+  };
 
   const statusCls = {
     available:
@@ -643,7 +662,7 @@ function VariantCard({
           {pricing && (
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CreditCard className="size-3.5" />
-              From {fmtMoneyStr(pricing.adultPrice)}
+              From {fmtMoneyStr((pricing.adult).toString())} per adult
             </span>
           )}
         </div>
@@ -661,7 +680,7 @@ function VariantCard({
               <StepperRow
                 label="Adults"
                 sub="Age 13+"
-                price={pricing.adultPrice}
+                price={pricing.adult}
                 count={pax.adult}
                 onDec={() => onSetPax("adult", pax.adult - 1)}
                 onInc={() => onSetPax("adult", pax.adult + 1)}
@@ -671,7 +690,7 @@ function VariantCard({
               <StepperRow
                 label="Children"
                 sub="Age 2–12"
-                price={pricing.childPrice}
+                price={pricing.child}
                 count={pax.child}
                 onDec={() => onSetPax("child", pax.child - 1)}
                 onInc={() => onSetPax("child", pax.child + 1)}
@@ -681,7 +700,7 @@ function VariantCard({
               <StepperRow
                 label="Infants"
                 sub="Under 2 · lap seat (max 6)"
-                price={pricing.infantPrice}
+                price={pricing.infant}
                 count={pax.infant}
                 onDec={() => onSetPax("infant", pax.infant - 1)}
                 onInc={() => onSetPax("infant", pax.infant + 1)}
@@ -715,7 +734,11 @@ function VariantCard({
   );
 }
 
-export function VariantList({ variants, onConfirmBooking ,providerId }: VariantListProps) {
+export function VariantList({
+  variants,
+  onConfirmBooking,
+  providerId,
+}: VariantListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paxMap, setPaxMap] = useState<Record<string, Pax>>({});
   const [confirmVariant, setConfirmVariant] = useState<ProductVariant | null>(

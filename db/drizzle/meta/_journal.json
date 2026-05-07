@@ -50,6 +50,13 @@
       "when": 1776624248775,
       "tag": "0006_aromatic_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778111086402,
+      "tag": "0007_icy_proudstar",
+      "breakpoints": true
     }
   ]
 }

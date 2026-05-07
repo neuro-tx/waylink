@@ -21,9 +21,7 @@ export const products = pgTable(
     providerId: uuid("provider_id")
       .notNull()
       .references(() => providers.id, { onDelete: "cascade" }),
-    type: text("type")
-      .$type<"experience" | "transport">()
-      .notNull(),
+    type: text("type").$type<"experience" | "transport">().notNull(),
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     description: text("description"),
@@ -67,6 +65,11 @@ export const productVariants = pgTable(
       .$type<"available" | "sold_out" | "cancelled">()
       .notNull()
       .default("available"),
+    adultPrice: numeric("adult_price", { precision: 10, scale: 2 }).notNull(),
+    childPrice: numeric("child_price", { precision: 10, scale: 2 }).notNull(),
+    infantPrice: numeric("infant_price", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0.00"),
     ...timestamps,
   },
   (t) => [
@@ -166,21 +169,5 @@ export const productStats = pgTable("product_stats", {
   lastBookedAt: timestamp("last_booked_at"),
   lastReviewedAt: timestamp("last_reviewed_at"),
 
-  ...timestamps,
-});
-
-export const pricing = pgTable("pricing", {
-  id: uuid("id").defaultRandom().primaryKey(),
-
-  variantId: uuid("variant_id")
-    .notNull()
-    .references(() => productVariants.id, { onDelete: "cascade" })
-    .unique(),
-
-  adultPrice: numeric("adult_price", { precision: 10, scale: 2 }).notNull(),
-  childPrice: numeric("child_price", { precision: 10, scale: 2 }).notNull(),
-  infantPrice: numeric("infant_price", { precision: 10, scale: 2 })
-    .notNull()
-    .default("0.00"),
   ...timestamps,
 });

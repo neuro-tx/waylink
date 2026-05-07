@@ -27,7 +27,6 @@ export interface CreateBookingInput {
   items: {
     passengerType: PassengerType;
     quantity: number;
-    unitPrice: number;
   }[];
 }
 
@@ -114,8 +113,14 @@ export async function createBookingAction(
       }
 
       // Step 2: compute totals
+      const pricing: Record<PassengerType, number> = {
+        adult: Number(variant.adultPrice),
+        child: Number(variant.childPrice),
+        infant: Number(variant.infantPrice),
+      };
+
       const totalAmount = input.items.reduce(
-        (acc, i) => acc + i.unitPrice * i.quantity,
+        (acc, i) => acc + pricing[i.passengerType] * i.quantity,
         0,
       );
 
@@ -139,13 +144,18 @@ export async function createBookingAction(
         .returning({ id: bookings.id, orderNumber: bookings.orderNumber });
 
       // Step 4: insert booking items
-      const bookingItemsData = input.items.map((item) => ({
-        bookingId: booking.id,
-        passengerType: item.passengerType,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice.toString(),
-        totalPrice: (item.unitPrice * item.quantity).toString(),
-      }));
+      const bookingItemsData = input.items.map((item) => {
+        const unitPrice = pricing[item.passengerType];
+        const totalPrice = unitPrice * item.quantity;
+
+        return {
+          bookingId: booking.id,
+          passengerType: item.passengerType,
+          quantity: item.quantity,
+          unitPrice: unitPrice.toString(),
+          totalPrice: totalPrice.toString(),
+        };
+      });
       await tx.insert(bookingItems).values(bookingItemsData);
 
       // Step 5: increment bookedCount + maybe mark sold_out
@@ -242,7 +252,7 @@ export async function rebookAction(
             eq(bookings.userId, session.user.id),
             eq(bookings.variantId, original.variantId),
             eq(bookings.productId, original.productId),
-            inArray(bookings.status ,["pending" ,"confirmed"])
+            inArray(bookings.status, ["pending", "confirmed"]),
           ),
         )
         .limit(1);

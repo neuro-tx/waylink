@@ -122,14 +122,12 @@ function FormSection({
 function PreviewCard({
   values,
   serviceId,
-  type,
 }: {
   values: Partial<ProductForm>;
   serviceId: string | null;
-  type: "experience" | "transport";
 }) {
   const symbol = CURRENCY_SYMBOLS[values.currency || "USD"] || "$";
-  const [cover, setCover] = useState<string | null>(null)
+  const [cover, setCover] = useState<string | null>(null);
 
   const typeConfig = {
     experience: {
@@ -143,8 +141,6 @@ function PreviewCard({
       className: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
     },
   };
-
-  const typeCfg = typeConfig[type];
 
   return (
     <div className="sticky top-18 space-y-4">
@@ -366,7 +362,7 @@ export default function CreateProductPage() {
   };
 
   async function onSubmit(data: ProductForm) {
-    console.log(data)
+    console.log(data);
     setIsSubmitting(true);
     try {
       const mockId = "550e8400-e29b-41d4-a716-446655440000";
@@ -736,11 +732,7 @@ export default function CreateProductPage() {
             </Form>
           </div>
 
-          <PreviewCard
-            values={watchedValues}
-            serviceId={serviceId}
-            type={type}
-          />
+          <PreviewCard values={watchedValues} serviceId={serviceId} />
         </div>
       </div>
     </div>

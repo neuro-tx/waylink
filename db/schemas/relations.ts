@@ -1,7 +1,6 @@
 import { relations } from "drizzle-orm";
 import { account, session, user } from "./public";
 import {
-  pricing,
   productMedia,
   productReviews,
   products,
@@ -161,10 +160,6 @@ export const productVariantsRelations = relations(
       references: [products.id],
     }),
     bookings: many(bookings),
-    pricing: one(pricing, {
-      fields: [productVariants.id],
-      references: [pricing.variantId],
-    }),
     transportSchedule: one(transportSchedules, {
       fields: [productVariants.id],
       references: [transportSchedules.variantId],
@@ -201,13 +196,6 @@ export const productStatsRelations = relations(productStats, ({ one }) => ({
   product: one(products, {
     fields: [productStats.productId],
     references: [products.id],
-  }),
-}));
-
-export const pricingRelations = relations(pricing, ({ one }) => ({
-  variant: one(productVariants, {
-    fields: [pricing.variantId],
-    references: [productVariants.id],
   }),
 }));
 

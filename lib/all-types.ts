@@ -305,13 +305,6 @@ export type ProviderStats = {
   oneStar: number;
 };
 
-export type Pricing = {
-  variantId: string;
-  adultPrice: string;
-  childPrice: string;
-  infantPrice: string;
-};
-
 export type ProductVariant = {
   id: string;
   productId: string;
@@ -321,7 +314,9 @@ export type ProductVariant = {
   capacity: number;
   bookedCount: number;
   status: VariantStatus;
-  pricing: Pricing | null;
+  adultPrice: string;
+  childPrice: string;
+  infantPrice: string;
   transportSchedule?: {
     departureTime: string | Date;
     arrivalTime: string | Date;

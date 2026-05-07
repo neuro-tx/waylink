@@ -27,7 +27,7 @@ export const getProviderCustomers = async ({
       userId: bookings.userId,
       totalOrders: sql<number>`count(${bookings.id})`.as("total_orders"),
       completedOrders:
-        sql<number>`count(${bookings.id}) filter (where ${bookings.status} = 'confirmed')`.as(
+        sql<number>`count(${bookings.id}) filter (where ${bookings.status} in ('confirmed','completed'))`.as(
           "completed_orders",
         ),
       lifetimeValue:
