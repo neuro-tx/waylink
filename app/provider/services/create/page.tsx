@@ -697,7 +697,7 @@ export default function CreateProductPage() {
                         className="gap-2"
                         onClick={() =>
                           router.push(
-                            `/provider/services/create/variants?serviceId${serviceId}`,
+                            `/provider/services/create/variants?serviceId=${serviceId}`,
                           )
                         }
                       >
