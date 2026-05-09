@@ -1,23 +1,29 @@
 import z from "zod";
 
 const locationSchema = z.object({
-  id: z.uuid(),
-  city: z
-    .string({ message: "City is required" })
-    .min(1, "City cannot be empty"),
-  country: z
-    .string({ message: "Country is required" })
-    .min(1, "Country cannot be empty"),
+  id: z.string().uuid(),
+  city: z.string().min(1, "City is required"),
+  slug: z
+    .string()
+    .min(1, "Slug is required")
+    .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and hyphens only"),
+  type: z.enum(["start", "end", "stop"]),
+  address: z.string().min(1, "Address is required"),
+  country: z.string().min(1, "Country is required"),
   latitude: z
-    .number()
-    .min(-90, "Latitude must be >= -90")
-    .max(90, "Latitude must be <= 90"),
+    .string()
+    .min(1, "Required")
+    .refine(
+      (v) => !isNaN(Number(v)) && Number(v) >= -90 && Number(v) <= 90,
+      "Must be between -90 and 90",
+    ),
   longitude: z
-    .number()
-    .min(-180, "Longitude must be >= -180")
-    .max(180, "Longitude must be <= 180"),
-  slug: z.string(),
-  address: z.string({ message: "Address must be a string" }).nullable(),
+    .string()
+    .min(1, "Required")
+    .refine(
+      (v) => !isNaN(Number(v)) && Number(v) >= -180 && Number(v) <= 180,
+      "Must be between -180 and 180",
+    ),
 });
 
 export const locationValidator = locationSchema.omit({ id: true, slug: true });
