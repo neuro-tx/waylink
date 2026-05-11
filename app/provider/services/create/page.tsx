@@ -28,7 +28,6 @@ import {
   Plane,
   Compass,
   ArrowRight,
-  Sparkles,
   DollarSign,
   Tag,
   FileText,
@@ -40,7 +39,6 @@ import {
   Users,
   CheckCircle2,
 } from "lucide-react";
-import { StepIndicator } from "../../_components/StepIndicator";
 import { MediaUpload } from "@/components/MediaUpload";
 import { cn } from "@/lib/utils";
 import { ProductForm, productSchema } from "@/validations";
@@ -405,25 +403,6 @@ export default function CreateProductPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 z-10">
-        <div className="px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                New Product
-              </p>
-              <h1 className="text-sm font-semibold text-foreground leading-none">
-                Product Details
-              </h1>
-            </div>
-          </div>
-          <StepIndicator currentStep={1} totalSteps={2} />
-        </div>
-      </div>
-
       <div className="w-full relative px-4 md:px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-10 items-start">
           <div>

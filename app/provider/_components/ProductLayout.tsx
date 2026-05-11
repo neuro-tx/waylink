@@ -583,14 +583,14 @@ export function ServicesToolbar<SortKey extends string, Status extends string>({
 
       {/* Filters */}
       <div className="flex items-center gap-2">
-        <SortDropdown<Status>
+        <DropdownList<Status>
           value={status}
           onChange={onStatusChange}
           options={statusOptions}
           placeholder="Filter by Status..."
         />
 
-        <SortDropdown<SortKey>
+        <DropdownList<SortKey>
           value={sort}
           onChange={onSortChange}
           options={sortOptions}
@@ -616,7 +616,7 @@ export function ServicesToolbar<SortKey extends string, Status extends string>({
   );
 }
 
-function SortDropdown<T extends string>({
+export function DropdownList<T extends string>({
   value,
   onChange,
   options,

@@ -629,43 +629,6 @@ export default function CreateVariantsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* ── Sticky Header ── */}
-      <div className="border-b border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 z-10">
-        <div className="w-full px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => router.push("/products/create")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                New Product
-              </p>
-              <h1 className="text-sm font-semibold text-foreground leading-none">
-                Variants & Pricing
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            {savedVariants.length > 0 && (
-              <Badge variant="secondary" className="gap-1.5 text-xs">
-                <LayoutList className="h-3 w-3" />
-                {savedVariants.length} variant
-                {savedVariants.length !== 1 ? "s" : ""}
-              </Badge>
-            )}
-            <StepIndicator currentStep={2} totalSteps={2} />
-          </div>
-        </div>
-      </div>
-
       <div className="w-full px-4 md:px-6 py-8">
         {/* Product ID pill */}
         <div className="mb-8 flex items-center justify-between">

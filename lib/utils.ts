@@ -229,3 +229,30 @@ export function toCSV<T extends Record<string, any>>(rows: T[]): string {
 
   return csvLines.join("\n");
 }
+
+export function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  if (hours <= 0) return `${mins}m`;
+  if (mins <= 0) return `${hours}h`;
+
+  return `${hours}h ${mins}m`;
+}
+
+export function calculateDurationInMinutes(departure: Date, arrival: Date) {
+  const diffMs = arrival.getTime() - departure.getTime();
+
+  if (diffMs < 0) return 0;
+
+  return Math.floor(diffMs / 1000 / 60);
+}
+
+export function formatTo12Hour(time24: any): string {
+  const [hours, minutes] = String(time24).split(":").map(Number);
+
+  const period = hours >= 12 ? "PM" : "AM";
+  const hours12 = hours % 12 || 12;
+
+  return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
