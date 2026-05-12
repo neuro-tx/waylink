@@ -57,6 +57,13 @@
       "when": 1778111086402,
       "tag": "0007_icy_proudstar",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778612303944,
+      "tag": "0008_cheerful_living_lightning",
+      "breakpoints": true
     }
   ]
 }

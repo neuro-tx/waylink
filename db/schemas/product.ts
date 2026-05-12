@@ -171,3 +171,18 @@ export const productStats = pgTable("product_stats", {
 
   ...timestamps,
 });
+
+export const setupProgress = pgTable("setup_progress", {
+  productId: uuid("product_id")
+    .primaryKey()
+    .notNull()
+    .references(() => products.id, {
+      onDelete: "cascade",
+    }),
+  mainInfo: boolean("main_info").notNull().default(false),
+  hasMedia: boolean("has_media").notNull().default(false),
+  hasVariants: boolean("has_variants").notNull().default(false),
+  hasMetadata: boolean("has_metadata").notNull().default(false),
+  hasScore: boolean("has_score").notNull().default(false),
+  ...timestamps,
+});

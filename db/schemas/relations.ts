@@ -7,6 +7,7 @@ import {
   productScores,
   productStats,
   productVariants,
+  setupProgress,
 } from "./product";
 import { bookingItems, bookings } from "./booking";
 import {
@@ -150,6 +151,14 @@ export const productRelations = relations(products, ({ one, many }) => ({
   transport: one(transports),
   wishlistItems: many(wishlistItems),
   bookings: many(bookings),
+  setup: one(setupProgress),
+}));
+
+export const setupProgressRelations = relations(setupProgress, ({ one }) => ({
+  product: one(products, {
+    fields: [setupProgress.productId],
+    references: [products.id],
+  }),
 }));
 
 export const productVariantsRelations = relations(
