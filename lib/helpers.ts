@@ -1,4 +1,4 @@
-import { Location, Media } from "./all-types";
+import { Location, Media, SetupProgress } from "./all-types";
 import { GrowthMetric } from "./panel-types";
 
 export const displayMedia = (media: Media[]) => {
@@ -118,4 +118,25 @@ export function calculateGrowthMetric(
     direction,
     formatted: `${value > 0 ? "+" : ""}${value.toFixed(1)}%`,
   };
+}
+
+export function deriveCurrentStep(
+  progress: SetupProgress | null | undefined,
+): 1 | 2 | 3 | 4 {
+  if (!progress) return 1;
+  if (!progress.mainInfo) return 1;
+  if (!progress.hasVariants) return 2;
+  if (!progress.hasMetadata) return 3;
+  return 4;
+}
+
+export function isFullyComplete(
+  progress: SetupProgress | null | undefined,
+): boolean {
+  return !!(
+    progress?.mainInfo &&
+    progress.hasVariants &&
+    progress.hasMetadata &&
+    progress.hasScore
+  );
 }

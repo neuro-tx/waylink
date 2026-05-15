@@ -1,44 +1,69 @@
 "use client";
 
-import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { SetupProgress } from "@/lib/all-types";
+import { deriveCurrentStep } from "@/lib/helpers";
 import { StepIndicator } from "../../_components/StepIndicator";
+import { getServiceSetup } from "@/actions/service.action";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 
-function useCurrentStep(): 1 | 2 | 3 | 4 {
+function useRouteStep(): 1 | 2 | 3 | 4 {
   const pathname = usePathname();
   if (pathname.includes("/details")) return 4;
-  if (pathname.includes("/location")) return 3;
+  if (pathname.includes("/locations")) return 3;
   if (pathname.includes("/variants")) return 2;
   return 1;
 }
 
-export default function CreateProductLayout({
+export default function CreateServiceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { type } = useProviderContext();
   const router = useRouter();
-  const params = useSearchParams();
-  const step = useCurrentStep();
-  const {type} = useProviderContext();
+  const params = useParams();
+  const routeStep = useRouteStep();
 
-  const productId = params.get("serviceId") as string | undefined;
-  const isStep1 = step === 1;
+  const serviceId = params?.serviceId as string | undefined;
+  const isStep1 = routeStep === 1;
+
+  const [progress, setProgress] = useState<SetupProgress | null>(null);
+
+  //  Initial fetch
+  useEffect(() => {
+    if (!serviceId) return;
+    (async () => {
+      const res = await getServiceSetup(serviceId);
+      setProgress(res ?? null);
+    })();
+  }, [serviceId]);
+
+  // Refresh whenever a child page fires "setup-progress-updated"
+  useEffect(() => {
+    async function onProgressUpdate() {
+      if (!serviceId) return;
+      const res = await getServiceSetup(serviceId);
+      setProgress(res ?? null);
+    }
+    window.addEventListener("setup-progress-updated", onProgressUpdate);
+    return () =>
+      window.removeEventListener("setup-progress-updated", onProgressUpdate);
+  }, [serviceId]);
+
+  const activeStep: 1 | 2 | 3 | 4 = progress
+    ? deriveCurrentStep(progress)
+    : routeStep;
 
   function handleBack() {
-    if (step === 4 && productId)
-      return router.push(
-        `/provider/services/create/location?serviceId=${productId}`,
-      );
-    if (step === 3 && productId)
-      return router.push(`/provider/services/create/variants?serviceId=${productId}`);
-    if (step === 2) return router.push("/provider/services/create");
+    if (routeStep === 4 && serviceId)
+      return router.push(`/provider/services/create/${serviceId}/locations`);
+    if (routeStep === 3 && serviceId)
+      return router.push(`/provider/services/create/${serviceId}/variants`);
+    if (routeStep === 2) return router.push("/provider/services/create");
     router.back();
   }
 
@@ -50,10 +75,7 @@ export default function CreateProductLayout({
     },
     3: { label: "Locations", sub: "Start, end & waypoints" },
     4: {
-      label:
-        type === "transport"
-          ? "Transport Details"
-          : "Experience Details",
+      label: type === "transport" ? "Transport Details" : "Experience Details",
       sub:
         type === "transport"
           ? "Vehicle, class & schedule info"
@@ -61,7 +83,8 @@ export default function CreateProductLayout({
     },
   };
 
-  const { label, sub } = stepTitles[step];
+  const { label, sub } = stepTitles[routeStep];
+  const serviceLabel = type === "transport" ? "Transport" : "Experience";
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,9 +121,12 @@ export default function CreateProductLayout({
 
           <div className="shrink-0">
             <StepIndicator
-              currentStep={step}
+              currentStep={activeStep}
+              progress={progress}
               variant="compact"
-              serviceLabel={type}
+              serviceLabel={serviceLabel}
+              serviceId={serviceId}
+              productType={type}
             />
           </div>
         </div>
@@ -109,4 +135,10 @@ export default function CreateProductLayout({
       {children}
     </div>
   );
+}
+
+export function notifyProgressUpdate() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("setup-progress-updated"));
+  }
 }

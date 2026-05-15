@@ -531,3 +531,14 @@ export interface CustomersApiResponse {
   stats: CustomerStats;
   pagination: Pagination;
 }
+
+export interface SetupProgress {
+  productId: string;
+  mainInfo: boolean;
+  hasMedia: boolean;
+  hasVariants: boolean;
+  hasMetadata: boolean;
+  hasScore: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
