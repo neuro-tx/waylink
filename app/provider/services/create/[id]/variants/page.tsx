@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -31,15 +31,12 @@ import {
   Baby,
   User,
   CheckCircle2,
-  ArrowLeft,
-  Sparkles,
   Pencil,
   ChevronDown,
   LayoutList,
   Tag,
   X,
 } from "lucide-react";
-import { StepIndicator } from "@/app/provider/_components/StepIndicator";
 import { cn } from "@/lib/utils";
 import { variantSchema, VariantForm } from "@/validations";
 import { fmtDateTime } from "@/lib/helpers";
@@ -581,8 +578,8 @@ function EmptyVariants() {
 
 export default function CreateVariantsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const productId = searchParams.get("serviceId") as string;
+  const params = useParams();
+  const serviceId = params.id;
 
   const [savedVariants, setSavedVariants] = useState<VariantForm[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -645,7 +642,7 @@ export default function CreateVariantsPage() {
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             <div>
               <p className="text-[10px] text-muted-foreground">Product ID</p>
-              <p className="text-xs font-mono text-foreground">{productId}</p>
+              <p className="text-xs font-mono text-foreground">{serviceId}</p>
             </div>
           </div>
         </div>
@@ -719,7 +716,7 @@ export default function CreateVariantsPage() {
                     {savedVariants.length !== 1 ? "s" : ""} ready to save
                   </span>
                   <span className="text-xs font-mono text-muted-foreground truncate max-w-50">
-                    → product/{productId}
+                    → product/{serviceId}
                   </span>
                 </div>
 
@@ -732,7 +729,7 @@ export default function CreateVariantsPage() {
                     className="flex-1"
                     onClick={() =>
                       router.push(
-                        `/provider/services/create/location?serviceId=${productId}`,
+                        `/provider/services/create/${serviceId}/locations`,
                       )
                     }
                   >

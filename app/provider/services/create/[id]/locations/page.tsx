@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -267,10 +267,10 @@ function CompletionRow({ done, label }: { done: boolean; label: string }) {
 
 export default function CreateLocationsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { type } = useProviderContext();
+  const params = useParams();
 
-  const productId = searchParams.get("serviceId") as string;
+  const serviceId = params.id;
   const ServiceType = type as ServiceType;
 
   const [savedLocations, setSavedLocations] = useState<LocationValType[]>([]);
@@ -328,7 +328,7 @@ export default function CreateLocationsPage() {
     setIsSubmitting(true);
     try {
       await new Promise((r) => setTimeout(r, 800));
-      console.log("Saved locations:", savedLocations);
+      router.push(`/provider/services/create/${serviceId}/details`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -380,7 +380,7 @@ export default function CreateLocationsPage() {
             </span>
             <span className="text-xs text-muted-foreground">·</span>
             <span className="text-xs font-mono text-muted-foreground truncate max-w-35">
-              {productId}
+              {serviceId}
             </span>
           </div>
         </div>
@@ -517,7 +517,11 @@ export default function CreateLocationsPage() {
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => router.push(`/products/${productId}`)}
+                  onClick={() =>
+                    router.push(
+                      `/provider/services/create/${serviceId}/details`,
+                    )
+                  }
                 >
                   Skip for now
                 </Button>

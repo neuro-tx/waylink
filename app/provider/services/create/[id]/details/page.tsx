@@ -3,15 +3,15 @@
 import { ExperienceDetailsPage } from "@/app/provider/_components/ExpDetails";
 import { TransportDetailsPage } from "@/app/provider/_components/TransportDetails";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 
 export default function ServiceDetailsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const params = useParams();
   const { type } = useProviderContext();
 
-  const serviceId = searchParams.get("serviceId") as string;
+  const serviceId = params.id as string;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
