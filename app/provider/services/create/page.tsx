@@ -38,12 +38,14 @@ import {
   Star,
   Users,
   CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { MediaUpload } from "@/components/MediaUpload";
 import { cn } from "@/lib/utils";
 import { ProductForm, productSchema } from "@/validations";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import Image from "next/image";
+import { createService } from "@/actions/service.action";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "AED", "EGP", "SAR"];
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -126,19 +128,6 @@ function PreviewCard({
 }) {
   const symbol = CURRENCY_SYMBOLS[values.currency || "USD"] || "$";
   const [cover, setCover] = useState<string | null>(null);
-
-  const typeConfig = {
-    experience: {
-      label: "Experience",
-      Icon: Compass,
-      className: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-    },
-    transport: {
-      label: "Transport",
-      Icon: Plane,
-      className: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-    },
-  };
 
   return (
     <div className="sticky top-18 space-y-4">
@@ -347,6 +336,7 @@ export default function CreateProductPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serviceId, setServiceId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm({
     resolver: zodResolver(productSchema),
@@ -360,13 +350,17 @@ export default function CreateProductPage() {
   };
 
   async function onSubmit(data: ProductForm) {
-    console.log(data);
     setIsSubmitting(true);
     try {
-      const mockId = "550e8400-e29b-41d4-a716-446655440000";
-      setServiceId(mockId);
-    } catch (error) {
-      console.error(error);
+      const res = await createService(data);
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      setServiceId(res?.result as string);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -659,7 +653,12 @@ export default function CreateProductPage() {
 
                 {/* ── Footer actions ── */}
                 <div className="pt-4 flex items-center justify-between">
-                  {serviceId ? (
+                  {error ? (
+                    <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 font-medium">
+                      <XCircle className="h-4 w-4" />
+                      {error}
+                    </div>
+                  ) : serviceId ? (
                     <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                       <CheckCircle2 className="h-4 w-4" />
                       Saved! Upload media or continue
@@ -676,7 +675,7 @@ export default function CreateProductPage() {
                         className="gap-2"
                         onClick={() =>
                           router.push(
-                            `/provider/services/create/variants?serviceId=${serviceId}`,
+                            `/provider/services/create/${serviceId}/variants`,
                           )
                         }
                       >
