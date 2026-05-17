@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Form,
   FormControl,
@@ -18,7 +17,6 @@ import {
   MapPin,
   Flag,
   Navigation,
-  Milestone,
   Plus,
   CheckCircle2,
   Pencil,
@@ -30,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { locationValidator, LocationValType } from "@/validations";
 import { ServiceType } from "@/lib/all-types";
 
-type LocationType = "start" | "end" | "stop";
+type LocationType = "start" | "end";
 
 export const LOCATION_TYPE_CONFIG = {
   start: {
@@ -52,17 +50,7 @@ export const LOCATION_TYPE_CONFIG = {
     activeBg: "bg-red-500/15 border-red-500",
     dot: "bg-red-500",
     description: "Where the journey ends",
-  },
-  stop: {
-    label: "Stop",
-    icon: Milestone,
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/10",
-    border: "border-indigo-500",
-    activeBg: "bg-indigo-500/15 border-indigo-500",
-    dot: "bg-indigo-500",
-    description: "An intermediate waypoint",
-  },
+  }
 } as const;
 
 interface LocationEntryFormProps {
@@ -83,8 +71,7 @@ export function LocationEntryForm({
   onCancelEdit,
 }: LocationEntryFormProps) {
   const isEditing = editingIndex !== null;
-
-  const defaultType = editingData?.type ?? availableTypes[0] ?? "stop";
+  const defaultType = editingData?.type ?? availableTypes[0] ?? "start";
 
   const form = useForm({
     resolver: zodResolver(locationValidator),
@@ -105,7 +92,7 @@ export function LocationEntryForm({
     if (!isEditing) {
       form.reset({
         city: "",
-        type: defaultType,
+        type: "start",
         address: "",
         country: "",
         latitude: "",
@@ -114,7 +101,7 @@ export function LocationEntryForm({
     }
   }
 
-  const allTypes: LocationType[] = ["start", "end", "stop"];
+  const allTypes: LocationType[] = ["start", "end"];
 
   return (
     <Form {...form}>
@@ -172,9 +159,6 @@ export function LocationEntryForm({
                     {allTypes.map((locType) => {
                       const cfg = LOCATION_TYPE_CONFIG[locType];
                       const isActive = field.value === locType;
-                      // for experience: only show start + end
-                      if (ServiceType === "experience" && locType === "stop")
-                        return null;
 
                       const isDisabled =
                         !availableTypes.includes(locType) && !isEditing;

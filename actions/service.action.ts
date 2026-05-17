@@ -1,18 +1,28 @@
 "use server";
 
 import { db } from "@/db";
-import { products, productVariants, setupProgress } from "@/db/schemas";
 import {
+  location,
+  products,
+  productVariants,
+  setupProgress,
+} from "@/db/schemas";
+import {
+  locationValidator,
+  LocationValType,
   ProductForm,
   productSchema,
   VariantForm,
   variantSchema,
 } from "@/validations";
-import { eq } from "drizzle-orm";
+import { eq, InferInsertModel } from "drizzle-orm";
 import z from "zod";
 import { generateSlug } from "@/lib/utils";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import { SetupProgress } from "@/lib/all-types";
+import { locationSlugGenerator } from "@/lib/helpers";
+
+type LocationInsert = InferInsertModel<typeof location>;
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -182,6 +192,78 @@ export async function createVarinats(
     return {
       success: false,
       error: err.message ?? "Failed to create variants",
+    };
+  }
+}
+
+export async function createLocations(
+  serviceId: string,
+  locations: LocationValType[],
+) {
+  if (!serviceId) return { success: false, error: "Service id is missing" };
+  if (!locations.length)
+    return { success: false, error: "Location items cannot be empty" };
+
+  try {
+    await requireProvider(true);
+    const validate = z.array(locationValidator).safeParse(locations);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Validation error",
+      };
+    }
+
+    const result = await db.transaction(async (tx) => {
+      // Check service exists
+      const [check] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, serviceId))
+        .limit(1);
+
+      if (!check) return { success: false, error: "Main service not found" };
+
+      // 2. normalize + generate slug
+      const mapped: LocationInsert[] = locations.map((l) => {
+        const slug = locationSlugGenerator({
+          city: l.city,
+          country: l.country,
+          type: l.type,
+        });
+
+        return {
+          productId: serviceId,
+          city: l.city,
+          slug,
+          type: l.type,
+          address: l.address,
+          country: l.country,
+          latitude: String(l.latitude),
+          longitude: String(l.longitude),
+        };
+      });
+      // insert the data
+      await tx.insert(location).values(mapped);
+
+      return {
+        success: true,
+        result: null,
+      };
+    });
+
+    // update the setup progress
+    if (result.success) {
+      await updateSetupProgress(serviceId, {
+        hasLocation: true,
+      });
+    }
+
+    return result;
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message ?? "Failed to create locations",
     };
   }
 }

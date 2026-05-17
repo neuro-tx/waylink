@@ -64,6 +64,13 @@
       "when": 1778612303944,
       "tag": "0008_cheerful_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779037064393,
+      "tag": "0009_brainy_captain_stacy",
+      "breakpoints": true
     }
   ]
 }

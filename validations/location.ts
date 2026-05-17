@@ -7,7 +7,7 @@ const locationSchema = z.object({
     .string()
     .min(1, "Slug is required")
     .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and hyphens only"),
-  type: z.enum(["start", "end", "stop"]),
+  type: z.enum(["start", "end"]),
   address: z.string().min(1, "Address is required"),
   country: z.string().min(1, "Country is required"),
   latitude: z

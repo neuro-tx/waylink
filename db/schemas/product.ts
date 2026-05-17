@@ -184,5 +184,6 @@ export const setupProgress = pgTable("setup_progress", {
   hasVariants: boolean("has_variants").notNull().default(false),
   hasMetadata: boolean("has_metadata").notNull().default(false),
   hasScore: boolean("has_score").notNull().default(false),
+  hasLocation: boolean("has_location").notNull().default(false),
   ...timestamps,
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,23 +16,21 @@ import {
   Map,
   MoveRight,
   Navigation,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 import {
   LocationEntryForm,
   LOCATION_TYPE_CONFIG,
 } from "@/app/provider/_components/LocationForm";
-import { cn, generateSlug } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { LocationValType } from "@/validations";
 import { ServiceType } from "@/lib/all-types";
-import { nanoid } from "nanoid";
-import { initials } from "@/lib/helpers";
+import { locationSlugGenerator } from "@/lib/helpers";
 import { useProviderContext } from "@/components/providers/ProviderContext";
-type LocationType = "start" | "end" | "stop";
-
-function slugify(data: { country: string; city: string; type: string }) {
-  const base = `${generateSlug(initials(data.city + data.country))}-${data.type}`;
-  return `${base}-${nanoid(6)}`;
-}
+import { createLocations } from "@/actions/service.action";
+import { useSetupProgress } from "@/components/providers/SetupProgressProvider";
+type LocationType = "start" | "end";
 
 function SavedLocationCard({
   location,
@@ -47,7 +45,7 @@ function SavedLocationCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = LOCATION_TYPE_CONFIG[location.type];
-  const genSlug = slugify({
+  const genSlug = locationSlugGenerator({
     city: location.city,
     country: location.country,
     type: location.type,
@@ -97,8 +95,6 @@ function SavedLocationCard({
               "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
             location.type === "end" &&
               "border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/10",
-            location.type === "stop" &&
-              "border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10",
           )}
         >
           <div className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
@@ -175,9 +171,8 @@ function SavedLocationCard({
 function RouteVisualiser({ locations }: { locations: LocationValType[] }) {
   const start = locations.find((l) => l.type === "start");
   const end = locations.find((l) => l.type === "end");
-  const stops = locations.filter((l) => l.type === "stop");
 
-  if (!start && !end && stops.length === 0) return null;
+  if (!start && !end) return null;
 
   return (
     <div className="rounded-xl border border-border bg-card/60 px-4 py-4">
@@ -198,16 +193,6 @@ function RouteVisualiser({ locations }: { locations: LocationValType[] }) {
           <Flag className="h-3 w-3" />
           <span>{start ? start.city : "Start"}</span>
         </div>
-
-        {stops.map((stop, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <MoveRight className="h-3.5 w-3.5 text-muted-foreground/40" />
-            <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <Milestone className="h-3 w-3" />
-              <span>{stop.city}</span>
-            </div>
-          </div>
-        ))}
 
         <MoveRight className="h-3.5 w-3.5 text-muted-foreground/40" />
 
@@ -270,12 +255,14 @@ export default function CreateLocationsPage() {
   const { type } = useProviderContext();
   const params = useParams();
 
-  const serviceId = params.id;
+  const serviceId = params.id as string;
   const ServiceType = type as ServiceType;
 
   const [savedLocations, setSavedLocations] = useState<LocationValType[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>("null");
+  const { updateProgress } = useSetupProgress();
 
   function getAvailableTypes(): LocationType[] {
     const hasStart = savedLocations.some((l) => l.type === "start");
@@ -284,7 +271,6 @@ export default function CreateLocationsPage() {
     const available: LocationType[] = [];
     if (!hasStart) available.push("start");
     if (!hasEnd) available.push("end");
-    if (ServiceType === "transport") available.push("stop");
 
     if (editingIndex !== null) {
       const editedType = savedLocations[editingIndex]?.type;
@@ -323,26 +309,28 @@ export default function CreateLocationsPage() {
     }
   }
 
-  async function handleFinish() {
+  function handleFinish() {
     if (!isReadyToSave) return;
-    setIsSubmitting(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
+    setError(null);
+    startTransition(async () => {
+      const res = await createLocations(serviceId, savedLocations);
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+
+      updateProgress({
+        hasLocation: true,
+      });
       router.push(`/provider/services/create/${serviceId}/details`);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
+    });
   }
 
   const editingData =
     editingIndex !== null ? savedLocations[editingIndex] : null;
 
-  // Sort for display: start → stops → end
   const sortedLocations = [
     ...savedLocations.filter((l) => l.type === "start"),
-    ...savedLocations.filter((l) => l.type === "stop"),
     ...savedLocations.filter((l) => l.type === "end"),
   ];
 
@@ -384,6 +372,37 @@ export default function CreateLocationsPage() {
             </span>
           </div>
         </div>
+
+        {error && (
+          <div className="relative my-4 overflow-hidden rounded-xl border transition-all duration-300">
+            <div className="absolute left-0 top-0 h-full w-1 bg-red-500" />
+
+            <div className="relative flex items-start gap-4 py-3 px-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10 text-red-500 transition-transform duration-300">
+                <AlertTriangle className="size-5" />
+              </div>
+
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium tracking-tight">
+                    Something went wrong
+                  </p>
+                </div>
+
+                <p className="text-sm leading-relaxed text-red-500">{error}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                title="Hide"
+                className="flex size-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-red-500/5 dark:hover:bg-red-500/20 cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Two-column grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -440,7 +459,7 @@ export default function CreateLocationsPage() {
             ) : (
               <LocationEntryForm
                 key={editingIndex ?? `new-${availableTypes[0]}`}
-                ServiceType={"transport"}
+                ServiceType={type}
                 availableTypes={availableTypes}
                 editingData={editingData}
                 editingIndex={editingIndex}
@@ -502,12 +521,6 @@ export default function CreateLocationsPage() {
               <div className="space-y-1.5">
                 <CompletionRow done={hasStart} label="Start location" />
                 <CompletionRow done={hasEnd} label="End location" />
-                {ServiceType === "transport" && (
-                  <CompletionRow
-                    done={savedLocations.some((l) => l.type === "stop")}
-                    label={`Stops (${savedLocations.filter((l) => l.type === "stop").length} added — optional)`}
-                  />
-                )}
               </div>
 
               <Separator className="opacity-40" />
@@ -528,11 +541,11 @@ export default function CreateLocationsPage() {
                 <Button
                   type="button"
                   onClick={handleFinish}
-                  disabled={isSubmitting || !isReadyToSave}
+                  disabled={isPending || !isReadyToSave}
                   className="flex-1 gap-2"
                   size="lg"
                 >
-                  {isSubmitting ? (
+                  {isPending ? (
                     <>
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                       Saving…

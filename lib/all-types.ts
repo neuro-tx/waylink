@@ -539,6 +539,7 @@ export interface SetupProgress {
   hasVariants: boolean;
   hasMetadata: boolean;
   hasScore: boolean;
+  hasLocation: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

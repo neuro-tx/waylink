@@ -1,0 +1,1 @@
+ALTER TABLE "setup_progress" ADD COLUMN "has_location" boolean DEFAULT false NOT NULL;

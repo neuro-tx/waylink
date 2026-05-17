@@ -1,5 +1,7 @@
 import { Location, Media, SetupProgress } from "./all-types";
 import { GrowthMetric } from "./panel-types";
+import { generateSlug } from "./utils";
+import { nanoid } from "nanoid";
 
 export const displayMedia = (media: Media[]) => {
   const images: string[] = [];
@@ -139,4 +141,9 @@ export function isFullyComplete(
     progress.hasMetadata &&
     progress.hasScore
   );
+}
+
+export function locationSlugGenerator(data: { country: string; city: string; type: string }) {
+  const base = `${generateSlug(initials(data.city + data.country))}-${data.type}`;
+  return `${base}-${nanoid(6)}`;
 }
