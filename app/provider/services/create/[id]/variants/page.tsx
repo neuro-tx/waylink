@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,6 +40,8 @@ import {
 import { cn } from "@/lib/utils";
 import { variantSchema, VariantForm } from "@/validations";
 import { fmtDateTime } from "@/lib/helpers";
+import { createVarinats } from "@/actions/service.action";
+import { useSetupProgress } from "@/components/providers/SetupProgressProvider";
 
 const STATUS_CONFIG = {
   available: {
@@ -579,11 +581,13 @@ function EmptyVariants() {
 export default function CreateVariantsPage() {
   const router = useRouter();
   const params = useParams();
-  const serviceId = params.id;
+  const serviceId = params.id as string;
 
   const [savedVariants, setSavedVariants] = useState<VariantForm[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const { updateProgress } = useSetupProgress();
 
   function handleSave(data: VariantForm) {
     if (editingIndex !== null) {
@@ -608,17 +612,25 @@ export default function CreateVariantsPage() {
     }
   }
 
-  async function handlePublish() {
+  function handlePublish() {
     if (savedVariants.length === 0) return;
-    setIsSubmitting(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      console.log("Submitted variants:", savedVariants);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
+    startTransition(async () => {
+      try {
+        const res = await createVarinats(serviceId, savedVariants);
+        if (!res.success) {
+          setError(res.error);
+          return;
+        }
+
+        updateProgress({
+          hasVariants: true,
+        });
+        router.push(`/provider/services/create/${serviceId}/locations`);
+      } catch (error) {
+        console.error(error);
+        setError("Something went wrong");
+      }
+    });
   }
 
   const editingData =
@@ -648,6 +660,8 @@ export default function CreateVariantsPage() {
         </div>
 
         {/* ── Two-column layout ── */}
+        {error && <p className="text-base text-red-500 my-3">{error}</p>}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* ── Left: Entry form ── */}
           <div className="lg:sticky lg:top-20">
@@ -738,10 +752,10 @@ export default function CreateVariantsPage() {
                   <Button
                     type="button"
                     onClick={handlePublish}
-                    disabled={isSubmitting}
+                    disabled={pending}
                     className="flex-1"
                   >
-                    {isSubmitting ? (
+                    {pending ? (
                       <>
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                         Saving…
