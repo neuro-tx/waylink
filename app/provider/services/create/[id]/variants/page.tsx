@@ -653,7 +653,7 @@ export default function CreateVariantsPage() {
           <div className="hidden lg:flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             <div>
-              <p className="text-[10px] text-muted-foreground">Product ID</p>
+              <p className="text-[10px] text-muted-foreground">Service ID</p>
               <p className="text-xs font-mono text-foreground">{serviceId}</p>
             </div>
           </div>

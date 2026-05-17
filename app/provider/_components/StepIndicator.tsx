@@ -10,6 +10,7 @@ import {
   Settings2,
   ImageIcon,
   LucideIcon,
+  Eye,
 } from "lucide-react";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import { useRouter } from "next/navigation";
@@ -40,12 +41,18 @@ export const PRODUCT_STEPS: Step[] = [
     label: "Locations",
     description: "Start, end & stops",
     icon: MapPin,
-    progressKey: "hasMetadata",
+    progressKey: "hasLocation",
   },
   {
     label: "Service",
     description: "Type-specific configuration",
     icon: Settings2,
+    progressKey: "hasMetadata",
+  },
+  {
+    label: "Review",
+    description: "All data & publishing",
+    icon: Eye,
     progressKey: "hasScore",
   },
 ];
@@ -77,10 +84,7 @@ function resolveStepState(
   return "untouched";
 }
 
-function stepUrl(
-  i: number,
-  productId: string | undefined,
-): string | null {
+function stepUrl(i: number, productId: string | undefined): string | null {
   if (!productId && i > 0) return null;
   switch (i) {
     case 0:
@@ -91,6 +95,8 @@ function stepUrl(
       return `/provider/services/create/${productId}/locations`;
     case 3:
       return `/provider/services/create/${productId}/details`;
+    case 4:
+      return `/provider/services/view/${productId}`;
     default:
       return null;
   }
@@ -125,12 +131,11 @@ const STATE_STYLES = {
 } as const;
 
 interface StepIndicatorProps {
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3 | 4 | 5;
   progress?: SetupProgress | null;
   variant?: "compact" | "full";
   serviceLabel?: string;
   serviceId?: string;
-  productType?: string;
 }
 
 function MediaPill({
@@ -149,11 +154,11 @@ function MediaPill({
       <span
         title={hasMedia ? "Media uploaded" : "No media yet"}
         className={cn(
-          "inline-flex items-center justify-center h-3.5 w-3.5 rounded-full border",
+          "inline-flex items-center justify-center size-5 rounded-full border",
           base,
         )}
       >
-        <ImageIcon className="h-2 w-2" />
+        <ImageIcon className="h-3 w-3" />
       </span>
     );
   }
@@ -177,7 +182,6 @@ export function StepIndicator({
   variant = "compact",
   serviceLabel,
   serviceId,
-  productType = "experience",
 }: StepIndicatorProps) {
   const { config } = useProviderContext();
   const router = useRouter();

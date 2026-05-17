@@ -261,7 +261,7 @@ export default function CreateLocationsPage() {
   const [savedLocations, setSavedLocations] = useState<LocationValType[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>("null");
+  const [error, setError] = useState<string | null>(null);
   const { updateProgress } = useSetupProgress();
 
   function getAvailableTypes(): LocationType[] {
@@ -355,21 +355,12 @@ export default function CreateLocationsPage() {
             </p>
           </div>
 
-          {/* Product type badge */}
-          <div className="hidden lg:flex items-center gap-2 rounded-lg bg-muted border border-border px-3 py-2 shrink-0">
-            <div
-              className={cn(
-                "h-2 w-2 rounded-full",
-                ServiceType === "transport" ? "bg-blue-500" : "bg-emerald-500",
-              )}
-            />
-            <span className="text-xs font-medium capitalize">
-              {ServiceType}
-            </span>
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs font-mono text-muted-foreground truncate max-w-35">
-              {serviceId}
-            </span>
+          <div className="hidden lg:flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <div>
+              <p className="text-[10px] text-muted-foreground">Service ID</p>
+              <p className="text-xs font-mono text-foreground">{serviceId}</p>
+            </div>
           </div>
         </div>
 

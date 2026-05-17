@@ -124,12 +124,12 @@ export function calculateGrowthMetric(
 
 export function deriveCurrentStep(
   progress: SetupProgress | null | undefined,
-): 1 | 2 | 3 | 4 {
-  if (!progress) return 1;
-  if (!progress.mainInfo) return 1;
+): 1 | 2 | 3 | 4 | 5 {
+  if (!progress || !progress.mainInfo) return 1;
   if (!progress.hasVariants) return 2;
-  if (!progress.hasMetadata) return 3;
-  return 4;
+  if (!progress.hasLocation) return 3;
+  if (!progress.hasMetadata) return 4;
+  return 5;
 }
 
 export function isFullyComplete(
@@ -138,12 +138,17 @@ export function isFullyComplete(
   return !!(
     progress?.mainInfo &&
     progress.hasVariants &&
+    progress.hasLocation &&
     progress.hasMetadata &&
     progress.hasScore
   );
 }
 
-export function locationSlugGenerator(data: { country: string; city: string; type: string }) {
+export function locationSlugGenerator(data: {
+  country: string;
+  city: string;
+  type: string;
+}) {
   const base = `${generateSlug(initials(data.city + data.country))}-${data.type}`;
   return `${base}-${nanoid(6)}`;
 }

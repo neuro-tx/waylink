@@ -8,13 +8,12 @@ import { StepIndicator } from "./StepIndicator";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import { useSetupProgress } from "@/components/providers/SetupProgressProvider";
 
-function useRouteStep(): 1 | 2 | 3 | 4 {
+function useRouteStep(): 1 | 2 | 3 | 4 | 5 {
   const pathname = usePathname();
-
-  if (pathname.endsWith("/details")) return 4;
-  if (pathname.endsWith("/locations")) return 3;
-  if (pathname.endsWith("/variants")) return 2;
-
+  if (pathname.includes("/review")) return 5;
+  if (pathname.includes("/details")) return 4;
+  if (pathname.includes("/locations")) return 3;
+  if (pathname.includes("/variants")) return 2;
   return 1;
 }
 
@@ -35,6 +34,8 @@ export function ServiceLayoutContent({
   const activeStep = progress ? deriveCurrentStep(progress) : undefined;
 
   function handleBack() {
+    if (routeStep === 5 && serviceId)
+      return router.push(`/provider/services/create/${serviceId}/details`);
     if (routeStep === 4 && serviceId)
       return router.push(`/provider/services/create/${serviceId}/locations`);
     if (routeStep === 3 && serviceId)
@@ -62,6 +63,10 @@ export function ServiceLayoutContent({
         type === "transport"
           ? "Vehicle, class & schedule info"
           : "Activity type, duration & itinerary",
+    },
+    5: {
+      label: "Review",
+      sub: "All data & publishing",
     },
   };
 
@@ -113,7 +118,6 @@ export function ServiceLayoutContent({
                 variant="compact"
                 serviceLabel={serviceLabel}
                 serviceId={serviceId}
-                productType={type}
               />
             )}
           </div>
