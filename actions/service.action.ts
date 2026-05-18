@@ -2,12 +2,16 @@
 
 import { db } from "@/db";
 import {
+  experiences,
+  itineraries,
   location,
   products,
   productVariants,
   setupProgress,
 } from "@/db/schemas";
 import {
+  ExperienceForm,
+  experienceSchema,
   locationValidator,
   LocationValType,
   ProductForm,
@@ -19,7 +23,11 @@ import { eq, InferInsertModel } from "drizzle-orm";
 import z from "zod";
 import { generateSlug } from "@/lib/utils";
 import { getCurrentProvider } from "@/lib/provider-auth";
-import { SetupProgress } from "@/lib/all-types";
+import {
+  DifficultyLevel,
+  ExperienceType,
+  SetupProgress,
+} from "@/lib/all-types";
 import { locationSlugGenerator } from "@/lib/helpers";
 
 type LocationInsert = InferInsertModel<typeof location>;
@@ -264,6 +272,112 @@ export async function createLocations(
     return {
       success: false,
       error: err.message ?? "Failed to create locations",
+    };
+  }
+}
+
+export async function creatExperienceDetails(
+  serviceId: string,
+  metaData: ExperienceForm,
+) {
+  if (!serviceId) return { success: false, error: "Service id is missing" };
+  if (!metaData) return { success: false, error: "Empty data not allowed" };
+
+  try {
+    await requireProvider(true);
+    const validate = experienceSchema.safeParse(metaData);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Validation error",
+      };
+    }
+
+    const data = validate.data;
+    const { itinerary } = data;
+
+    // validate itinerary before transaction
+    if (
+      data.durationUnit === "days" &&
+      itinerary?.length &&
+      itinerary.length !== Number(data.durationCount)
+    ) {
+      throw new Error(
+        `Itinerary count (${itinerary.length}) does not match duration count (${data.durationCount})`,
+      );
+    }
+
+    // validate duplicate day numbers
+    if (itinerary?.length) {
+      const dayNumbers = itinerary.map(
+        (item, index) => item.dayNumber ?? index + 1,
+      );
+      const uniqueDays = new Set(dayNumbers);
+      if (uniqueDays.size !== itinerary.length) {
+        throw new Error("Duplicate itinerary day numbers are not allowed");
+      }
+    }
+
+    const result = await db.transaction(async (tx) => {
+      // check service exists
+      const [service] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, serviceId))
+        .limit(1);
+
+      if (!service) {
+        throw new Error("Main service not found");
+      }
+
+      // create experience
+      const [experience] = await tx
+        .insert(experiences)
+        .values({
+          productId: serviceId,
+          experienceType: data.experienceType as ExperienceType,
+          difficultyLevel: data.difficultyLevel as DifficultyLevel,
+          durationCount: Number(data.durationCount),
+          durationUnit: data.durationUnit,
+          included: data.included ?? [],
+          notIncluded: data.notIncluded ?? [],
+          requirements: data.requirements ?? [],
+          ageRestriction: data.ageRestriction ?? null,
+        })
+        .returning();
+
+      // create itinerary rows
+      if (itinerary?.length) {
+        const mapped = itinerary.map((item, index) => ({
+          experienceId: experience.id,
+          dayNumber: item.dayNumber ?? index + 1,
+          title: item.title,
+          description: item.description,
+          activities: item.activities ?? [],
+          mealsIncluded: item.mealsIncluded ?? [],
+          accommodationInfo: item.accommodationInfo ?? null,
+        }));
+
+        await tx.insert(itineraries).values(mapped);
+      }
+
+      return {
+        success: true,
+        result: null,
+      };
+    });
+
+    if (result.success) {
+      await updateSetupProgress(serviceId, {
+        hasMetadata: true,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Something went wrong",
     };
   }
 }
