@@ -256,3 +256,25 @@ export function formatTo12Hour(time24: any): string {
 
   return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
+
+type LocationPoint = {
+  lat: string;
+  lon: string;
+  type: "start" | "end";
+};
+
+export function getDistanceFromLocations(locs: LocationPoint[]) {
+  const start = locs.find((loc) => loc.type === "start");
+  const end = locs.find((loc) => loc.type === "end");
+
+  if (!start || !end) {
+    throw new Error("Start or end location is missing");
+  }
+
+  return calculateDistance(
+    Number(start.lat),
+    Number(start.lon),
+    Number(end.lat),
+    Number(end.lon),
+  );
+}

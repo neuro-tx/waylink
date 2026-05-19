@@ -79,7 +79,8 @@ const stopSchema = z.object({
   departureTime: z.string().min(1, "Required"),
 });
 
-const scheduleSchema = z.object({
+export const scheduleSchema = z.object({
+  variantId: z.string().min(1, "variant Id is required"),
   label: z.string().optional(),
   departureDate: z.string().min(1, "Departure date required"),
   arrivalDate: z.string().min(1, "Arrival date required"),
@@ -93,7 +94,6 @@ const scheduleSchema = z.object({
 
 export const transportSchema = z.object({
   transportType: z.string().min(1, "Required"),
-  distance: z.string().optional(),
   hasDirectRoute: z.boolean().default(true),
   transportClass: z.string().optional(),
   seatType: z.string().optional(),
@@ -103,10 +103,10 @@ export const transportSchema = z.object({
   departureAddress: z.string().optional(),
   arrivalAddress: z.string().optional(),
   importantNotes: z.array(z.string()).optional(),
-  schedules: z.array(scheduleSchema).optional(),
 });
 
 export type ProductForm = z.infer<typeof productSchema>;
 export type VariantForm = z.infer<typeof variantSchema>;
 export type ExperienceForm = z.infer<typeof experienceSchema>;
 export type TransportForm = z.infer<typeof transportSchema>;
+export type ScheduleType = z.infer<typeof scheduleSchema>;
