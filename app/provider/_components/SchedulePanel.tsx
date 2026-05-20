@@ -1,13 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { CalendarDays, CalendarPlus, LayoutGrid } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarPlus,
+  CheckCircle2,
+  LayoutGrid,
+  RefreshCcwDot,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn, fmtDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleType, VariantForm } from "@/validations";
 import { ScheduleDialog } from "./ScheduleDialog";
 import { ScheduleCard } from "./ScheduleCard";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 type Variant = VariantForm & {
   id: string;
@@ -37,21 +45,17 @@ const STATUS_CONFIG = {
   },
 } as const;
 
-interface SchedulePanelProps {
-  variantsList: () => Promise<Variant[]>;
-}
-
 function EmptySchedules() {
   return (
-    <div className="h-full flex-1 flex flex-col items-center justify-center p-8 text-center gap-3">
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-3">
       <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center">
         <CalendarPlus className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-medium text-muted-foreground">
+        <p className="text-sm font-semibold text-foreground">
           No schedules yet
         </p>
-        <p className="text-xs text-muted-foreground/70 leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Select a variant from the left
           <br />
           to create your first schedule
@@ -96,128 +100,158 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background rounded-2xl border border-border overflow-hidden">
-      <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-            <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </div>
+    <div className="w-full px-4 md:px-6 py-8">
+      <div className="mb-8 flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-foreground tracking-tight">
+            Schedules
+          </h2>
+          <p className="mt-1.5 text-muted-foreground">
+            Manage departure schedules for your tour variants
+          </p>
+        </div>
+        <div className="hidden lg:flex items-center gap-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-3 py-2">
+          <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
           <div>
-            <h1 className="text-[15px] font-medium text-foreground leading-none mb-0.5">
-              Schedule manager
-            </h1>
-            <p className="text-[11px] text-muted-foreground">
-              Select a variant to add a schedule
-            </p>
-          </div>
-        </div>
-        <Badge
-          variant="secondary"
-          className="gap-1.5 text-xs bg-muted text-muted-foreground"
-        >
-          <LayoutGrid className="w-3 h-3" />
-          {schedules.length} {schedules.length === 1 ? "schedule" : "schedules"}
-        </Badge>
-      </header>
-
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col w-1/2 border-r border-border min-h-0">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-card">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-              Variants
-            </span>
-            <Badge variant="outline" className="text-xs h-6">
-              {loading ? "—" : variants.length}
-            </Badge>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <VariantListSkeleton />
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center h-full p-8 gap-3 text-center">
-                <p className="text-sm text-destructive">{error}</p>
-                <button
-                  onClick={loadVariants}
-                  className="text-xs text-blue-600 dark:text-blue-400 underline underline-offset-2"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : variants.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No variants found
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2.5 p-3">
-                {variants.map((variant) => (
-                  <VariantCard
-                    key={variant.id}
-                    variant={variant}
-                    isSelected={
-                      selectedVariant?.id === variant.id && dialogOpen
-                    }
-                    onClick={handleVariantClick}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col w-1/2 bg-muted/30 dark:bg-muted/10 min-h-0">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-card">
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-              Schedules
-            </span>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs size-6",
-                schedules.length > 0 &&
-                  "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
-              )}
-            >
-              {schedules.length}
-            </Badge>
-          </div>
-
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {schedules.length === 0 ? (
-              <EmptySchedules />
-            ) : (
-              <div className="flex flex-col gap-2.5 p-3">
-                {schedules.map((schedule, i) => {
-                  const variant = variants.find(
-                    (v) => v.id === schedule.variantId,
-                  );
-                  return (
-                    <ScheduleCard
-                      key={schedule.variantId}
-                      schedule={schedule}
-                      variant={variant}
-                      index={schedules.length - i}
-                    />
-                  );
-                })}
-              </div>
-            )}
+            <p className="text-[10px] text-muted-foreground">Service ID</p>
+            <p className="text-xs font-mono text-foreground">{serviceId}</p>
           </div>
         </div>
       </div>
+      <div className="flex flex-col h-full bg-background rounded-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+              <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-[15px] font-medium text-foreground leading-none mb-0.5">
+                Schedule manager
+              </h1>
+              <p className="text-[11px] text-muted-foreground">
+                Select a variant to add a schedule
+              </p>
+            </div>
+          </div>
+          <Badge
+            variant="secondary"
+            className="gap-1.5 text-xs bg-muted text-muted-foreground"
+          >
+            <LayoutGrid className="w-3 h-3" />
+            {schedules.length}{" "}
+            {schedules.length === 1 ? "schedule" : "schedules"}
+          </Badge>
+        </div>
 
-      {/* Schedule form dialog */}
-      <ScheduleDialog
-        open={dialogOpen}
-        variant={selectedVariant}
-        onClose={() => {
-          setDialogOpen(false);
-          setSelectedVariant(null);
-        }}
-        onSubmit={handleScheduleCreated}
-      />
+        <div className="flex-1 min-h-0 overflow-hidden grid lg:grid-cols-2 xl:grid-cols-[600px_1fr]">
+          <div className="flex flex-col border-b border-border bg-background lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-card">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
+                Variants
+              </span>
+              <Badge variant="outline" className="text-xs h-6">
+                {loading ? "—" : variants.length}
+              </Badge>
+            </div>
+
+            <ScrollArea className="flex-1">
+              {loading ? (
+                <VariantListSkeleton />
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-destructive">
+                      Failed to load variants
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">{error}</p>
+                  </div>
+
+                  <Button
+                    onClick={loadVariants}
+                    variant="ghost"
+                    className="cursor-pointer"
+                    size="sm"
+                  >
+                    <RefreshCcwDot className="size-4" />
+                    Retry
+                  </Button>
+                </div>
+              ) : variants.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No variants found
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5 p-3">
+                  {variants.map((variant) => (
+                    <VariantCard
+                      key={variant.id}
+                      variant={variant}
+                      isSelected={
+                        selectedVariant?.id === variant.id && dialogOpen
+                      }
+                      onClick={handleVariantClick}
+                    />
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          <div className="flex flex-col bg-muted/20">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0 bg-card">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
+                Schedules
+              </span>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs size-6",
+                  schedules.length > 0 &&
+                    "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
+                )}
+              >
+                {schedules.length}
+              </Badge>
+            </div>
+
+            <ScrollArea className="flex-1">
+              {schedules.length === 0 ? (
+                <EmptySchedules />
+              ) : (
+                <div className="flex flex-col gap-2.5 p-3">
+                  {schedules.map((schedule, i) => {
+                    const variant = variants.find(
+                      (v) => v.id === schedule.variantId,
+                    );
+                    return (
+                      <ScheduleCard
+                        key={schedule.variantId}
+                        schedule={schedule}
+                        variant={variant}
+                        index={schedules.length - i}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </div>
+
+        {/* Schedule form dialog */}
+        <ScheduleDialog
+          open={dialogOpen}
+          variant={selectedVariant}
+          onClose={() => {
+            setDialogOpen(false);
+            setSelectedVariant(null);
+          }}
+          onSubmit={handleScheduleCreated}
+        />
+      </div>
     </div>
   );
 }

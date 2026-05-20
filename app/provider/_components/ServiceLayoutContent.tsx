@@ -34,8 +34,11 @@ export function ServiceLayoutContent({
   const activeStep = progress ? deriveCurrentStep(progress) : undefined;
 
   function handleBack() {
+    const basePath = `/provider/services/create/${serviceId}/details`;
     if (routeStep === 5 && serviceId)
-      return router.push(`/provider/services/create/${serviceId}/details`);
+      return router.push(
+        type === "transport" ? `${basePath}?tab=meta-info` : basePath,
+      );
     if (routeStep === 4 && serviceId)
       return router.push(`/provider/services/create/${serviceId}/locations`);
     if (routeStep === 3 && serviceId)

@@ -3,17 +3,20 @@
 import { ExperienceDetailsPage } from "@/app/provider/_components/ExpDetails";
 import { TransportDetailsPage } from "@/app/provider/_components/TransportDetails";
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useProviderContext } from "@/components/providers/ProviderContext";
+import { SchedulePanel } from "@/app/provider/_components/SchedulePanel";
 
 export default function ServiceDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { type } = useProviderContext();
 
   const serviceId = params.id as string;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentTab = searchParams.get("tab") || "meta-info";
 
   async function handleExperienceSubmit(data: any) {
     setIsSubmitting(true);
@@ -43,11 +46,17 @@ export default function ServiceDetailsPage() {
 
   if (type === "transport") {
     return (
-      <TransportDetailsPage
-        productId={serviceId}
-        onFinish={handleTransportSubmit}
-        isSubmitting={isSubmitting}
-      />
+      <>
+        {currentTab === "meta-info" && (
+          <TransportDetailsPage
+            productId={serviceId}
+            onFinish={handleTransportSubmit}
+            isSubmitting={isSubmitting}
+          />
+        )}
+
+        {currentTab === "schedule" && <SchedulePanel serviceId={serviceId} />}
+      </>
     );
   }
 

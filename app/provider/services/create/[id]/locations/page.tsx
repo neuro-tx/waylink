@@ -257,6 +257,7 @@ export default function CreateLocationsPage() {
 
   const serviceId = params.id as string;
   const ServiceType = type as ServiceType;
+  const basePath = `/provider/services/create/${serviceId}/details`;
 
   const [savedLocations, setSavedLocations] = useState<LocationValType[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -322,7 +323,10 @@ export default function CreateLocationsPage() {
       updateProgress({
         hasLocation: true,
       });
-      router.push(`/provider/services/create/${serviceId}/details`);
+
+      router.push(
+        type === "transport" ? `${basePath}?tab=meta-info` : basePath,
+      );
     });
   }
 

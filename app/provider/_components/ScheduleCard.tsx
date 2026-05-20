@@ -11,7 +11,7 @@ import {
   MapPin,
 } from "lucide-react";
 
-export type Variant = VariantForm & {
+type Variant = VariantForm & {
   id: string;
 };
 
