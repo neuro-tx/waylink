@@ -31,6 +31,9 @@ import {
 import { locationSlugGenerator } from "@/lib/helpers";
 
 type LocationInsert = InferInsertModel<typeof location>;
+type ActionResponse =
+  | { success: true; result: any[] }
+  | { success: false; error: string };
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -378,6 +381,48 @@ export async function creatExperienceDetails(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Something went wrong",
+    };
+  }
+}
+
+export async function getServiceVariants(
+  serviceId: string,
+): Promise<ActionResponse> {
+  if (!serviceId) {
+    return { success: false, error: "Service id is missing" };
+  }
+
+  try {
+    const p = await requireProvider(true);
+    // block any one access to the varinats
+    const [service] = await db
+      .select({
+        provider: products.providerId,
+      })
+      .from(products)
+      .where(eq(products.id, serviceId))
+      .limit(1);
+    if (!service)
+      return {
+        success: false,
+        error: "Service not found",
+      };
+
+    if (service.provider !== p.id)
+      return {
+        success: false,
+        error: "You do not have permission to access this service.",
+      };
+    const result = await db
+      .select()
+      .from(productVariants)
+      .where(eq(productVariants.productId, serviceId));
+
+    return { success: true, result };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to fetch variants",
     };
   }
 }

@@ -25,10 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Check, X } from "lucide-react";
 import { scheduleSchema, ScheduleType, VariantForm } from "@/validations";
+import { Variant } from "@/lib/all-types";
 
-type Variant = VariantForm & {
-  id: string;
-};
 interface ScheduleDialogProps {
   open: boolean;
   variant: Variant | null;

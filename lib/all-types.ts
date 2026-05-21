@@ -543,3 +543,19 @@ export interface SetupProgress {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type Variant = {
+  createdAt: Date;
+  updatedAt: Date;
+  id: string;
+  productId: string;
+  name: string | null;
+  startDate: Date;
+  endDate: Date | null;
+  capacity: number;
+  bookedCount: number;
+  status: "available" | "sold_out" | "cancelled";
+  adultPrice: string;
+  childPrice: string;
+  infantPrice: string;
+};

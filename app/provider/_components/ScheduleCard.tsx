@@ -1,8 +1,9 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Variant } from "@/lib/all-types";
 import { formatDuration, formatTo12Hour } from "@/lib/utils";
-import { ScheduleType, VariantForm } from "@/validations";
+import { ScheduleType } from "@/validations";
 import {
   PlaneTakeoff,
   PlaneLanding,
@@ -10,10 +11,6 @@ import {
   DoorOpen,
   MapPin,
 } from "lucide-react";
-
-type Variant = VariantForm & {
-  id: string;
-};
 
 interface ScheduleCardProps {
   schedule: ScheduleType;

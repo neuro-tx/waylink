@@ -11,15 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn, fmtDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScheduleType, VariantForm } from "@/validations";
+import { ScheduleType } from "@/validations";
 import { ScheduleDialog } from "./ScheduleDialog";
 import { ScheduleCard } from "./ScheduleCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-
-type Variant = VariantForm & {
-  id: string;
-};
+import { getServiceVariants } from "@/actions/service.action";
+import { Variant } from "@/lib/all-types";
 
 interface VariantCardProps {
   variant: Variant;
@@ -77,8 +75,12 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
     try {
       setLoading(true);
       setError(null);
-      // fetch data later
-      // setVariants(data);
+      const res = await getServiceVariants(serviceId);
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      setVariants(res.result);
     } catch (e) {
       setError("Failed to load variants. Please try again.");
     } finally {
@@ -158,23 +160,22 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
               {loading ? (
                 <VariantListSkeleton />
               ) : error ? (
-                <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-destructive">
-                      Failed to load variants
-                    </p>
-
-                    <p className="text-xs text-muted-foreground">{error}</p>
+                <div className="flex flex-col items-center justify-center p-8">
+                  <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-destructive/10">
+                    <RefreshCcwDot className="size-5 text-destructive" />
                   </div>
 
-                  <Button
-                    onClick={loadVariants}
-                    variant="ghost"
-                    className="cursor-pointer"
-                    size="sm"
-                  >
+                  <p className="text-sm font-semibold text-foreground">
+                    {error}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    We couldn’t load the service variants right now. Try again
+                    or refresh the page.
+                  </p>
+
+                  <Button onClick={loadVariants} size="sm" className="cursor-pointer mt-3">
                     <RefreshCcwDot className="size-4" />
-                    Retry
+                    Try Again
                   </Button>
                 </div>
               ) : variants.length === 0 ? (
@@ -332,10 +333,14 @@ export function VariantCard({
         <span className="font-medium text-foreground">
           {fmtDate(variant.startDate)}
         </span>
-        <span className="text-muted-foreground/60">→</span>
-        <span className="font-medium text-foreground">
-          {fmtDate(variant.endDate)}
-        </span>
+        {variant?.endDate && (
+          <>
+            <span className="text-muted-foreground/60">→</span>
+            <span className="font-medium text-foreground">
+              {fmtDate(variant.endDate)}
+            </span>
+          </>
+        )}
       </div>
     </button>
   );
