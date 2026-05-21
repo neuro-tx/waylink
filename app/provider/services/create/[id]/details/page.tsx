@@ -2,44 +2,69 @@
 
 import { ExperienceDetailsPage } from "@/app/provider/_components/ExpDetails";
 import { TransportDetailsPage } from "@/app/provider/_components/TransportDetails";
-import { useState } from "react";
+import { useTransition } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import { SchedulePanel } from "@/app/provider/_components/SchedulePanel";
+import {
+  createTransportDetails,
+  creatExperienceDetails,
+} from "@/actions/service.action";
+import { toast } from "sonner";
 
 export default function ServiceDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const { type } = useProviderContext();
+  const [isPending, startTransition] = useTransition();
 
   const serviceId = params.id as string;
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const currentTab = searchParams.get("tab") || "meta-info";
 
   async function handleExperienceSubmit(data: any) {
-    setIsSubmitting(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      console.log(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
+    startTransition(async () => {
+      try {
+        const res = await creatExperienceDetails(serviceId, data);
+        if (!res.success) {
+          toast.error(res.error);
+          return;
+        }
+
+        toast.success(
+          "Experience details saved. You can now review your service in the creation preview.",
+        );
+        router.push(`/provider/services/create/${serviceId}/review`);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong",
+        );
+      }
+    });
   }
 
   async function handleTransportSubmit(data: any) {
-    setIsSubmitting(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      console.log(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
+    startTransition(async () => {
+      try {
+        const res = await createTransportDetails(serviceId, data);
+        if (!res.success) {
+          toast.error(res.error);
+          return;
+        }
+
+        toast.success(
+          "Transport details saved successfully. Redirecting to schedules setup...",
+        );
+        router.push(
+          `/provider/services/create/${serviceId}/details?tab=schedule`,
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Something went wrong",
+        );
+      }
+    });
   }
 
   if (!serviceId) router.back();
@@ -51,7 +76,7 @@ export default function ServiceDetailsPage() {
           <TransportDetailsPage
             productId={serviceId}
             onFinish={handleTransportSubmit}
-            isSubmitting={isSubmitting}
+            isSubmitting={isPending}
           />
         )}
 
@@ -64,7 +89,7 @@ export default function ServiceDetailsPage() {
     <ExperienceDetailsPage
       productId={serviceId}
       onFinish={handleExperienceSubmit}
-      isSubmitting={isSubmitting}
+      isSubmitting={isPending}
     />
   );
 }

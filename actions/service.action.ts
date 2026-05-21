@@ -8,6 +8,7 @@ import {
   products,
   productVariants,
   setupProgress,
+  transports,
 } from "@/db/schemas";
 import {
   ExperienceForm,
@@ -16,17 +17,22 @@ import {
   LocationValType,
   ProductForm,
   productSchema,
+  TransportForm,
+  transportSchema,
   VariantForm,
   variantSchema,
 } from "@/validations";
 import { eq, InferInsertModel } from "drizzle-orm";
 import z from "zod";
-import { generateSlug } from "@/lib/utils";
+import { generateSlug, getDistanceFromLocations } from "@/lib/utils";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import {
   DifficultyLevel,
   ExperienceType,
+  SeatType,
   SetupProgress,
+  TransportClass,
+  TransportType,
 } from "@/lib/all-types";
 import { locationSlugGenerator } from "@/lib/helpers";
 
@@ -34,6 +40,16 @@ type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
   | { success: true; result: any[] }
   | { success: false; error: string };
+
+type ActionResult<T = null> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      error: string;
+    };
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -282,7 +298,7 @@ export async function createLocations(
 export async function creatExperienceDetails(
   serviceId: string,
   metaData: ExperienceForm,
-) {
+): Promise<ActionResult> {
   if (!serviceId) return { success: false, error: "Service id is missing" };
   if (!metaData) return { success: false, error: "Empty data not allowed" };
 
@@ -329,9 +345,7 @@ export async function creatExperienceDetails(
         .where(eq(products.id, serviceId))
         .limit(1);
 
-      if (!service) {
-        throw new Error("Main service not found");
-      }
+      if (!service) throw new Error("Main service not found");
 
       // create experience
       const [experience] = await tx
@@ -365,8 +379,8 @@ export async function creatExperienceDetails(
       }
 
       return {
-        success: true,
-        result: null,
+        success: true as const,
+        data: null,
       };
     });
 
@@ -423,6 +437,102 @@ export async function getServiceVariants(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to fetch variants",
+    };
+  }
+}
+
+export async function createTransportDetails(
+  serviceId: string,
+  metaData: TransportForm,
+): Promise<ActionResult> {
+  if (!serviceId) {
+    return {
+      success: false,
+      error: "Service id is missing",
+    };
+  }
+  if (!metaData) {
+    return {
+      success: false,
+      error: "Empty data not allowed",
+    };
+  }
+
+  try {
+    const p = await requireProvider(true);
+
+    const validate = transportSchema.safeParse(metaData);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Validation error",
+      };
+    }
+
+    const data = validate.data;
+
+    const result = await db.transaction(async (tx) => {
+      // validate service and permission && get location data
+      const [[service], locs] = await Promise.all([
+        tx
+          .select({ id: products.id, provider: products.providerId })
+          .from(products)
+          .where(eq(products.id, serviceId))
+          .limit(1),
+        tx
+          .select({
+            lat: location.latitude,
+            lon: location.longitude,
+            type: location.type,
+          })
+          .from(location)
+          .where(eq(location.productId, serviceId)),
+      ]);
+
+      if (!service) throw new Error("Main service not found");
+      if (service.provider !== p.id)
+        throw new Error("You do not have permission to access this service.");
+      if (!locs.length) throw new Error("Location data has not been added yet");
+
+      // validate start/end points
+      const hasStart = locs.some((loc) => loc.type === "start");
+      const hasEnd = locs.some((loc) => loc.type === "end");
+
+      if (!hasStart || !hasEnd)
+        throw new Error("Both start and end locations are required");
+
+      // calculate distance
+      const distance = Math.round(getDistanceFromLocations(locs));
+
+      // create transport
+      await tx.insert(transports).values({
+        productId: service.id,
+        transportType: data.transportType as TransportType,
+        seatType: data.seatType as SeatType,
+        transportClass: data.transportClass as TransportClass,
+        hasDirectRoute: data.hasDirectRoute,
+        distance,
+        amenities: data.amenities ?? null,
+        arrivalAddress: data.arrivalAddress ?? null,
+        departureAddress: data.departureAddress ?? null,
+        extraLuggageFee: data.extraLuggageFee ?? null,
+        importantNotes: data.importantNotes ?? null,
+        luggageAllowance: data.luggageAllowance ?? null,
+      });
+
+      return {
+        success: true as const,
+        data: null,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error(error);
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Something went wrong",
     };
   }
 }
