@@ -80,9 +80,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const { updateProgress } = useSetupProgress();
-  const [actionResponse, setActionResponse] = useState<ActionRes | null>(
-    null,
-  );
+  const [actionResponse, setActionResponse] = useState<ActionRes | null>(null);
 
   const loadVariants = useCallback(async () => {
     try {
@@ -114,6 +112,10 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
     setSchedules((prev) => [schedule, ...prev]);
   }
 
+  const handleRemoveSchedule = (index: number) => {
+    setSchedules((prev) => prev.filter((_, i) => i !== index));
+  };
+
   function submitSchedules() {
     startTransition(async () => {
       if (schedules.length === 0) {
@@ -136,7 +138,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
           });
           return;
         }
-        
+
         setActionResponse({
           success: true,
           message:
@@ -264,7 +266,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
               </Badge>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 max-h-screen lg:max-h-[80dvh]">
               {loading ? (
                 <VariantListSkeleton />
               ) : error ? (
@@ -330,7 +332,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
               </Badge>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 max-h-screen lg:max-h-[80dvh]">
               {schedules.length === 0 ? (
                 <EmptySchedules />
               ) : (
@@ -345,6 +347,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
                         schedule={schedule}
                         variant={variant}
                         index={schedules.length - i}
+                        onRemove={() => handleRemoveSchedule(i)}
                       />
                     );
                   })}
@@ -429,7 +432,7 @@ export function VariantCard({
             {variant.name || "Unnamed variant"}
           </p>
           <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-            #{variant.id.slice(0 ,13)}
+            #{variant.id.slice(0, 13)}
           </p>
         </div>
         <Badge

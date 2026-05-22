@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useFieldArray, Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -23,9 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, CalendarDays, Calculator } from "lucide-react";
 import { scheduleSchema, ScheduleType, VariantForm } from "@/validations";
 import { Variant } from "@/lib/all-types";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 interface ScheduleDialogProps {
   open: boolean;
@@ -40,6 +42,11 @@ export function ScheduleDialog({
   onClose,
   onSubmit,
 }: ScheduleDialogProps) {
+  if (!variant) return null;
+
+  const [sameDay, setSameDay] = useState(false);
+  const [computedArrival, setComputedArrival] = useState<string>("");
+
   const form = useForm({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
@@ -87,7 +94,42 @@ export function ScheduleDialog({
     onClose();
   }
 
-  if (!variant) return null;
+  const watchedDeparture = form.watch("departureDate");
+
+  // Compute arrival date when sameDay is on
+  useEffect(() => {
+    if (!sameDay) return;
+
+    if (!watchedDeparture) {
+      setComputedArrival("");
+      form.setValue("arrivalDate", "");
+      return;
+    }
+
+    const departure = new Date(watchedDeparture + "T00:00:00");
+    if (isNaN(departure.getTime())) return;
+
+    const arrival = new Date(departure.getTime());
+    const isoDate = arrival.toISOString().split("T")[0];
+
+    setComputedArrival(
+      arrival.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+    );
+
+    form.setValue("arrivalDate", isoDate, {
+      shouldDirty: true,
+    });
+  }, [sameDay, watchedDeparture]);
+
+  useEffect(() => {
+    if (!sameDay) {
+      setComputedArrival("");
+    }
+  }, [sameDay]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -110,6 +152,57 @@ export function ScheduleDialog({
                 #{variant.id} · {variant.name || "Unnamed"}
               </Badge>
             </div>
+          </div>
+
+          <div
+            className={cn(
+              "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-colors",
+              sameDay
+                ? "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800"
+                : "bg-muted/40 border-border",
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={cn(
+                  "shrink-0 flex items-center justify-center w-8 h-8 rounded-lg transition-colors",
+                  sameDay
+                    ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p
+                  className={cn(
+                    "text-sm font-medium leading-none transition-colors",
+                    sameDay
+                      ? "text-blue-800 dark:text-blue-200"
+                      : "text-foreground",
+                  )}
+                >
+                  Same-day trip
+                </p>
+                <p
+                  className={cn(
+                    "text-xs mt-0.5 truncate transition-colors",
+                    sameDay
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {sameDay
+                    ? "Arrival calculated from departure + duration"
+                    : "Set arrival date manually"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={sameDay}
+              onCheckedChange={setSameDay}
+              className="shrink-0"
+            />
           </div>
         </DialogHeader>
 
@@ -160,9 +253,24 @@ export function ScheduleDialog({
                   name="arrivalDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Arrival date</FormLabel>
+                      <FormLabel className="text-xs font-medium text-muted-foreground">
+                        Arrival date
+                      </FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        {sameDay ? (
+                          <div className="flex items-center gap-2 h-9 px-3 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                            <Calculator className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">
+                              {computedArrival || "Set departure + duration"}
+                            </span>
+                          </div>
+                        ) : (
+                          <Input
+                            type="date"
+                            className="text-sm h-9"
+                            {...field}
+                          />
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>

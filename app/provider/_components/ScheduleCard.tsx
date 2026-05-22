@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Variant } from "@/lib/all-types";
 import { formatDuration, formatTo12Hour } from "@/lib/utils";
 import { ScheduleType } from "@/validations";
@@ -10,12 +11,14 @@ import {
   Clock,
   DoorOpen,
   MapPin,
+  Trash2,
 } from "lucide-react";
 
 interface ScheduleCardProps {
   schedule: ScheduleType;
   variant?: Variant;
   index: number;
+  onRemove?: () => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -28,21 +31,41 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export function ScheduleCard({ schedule, variant, index }: ScheduleCardProps) {
+export function ScheduleCard({
+  schedule,
+  variant,
+  index,
+  onRemove,
+}: ScheduleCardProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium text-foreground leading-snug">
           {schedule.label || `Schedule ${index}`}
         </p>
-        {variant && (
-          <Badge
-            variant="secondary"
-            className="text-[11px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 shrink-0 max-w-40 truncate"
-          >
-            {variant.name || variant.id}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {variant && (
+            <Badge
+              variant="secondary"
+              className="text-[11px] bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800 shrink-0 max-w-40 truncate"
+            >
+              {variant.name || variant.id}
+            </Badge>
+          )}
+
+          {onRemove && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRemove}
+              className="text-destructive hover:text-destructive"
+              title="remove"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted-foreground">
