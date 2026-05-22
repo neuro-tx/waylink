@@ -562,7 +562,8 @@ export async function createSchedules(
     }
 
     const data = validate.data;
-    const variantIds = data.map((schedule) => schedule.variantId);
+    const variantIds = [...new Set(data.map((schedule) => schedule.variantId))];
+    const uniqueVariantIds = [...new Set(variantIds)];
 
     const result = await db.transaction(async (tx) => {
       const [[service], variants] = await Promise.all([
@@ -597,7 +598,9 @@ export async function createSchedules(
           "You do not have permission to manage schedules for this service.",
         );
       // ensure all submitted variants belong to this service
-      if (variants.length !== variantIds.length)
+      const validVariantIds = new Set(variants.map((v) => v.id));
+
+      if (uniqueVariantIds.some((id) => !validVariantIds.has(id)))
         throw new Error("Some selected variants are invalid or unavailable.");
 
       // transform schedules into database shape
