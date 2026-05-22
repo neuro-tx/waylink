@@ -1,0 +1,1 @@
+ALTER TABLE "transport_schedules" DROP CONSTRAINT "transport_schedules_variant_id_unique";

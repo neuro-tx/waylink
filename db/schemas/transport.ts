@@ -10,7 +10,12 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { products, productVariants } from "./product";
-import { transportTypeEnum, transportClassEnum, seatTypeEnum, timestamps } from "./enums";
+import {
+  transportTypeEnum,
+  transportClassEnum,
+  seatTypeEnum,
+  timestamps,
+} from "./enums";
 
 export const transports = pgTable(
   "transports",
@@ -52,8 +57,7 @@ export const transportSchedules = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     variantId: uuid("variant_id")
       .notNull()
-      .references(() => productVariants.id, { onDelete: "cascade" })
-      .unique(),
+      .references(() => productVariants.id, { onDelete: "cascade" }),
     departureTime: timestamp("departure_time").notNull(),
     arrivalTime: timestamp("arrival_time").notNull(),
     duration: integer("duration").notNull(),

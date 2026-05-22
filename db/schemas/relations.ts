@@ -169,10 +169,7 @@ export const productVariantsRelations = relations(
       references: [products.id],
     }),
     bookings: many(bookings),
-    transportSchedule: one(transportSchedules, {
-      fields: [productVariants.id],
-      references: [transportSchedules.variantId],
-    }),
+    transportSchedules: many(transportSchedules),
   }),
 );
 

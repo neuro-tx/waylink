@@ -9,6 +9,7 @@ import {
   productVariants,
   setupProgress,
   transports,
+  transportSchedules,
 } from "@/db/schemas";
 import {
   ExperienceForm,
@@ -17,12 +18,14 @@ import {
   LocationValType,
   ProductForm,
   productSchema,
+  scheduleSchema,
+  ScheduleType,
   TransportForm,
   transportSchema,
   VariantForm,
   variantSchema,
 } from "@/validations";
-import { eq, InferInsertModel } from "drizzle-orm";
+import { and, eq, inArray, InferInsertModel } from "drizzle-orm";
 import z from "zod";
 import { generateSlug, getDistanceFromLocations } from "@/lib/utils";
 import { getCurrentProvider } from "@/lib/provider-auth";
@@ -533,6 +536,105 @@ export async function createTransportDetails(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Something went wrong",
+    };
+  }
+}
+
+export async function createSchedules(
+  serviceId: string,
+  schedules: ScheduleType[],
+): Promise<ActionResult> {
+  if (!serviceId) {
+    return {
+      success: false,
+      error: "Service id is missing",
+    };
+  }
+
+  try {
+    const provider = await requireProvider();
+    const validate = z.array(scheduleSchema).safeParse(schedules);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Some schedule data is invalid. Please review and try again.",
+      };
+    }
+
+    const data = validate.data;
+    const variantIds = data.map((schedule) => schedule.variantId);
+
+    const result = await db.transaction(async (tx) => {
+      const [[service], variants] = await Promise.all([
+        tx
+          .select({
+            id: products.id,
+            providerId: products.providerId,
+          })
+          .from(products)
+          .where(eq(products.id, serviceId))
+          .limit(1),
+
+        tx
+          .select({
+            id: productVariants.id,
+          })
+          .from(productVariants)
+          .where(
+            and(
+              eq(productVariants.productId, serviceId),
+              inArray(productVariants.id, variantIds),
+            ),
+          ),
+      ]);
+
+      // validate service existence
+      if (!service)
+        throw new Error("The requested service could not be found.");
+      // validate provider ownership
+      if (service.providerId !== provider.id)
+        throw new Error(
+          "You do not have permission to manage schedules for this service.",
+        );
+      // ensure all submitted variants belong to this service
+      if (variants.length !== variantIds.length)
+        throw new Error("Some selected variants are invalid or unavailable.");
+
+      // transform schedules into database shape
+      const mappedSchedules = data.map((schedule) => ({
+        variantId: schedule.variantId,
+        departureTime: new Date(schedule.departureDate),
+        arrivalTime: new Date(schedule.arrivalDate),
+        duration: Number(schedule.duration),
+        checkInTime: schedule.checkInTime ?? null,
+        stops: schedule.stops ?? [],
+      }));
+
+      await tx.insert(transportSchedules).values(mappedSchedules);
+
+      return {
+        success: true as const,
+        data: null,
+      };
+    });
+
+    // update setup progress after successful creation
+    if (result.success) {
+      await updateSetupProgress(serviceId, {
+        hasMetadata: true,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Create schedules error:", error);
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to create schedules right now. Please try again.",
     };
   }
 }
