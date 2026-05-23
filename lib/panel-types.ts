@@ -1,4 +1,13 @@
-import { Pagination, BookingStatus, BookingVariant } from "./all-types";
+import {
+  Pagination,
+  BookingStatus,
+  BookingVariant,
+  TransportType,
+  TransportClass,
+  ExperienceType,
+  DifficultyLevel,
+  SetupProgress,
+} from "./all-types";
 // export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export type PassengerType = "adult" | "child" | "infant";
@@ -155,3 +164,67 @@ export interface ProviderDashboardData {
 }
 
 export type DateRange = "7d" | "30d" | "90d" | "1y";
+
+export interface PreviewService {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  providerId: string;
+  description: string | null;
+  slug: string;
+  status: "active" | "paused" | "draft" | "archived";
+  type: "transport" | "experience";
+  title: string;
+  shortDescription: string | null;
+  basePrice: string;
+  currency: string | null;
+  transport: Transport | null;
+  experience: Experience | null;
+  setup: SetupProgress | null;
+  media: ServiceMedia[];
+}
+
+export interface ServiceMedia {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  type: "image" | "video";
+  productId: string;
+  url: string;
+  isCover: boolean;
+  displayOrder: number;
+}
+
+export interface Experience {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  productId: string;
+  experienceType: ExperienceType;
+  difficultyLevel: DifficultyLevel | null;
+  durationCount: number;
+  durationUnit: "hours" | "minutes" | "days";
+  included: string[] | null;
+  notIncluded: string[] | null;
+  requirements: string[] | null;
+  ageRestriction: string | null;
+}
+
+export interface Transport {
+  id: string;
+  providerId: string;
+  type: "transport";
+  title: string;
+  slug: string;
+  description: string | null;
+  shortDescription: string | null;
+  basePrice: string;
+  currency: string;
+  status: "draft" | "published" | "archived";
+  createdAt: string;
+  updatedAt: string;
+  score: number;
+  transportType: TransportType;
+  class: TransportClass;
+  directroute: boolean;
+}

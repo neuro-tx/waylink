@@ -38,6 +38,7 @@ import {
   TransportType,
 } from "@/lib/all-types";
 import { locationSlugGenerator } from "@/lib/helpers";
+import { PreviewService } from "@/lib/panel-types";
 
 type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
@@ -638,6 +639,63 @@ export async function createSchedules(
         error instanceof Error
           ? error.message
           : "Unable to create schedules right now. Please try again.",
+    };
+  }
+}
+
+interface PreviewServiceResponse {
+  success: boolean;
+  data: PreviewService | null;
+  error: string | null;
+}
+
+export async function previewService(
+  serviceId: string,
+): Promise<PreviewServiceResponse> {
+  if (!serviceId)
+    return {
+      success: false,
+      error: "Service id is missing",
+      data: null,
+    };
+
+  try {
+    const result = await db.query.products.findFirst({
+      where: (products, { eq }) => eq(products.id, serviceId),
+      with: {
+        setup: true,
+        transport: true,
+        experience: true,
+        media: true,
+      },
+      columns: {
+        searchVector: false,
+      },
+    });
+
+    if (!result) {
+      return {
+        success: false,
+        data: null,
+        error: "No data available for this service",
+      };
+    }
+
+    return {
+      success: true,
+      data: result as PreviewService,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Preview service error:", error);
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to preview service right now. Please try again.",
+      data: null,
     };
   }
 }
