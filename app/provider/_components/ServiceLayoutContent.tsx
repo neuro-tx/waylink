@@ -2,20 +2,26 @@
 
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles } from "lucide-react";
-import { deriveCurrentStep } from "@/lib/helpers";
+import { ArrowLeft, Loader, Sparkles } from "lucide-react";
+import { deriveCurrentStep, isFullyComplete } from "@/lib/helpers";
 import { StepIndicator } from "./StepIndicator";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import { useSetupProgress } from "@/components/providers/SetupProgressProvider";
 
-function useRouteStep(): 1 | 2 | 3 | 4 | 5 {
+function useRouteStep(): 1 | 2 | 3 | 4 {
   const pathname = usePathname();
-  if (pathname.includes("/review")) return 5;
   if (pathname.includes("/details")) return 4;
   if (pathname.includes("/locations")) return 3;
   if (pathname.includes("/variants")) return 2;
   return 1;
 }
+
+const STEP_TITLES: Record<number, { label: string; sub: string }> = {
+  1: { label: "Product Details", sub: "Type, info & base pricing" },
+  2: { label: "Variants & Pricing", sub: "Dates, capacity & per-pax pricing" },
+  3: { label: "Locations", sub: "Start, end & waypoints" },
+  4: { label: "", sub: "" },
+};
 
 export function ServiceLayoutContent({
   children,
@@ -31,14 +37,77 @@ export function ServiceLayoutContent({
   const isStep1 = routeStep === 1;
 
   const { loading, progress } = useSetupProgress();
-  const activeStep = progress ? deriveCurrentStep(progress) : undefined;
+
+  const activeStep =
+    !loading && progress ? deriveCurrentStep(progress) : undefined;
+  const isComplete = !loading && isFullyComplete(progress);
+
+  if (loading) {
+    return (
+      <div className="h-[90dvh] w-full flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <Loader className="h-8 w-8 animate-spin text-primary" />
+
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              Preparing service...
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Please wait a moment
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isComplete) {
+    const scoreState = progress?.hasScore;
+
+    return (
+      <div className="h-[90dvh] flex flex-col">
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center space-y-3 max-w-md">
+            <div className="mx-auto h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-emerald-500" />
+            </div>
+
+            <h2 className="text-lg font-semibold text-emerald-500">
+              {scoreState
+                ? "We are calculating your service score"
+                : "Your submission is being reviewed"}
+            </h2>
+
+            <p className="text-sm leading-relaxed">
+              {scoreState ? (
+                <>
+                  After we finish calculating your score, your service will be
+                  automatically published and visible to customers.
+                </>
+              ) : (
+                <>
+                  This process may take some time. Your service will be sent to
+                  our admin team for review, and we will notify you once it is
+                  approved or if any changes are needed.
+                </>
+              )}
+            </p>
+
+            <Button
+              variant="outline"
+              onClick={() =>
+                router.push(`/provider/services/${serviceId}/review`)
+              }
+            >
+              View Service
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function handleBack() {
-    const basePath = `/provider/services/create/${serviceId}/details`;
-    if (routeStep === 5 && serviceId)
-      return router.push(
-        type === "transport" ? `${basePath}?tab=meta-info` : basePath,
-      );
     if (routeStep === 4 && serviceId)
       return router.push(`/provider/services/create/${serviceId}/locations`);
     if (routeStep === 3 && serviceId)
@@ -47,34 +116,21 @@ export function ServiceLayoutContent({
     router.back();
   }
 
-  const stepTitles: Record<number, { label: string; sub: string }> = {
-    1: {
-      label: "Product Details",
-      sub: "Type, info & base pricing",
-    },
-    2: {
-      label: "Variants & Pricing",
-      sub: "Dates, capacity & per-pax pricing",
-    },
-    3: {
-      label: "Locations",
-      sub: "Start, end & waypoints",
-    },
-    4: {
-      label: type === "transport" ? "Transport Details" : "Experience Details",
-      sub:
-        type === "transport"
-          ? "Vehicle, class & schedule info"
-          : "Activity type, duration & itinerary",
-    },
-    5: {
-      label: "Review",
-      sub: "All data & publishing",
-    },
-  };
-
-  const { label, sub } = stepTitles[routeStep];
   const serviceLabel = type === "transport" ? "Transport" : "Experience";
+
+  const stepTitle =
+    routeStep === 4
+      ? {
+          label:
+            type === "transport" ? "Transport Details" : "Experience Details",
+          sub:
+            type === "transport"
+              ? "Vehicle, class & schedule info"
+              : "Activity type, duration & itinerary",
+        }
+      : STEP_TITLES[routeStep];
+
+  const { label, sub } = stepTitle;
 
   return (
     <div className="min-h-screen bg-background">
@@ -100,12 +156,10 @@ export function ServiceLayoutContent({
               <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
                 New Product
               </p>
-
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-semibold text-foreground leading-none truncate">
                   {label}
                 </h1>
-
                 <span className="text-xs text-muted-foreground hidden md:block truncate">
                   — {sub}
                 </span>
@@ -114,7 +168,7 @@ export function ServiceLayoutContent({
           </div>
 
           <div className="shrink-0">
-            {!loading && activeStep && (
+            {activeStep && (
               <StepIndicator
                 currentStep={activeStep}
                 progress={progress}

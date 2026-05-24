@@ -124,12 +124,11 @@ export function calculateGrowthMetric(
 
 export function deriveCurrentStep(
   progress: SetupProgress | null | undefined,
-): 1 | 2 | 3 | 4 | 5 {
+): 1 | 2 | 3 | 4 {
   if (!progress || !progress.mainInfo) return 1;
   if (!progress.hasVariants) return 2;
   if (!progress.hasLocation) return 3;
-  if (!progress.hasMetadata) return 4;
-  return 5;
+  return 4;
 }
 
 export function isFullyComplete(
@@ -139,8 +138,7 @@ export function isFullyComplete(
     progress?.mainInfo &&
     progress.hasVariants &&
     progress.hasLocation &&
-    progress.hasMetadata &&
-    progress.hasScore
+    progress.hasMetadata
   );
 }
 

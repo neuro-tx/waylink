@@ -49,12 +49,6 @@ export const PRODUCT_STEPS: Step[] = [
     icon: Settings2,
     progressKey: "hasMetadata",
   },
-  {
-    label: "Review",
-    description: "All data & publishing",
-    icon: Eye,
-    progressKey: "hasScore",
-  },
 ];
 
 type StepState = "done" | "current" | "incomplete" | "untouched";
@@ -95,8 +89,6 @@ function stepUrl(i: number, productId: string | undefined): string | null {
       return `/provider/services/create/${productId}/locations`;
     case 3:
       return `/provider/services/create/${productId}/details`;
-    case 4:
-      return `/provider/services/view/${productId}`;
     default:
       return null;
   }
@@ -131,7 +123,7 @@ const STATE_STYLES = {
 } as const;
 
 interface StepIndicatorProps {
-  currentStep: 1 | 2 | 3 | 4 | 5;
+  currentStep: 1 | 2 | 3 | 4;
   progress?: SetupProgress | null;
   variant?: "compact" | "full";
   serviceLabel?: string;

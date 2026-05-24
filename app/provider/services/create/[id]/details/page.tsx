@@ -35,7 +35,7 @@ export default function ServiceDetailsPage() {
         toast.success(
           "Experience details saved. You can now review your service in the creation preview.",
         );
-        router.push(`/provider/services/create/${serviceId}/review`);
+        router.push(`/provider/services/${serviceId}/review`);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Something went wrong",

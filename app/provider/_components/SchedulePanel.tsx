@@ -149,7 +149,7 @@ export function SchedulePanel({ serviceId }: { serviceId: string }) {
           hasMetadata: true,
         });
 
-        router.push(`/provider/services/create/${serviceId}/review`);
+        router.push(`/provider/services/${serviceId}/review`);
       } catch (error) {
         const message =
           error instanceof Error

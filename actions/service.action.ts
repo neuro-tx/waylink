@@ -411,7 +411,7 @@ export async function getServiceVariants(
   }
 
   try {
-    const p = await requireProvider(true);
+    const p = await requireProvider();
     // block any one access to the varinats
     const [service] = await db
       .select({

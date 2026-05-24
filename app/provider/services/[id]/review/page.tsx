@@ -28,7 +28,7 @@ import {
 import { fmtCurrency } from "@/lib/helpers";
 import { PreviewService } from "@/lib/panel-types";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { previewService } from "@/actions/service.action";
 import { VariantsPricingSheet } from "@/app/provider/_components/VariantsPricingSheet";
 
@@ -60,13 +60,16 @@ function formatDuration(count: number, unit: string) {
 
 export default function ServicePreview() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const serviceId = params.id as string;
+  const isSheetOpen = searchParams.get("sheet") === "open";
+
+  const router = useRouter();
 
   const [service, setService] = useState<PreviewService | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     async function loadService() {
@@ -101,6 +104,21 @@ export default function ServicePreview() {
 
     loadService();
   }, [serviceId, retryKey]);
+
+  function openSheet() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sheet", "open");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }
+
+  function closeSheet() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("sheet");
+    const query = params.toString();
+    router.push(query ? `?${query}` : "?", { scroll: false });
+  }
+
+  const sheetOpen = isSheetOpen;
 
   if (loading) {
     return <PreviewSkeleton />;
@@ -256,7 +274,6 @@ export default function ServicePreview() {
                   </div>
                 )}
               </div>
-
               {/* Quick stats */}
               <div className="px-5 py-4 space-y-2.5">
                 {service.experience && (
@@ -356,19 +373,24 @@ export default function ServicePreview() {
                   </Badge>
                 </div>
               </div>
-
               {/* CTA */}
               <div className="px-5 pb-5 space-y-2.5">
-                <Button className="w-full gap-2" size="default">
+                <Button
+                  className="w-full"
+                  size="default"
+                  onClick={() =>
+                    router.push(`/provider/services/${serviceId}/edit`)
+                  }
+                >
                   <Pencil className="w-4 h-4" />
                   Edit service
                 </Button>
 
                 <Button
                   variant="outline"
-                  className="w-full text-sm"
+                  className="w-full cursor-pointer"
                   size="default"
-                  onClick={() => setSheetOpen(true)}
+                  onClick={openSheet}
                 >
                   <Layers3 className="w-3.5 h-3.5 mr-2" />
                   Show variants & pricing
@@ -422,10 +444,10 @@ export default function ServicePreview() {
           </div>
         </div>
       </div>
-      
+
       <VariantsPricingSheet
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={closeSheet}
         serviceId={service.id}
         isTransport={!isExperience}
       />
