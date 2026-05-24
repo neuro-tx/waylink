@@ -223,8 +223,42 @@ export interface Transport {
   status: "draft" | "published" | "archived";
   createdAt: string;
   updatedAt: string;
-  score: number;
   transportType: TransportType;
   class: TransportClass;
   directroute: boolean;
 }
+
+export type Schedule = {
+  id: string;
+  variantId: string;
+  duration: number;
+  departureTime: Date;
+  arrivalTime: Date;
+  checkInTime: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  stops:
+    | {
+        locationName: string;
+        arrivalTime: string;
+        departureTime: string;
+      }[]
+    | null;
+};
+
+export type VariantWithSchedules = {
+  id: string;
+  name: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  status: "cancelled" | "available" | "sold_out";
+  productId: string;
+  startDate: Date;
+  endDate: Date | null;
+  capacity: number;
+  bookedCount: number;
+  adultPrice: string;
+  childPrice: string;
+  infantPrice: string;
+  transportSchedules: Schedule[];
+};

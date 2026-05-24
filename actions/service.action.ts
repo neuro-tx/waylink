@@ -38,7 +38,7 @@ import {
   TransportType,
 } from "@/lib/all-types";
 import { locationSlugGenerator } from "@/lib/helpers";
-import { PreviewService } from "@/lib/panel-types";
+import { PreviewService, VariantWithSchedules } from "@/lib/panel-types";
 
 type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
@@ -696,6 +696,34 @@ export async function previewService(
           ? error.message
           : "Unable to preview service right now. Please try again.",
       data: null,
+    };
+  }
+}
+
+export async function getVarinatWithSchedules(
+  serviceId: string,
+): Promise<ActionResult<VariantWithSchedules[]>> {
+  if (!serviceId) return { success: false, error: "Service id is missing" };
+
+  try {
+    const data = await db.query.productVariants.findMany({
+      where: (variant, { eq }) => eq(variant.productId, serviceId),
+
+      with: {
+        transportSchedules: true,
+      },
+    });
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("Failed to get variants with schedules:", error);
+
+    return {
+      success: false,
+      error: "Failed to fetch variants",
     };
   }
 }

@@ -30,6 +30,7 @@ import { PreviewService } from "@/lib/panel-types";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { previewService } from "@/actions/service.action";
+import { VariantsPricingSheet } from "@/app/provider/_components/VariantsPricingSheet";
 
 const STATUS_CONFIG = {
   active: {
@@ -65,6 +66,7 @@ export default function ServicePreview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     async function loadService() {
@@ -366,6 +368,7 @@ export default function ServicePreview() {
                   variant="outline"
                   className="w-full text-sm"
                   size="default"
+                  onClick={() => setSheetOpen(true)}
                 >
                   <Layers3 className="w-3.5 h-3.5 mr-2" />
                   Show variants & pricing
@@ -419,6 +422,13 @@ export default function ServicePreview() {
           </div>
         </div>
       </div>
+      
+      <VariantsPricingSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        serviceId={service.id}
+        isTransport={!isExperience}
+      />
     </div>
   );
 }

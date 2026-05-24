@@ -448,16 +448,6 @@ export function TransportDetails({ transport }: { transport?: Transport }) {
             {transport.directroute ? "Direct" : "With stops"}
           </p>
         </div>
-
-        <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-1">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Star className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-medium uppercase tracking-wide">
-              Score
-            </span>
-          </div>
-          <p className="text-sm font-semibold">{transport.score.toFixed(1)}</p>
-        </div>
       </div>
 
       {transport.description && (
