@@ -105,8 +105,22 @@ export const transportSchema = z.object({
   importantNotes: z.array(z.string()).optional(),
 });
 
+export const mediaSchema = z.object({
+  url: z.string().trim().url("Please enter a valid media URL"),
+  type: z.enum(["image", "video"], {
+    message: "Media type must be image or video",
+  }),
+  isCover: z.boolean().default(false),
+  displayOrder: z
+    .number()
+    .int("Display order must be a whole number")
+    .min(0, "Display order cannot be negative")
+    .default(0),
+});
+
 export type ProductForm = z.infer<typeof productSchema>;
 export type VariantForm = z.infer<typeof variantSchema>;
 export type ExperienceForm = z.infer<typeof experienceSchema>;
 export type TransportForm = z.infer<typeof transportSchema>;
 export type ScheduleType = z.infer<typeof scheduleSchema>;
+export type MediaForm = z.infer<typeof mediaSchema>;

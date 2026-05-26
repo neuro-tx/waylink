@@ -10,6 +10,7 @@ export interface UploadedFile {
   name: string;
   size: number;
   type: string;
+  order:number
 }
 
 export type FileStatus = "staged" | "uploading" | "done" | "error";
@@ -22,6 +23,7 @@ export interface ManagedFile {
   status: FileStatus;
   result?: UploadedFile;
   error?: string;
+  order: number;
 }
 
 export type UploadMode = "auto" | "manual";
@@ -36,6 +38,7 @@ export interface UseMediaUploadOptions {
   onAllComplete?: (files: UploadedFile[]) => void;
   onFileUploaded?: (file: UploadedFile, allSoFar: UploadedFile[]) => void;
   onError?: (err: string, fileName: string) => void;
+  onRemove?: (file: UploadedFile) => void;
 }
 
 export interface UseMediaUploadReturn {
@@ -81,6 +84,7 @@ export function useMediaUpload({
   onAllComplete,
   onFileUploaded,
   onError,
+  onRemove
 }: UseMediaUploadOptions): UseMediaUploadReturn {
   const [files, dispatch] = useReducer(reducer, []);
   const limit = pLimit(5);
@@ -147,6 +151,7 @@ export function useMediaUpload({
           name: file.name,
           size: file.size,
           type: file.type,
+          order: managed.order,
         };
 
         update(managed.id, {
@@ -186,12 +191,13 @@ export function useMediaUpload({
 
       if (!valid.length) return [];
 
-      const created: ManagedFile[] = valid.map((file) => ({
+      const created: ManagedFile[] = valid.map((file, index) => ({
         id: makeId(),
         file,
         preview: URL.createObjectURL(file),
         progress: 0,
         status: "staged",
+        order: index,
       }));
 
       let accepted: ManagedFile[] = [];
@@ -303,8 +309,11 @@ export function useMediaUpload({
       }
 
       dispatch({ type: "REMOVE", id });
+      if (target.result) {
+        onRemove?.(target.result);
+      }
     },
-    [],
+    [onRemove],
   );
 
   const reset = useCallback(() => {

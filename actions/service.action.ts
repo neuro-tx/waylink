@@ -5,6 +5,7 @@ import {
   experiences,
   itineraries,
   location,
+  productMedia,
   products,
   productVariants,
   setupProgress,
@@ -16,6 +17,8 @@ import {
   experienceSchema,
   locationValidator,
   LocationValType,
+  MediaForm,
+  mediaSchema,
   ProductForm,
   productSchema,
   scheduleSchema,
@@ -724,6 +727,65 @@ export async function getVarinatWithSchedules(
     return {
       success: false,
       error: "Failed to fetch variants",
+    };
+  }
+}
+
+export async function addServiceMedia(serviceId: string, media: MediaForm[]) {
+  if (!serviceId) {
+    return {
+      success: false,
+      error: "Service id is missing",
+    };
+  }
+
+  try {
+    await requireProvider();
+
+    const validated = z.array(mediaSchema).safeParse(media);
+    if (!validated.success) {
+      return {
+        success: false,
+        error: validated.error.issues[0]?.message || "Invalid media data",
+      };
+    }
+
+    const data = validated.data;
+
+    // ensure only one cover image
+    const coverCount = data.filter((m) => m.isCover).length;
+
+    if (coverCount > 1) {
+      return {
+        success: false,
+        error: "Only one media item can be marked as cover",
+      };
+    }
+
+    const mapped = data.map((item, index) => ({
+      productId: serviceId,
+      url: item.url,
+      type: item.type ?? "image",
+      isCover: item.isCover ?? false,
+      displayOrder: item.displayOrder ?? index,
+    }));
+
+    await db.insert(productMedia).values(mapped);
+
+    await updateSetupProgress(serviceId ,{
+      hasMedia: true
+    })
+
+    return {
+      success: true,
+      data: null,
+    };
+  } catch (error) {
+    console.error("Failed to add service media:", error);
+
+    return {
+      success: false,
+      error: "Failed to add service media",
     };
   }
 }
