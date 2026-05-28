@@ -1,3 +1,12 @@
+import { db } from "@/db";
+import {
+  plans,
+  productStats,
+  productVariants,
+  subscriptions,
+} from "@/db/schemas";
+import { and, eq, min } from "drizzle-orm";
+
 const SCORE_CONFIG = {
   bayesian: {
     minReviews: 10,
@@ -57,7 +66,7 @@ export function calcPopularityScore(stats: {
   bookingsCount: number;
   completedBookingsCount: number;
   cancelledBookingsCount: number;
-  lastBookedAt: Date | null;
+  lastBookedAt: Date | string | null;
 }): number {
   const bookings = safeNumber(stats.bookingsCount);
   const completed = safeNumber(stats.completedBookingsCount);
@@ -142,7 +151,7 @@ export function generateScore(data: {
   bookingsCount: number;
   completedBookingsCount: number;
   cancelledBookingsCount: number;
-  lastBookedAt: Date | null;
+  lastBookedAt: Date | string | null;
   reviewsCount: number;
   averageRating: string | number | null;
   lowestPrice: number | null;
@@ -178,4 +187,81 @@ export function generateScore(data: {
     price,
     finalScore,
   };
+}
+
+export async function getLowestPrice(serviceId: string): Promise<number> {
+  try {
+    const [result] = await db
+      .select({
+        value: min(productVariants.adultPrice),
+      })
+      .from(productVariants)
+      .where(eq(productVariants.productId, serviceId));
+
+    return safeNumber(result?.value);
+  } catch (error) {
+    console.error("Failed to get lowest price", {
+      serviceId,
+      error,
+    });
+
+    return 0;
+  }
+}
+
+export async function getServiceStats(
+  serviceId: string,
+): Promise<typeof productStats.$inferSelect> {
+  try {
+    const [existing] = await db
+      .select()
+      .from(productStats)
+      .where(eq(productStats.productId, serviceId))
+      .limit(1);
+
+    if (existing) {
+      return existing;
+    }
+
+    // Creat If Missing
+    const [created] = await db
+      .insert(productStats)
+      .values({
+        productId: serviceId,
+      })
+      .onConflictDoNothing({
+        target: productStats.productId,
+      })
+      .returning();
+
+    if (!created) throw new Error("Failed to create service stats");
+    return created;
+  } catch (error) {
+    console.error("Failed to get or create service stats", {
+      serviceId,
+      error,
+    });
+
+    throw error;
+  }
+}
+
+export async function getPriorityBoost(providerId: string): Promise<number> {
+  try {
+    const [result] = await db
+      .select({ boost: plans.priorityBoost })
+      .from(subscriptions)
+      .innerJoin(plans, eq(plans.id, subscriptions.planId))
+      .where(
+        and(
+          eq(subscriptions.providerId, providerId),
+          eq(subscriptions.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    return safeNumber(result?.boost, 1);
+  } catch {
+    return 1;
+  }
 }
