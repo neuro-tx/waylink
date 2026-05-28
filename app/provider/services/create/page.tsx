@@ -314,6 +314,7 @@ function PreviewCard({
               size="lg"
               onClick={saveMedia}
               aria-invalid={error !== null}
+              className="w-1/2"
             >
               {isPending ? (
                 <>
@@ -325,7 +326,7 @@ function PreviewCard({
               )}
             </Button>
             {error && (
-              <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
                 <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
                 <p className="text-xs font-medium text-red-600">{error}</p>
               </div>
