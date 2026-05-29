@@ -12,6 +12,11 @@ import {
   Pencil,
   Layers3,
   AlertCircle,
+  LucideIcon,
+  CheckCircle2,
+  PauseCircle,
+  FilePenLine,
+  Archive,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,32 +30,57 @@ import {
   SetupProgressCard,
   TransportDetails,
 } from "@/app/provider/_components/PreviewLayout";
-import { fmtCurrency } from "@/lib/helpers";
+import { fmtCurrency, fmtDateTime } from "@/lib/helpers";
 import { PreviewService } from "@/lib/panel-types";
 import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { previewService } from "@/actions/service.action";
 import { VariantsPricingSheet } from "@/app/provider/_components/VariantsPricingSheet";
 
-const STATUS_CONFIG = {
+type ServiceStatus = "active" | "draft" | "paused" | "archived";
+const STATUS_CONFIG: Record<
+  ServiceStatus,
+  {
+    label: string;
+    className: string;
+    icon: LucideIcon;
+    dot: string;
+    description: string;
+  }
+> = {
   active: {
     label: "Active",
+    icon: CheckCircle2,
+    dot: "bg-emerald-500",
     className:
-      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
+      "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
+    description: "Live & visible to customers",
   },
+
   paused: {
     label: "Paused",
+    icon: PauseCircle,
+    dot: "bg-blue-500",
     className:
-      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400",
+      "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800",
+    description: "Temporarily unavailable",
   },
+
   draft: {
     label: "Draft",
-    className: "bg-muted text-muted-foreground border-border",
+    icon: FilePenLine,
+    dot: "bg-amber-500",
+    className: "bg-muted text-muted-foreground border border-border",
+    description: "Still being completed",
   },
+
   archived: {
     label: "Archived",
+    icon: Archive,
+    dot: "bg-zinc-500",
     className:
-      "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400",
+      "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800",
+    description: "Stored & hidden from listings",
   },
 };
 
@@ -157,25 +187,14 @@ export default function ServicePreview() {
 
   const statusCfg = STATUS_CONFIG[service.status];
   const isExperience = service.type === "experience";
+  const StatusIcon = statusCfg.icon;
 
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
           <div className="space-y-7 min-w-0">
-            <SetupProgressCard
-              setup={{
-                hasLocation: true,
-                hasMedia: false,
-                hasMetadata: true,
-                hasVariants: true,
-                hasScore: false,
-                mainInfo: true,
-                productId: service.id,
-                createdAt: new Date("2024-11-01"),
-                updatedAt: new Date("2025-03-15"),
-              }}
-            />
+            {service.setup && <SetupProgressCard setup={service.setup} />}
 
             {/* Media */}
             <MediaGallery media={service.media} />
@@ -415,21 +434,13 @@ export default function ServicePreview() {
                     Last updated
                   </span>
                   <span className="text-xs text-foreground">
-                    {service.updatedAt.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {fmtDateTime(service.updatedAt)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Created</span>
                   <span className="text-xs text-foreground">
-                    {service.createdAt.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {fmtDateTime(service.createdAt)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -439,6 +450,49 @@ export default function ServicePreview() {
                     {service.media.length !== 1 ? "s" : ""}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-muted/30 p-4">
+              <div className="absolute inset-0 bg-linear-to-br from-background/40 via-transparent to-transparent pointer-events-none" />
+              <div className="relative flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <div
+                    className={cn(
+                      "flex size-10 aspect-square shrink-0 items-center justify-center rounded-xl border",
+                      statusCfg.className,
+                    )}
+                  >
+                    <StatusIcon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        Service Status
+                      </p>
+                      <span
+                        className={cn(
+                          "h-2 w-2 rounded-full animate-pulse",
+                          statusCfg.dot,
+                        )}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {statusCfg.description}
+                    </p>
+                  </div>
+                </div>
+
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide border",
+                    statusCfg.className,
+                  )}
+                >
+                  {statusCfg.label}
+                </Badge>
               </div>
             </div>
           </div>

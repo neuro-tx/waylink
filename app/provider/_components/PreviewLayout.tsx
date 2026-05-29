@@ -130,17 +130,30 @@ export function MediaGallery({ media }: { media: ServiceMedia[] }) {
 
 export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
   type StepKey = (typeof STEPS)[number]["key"];
+  const REQUIRED_STEPS: StepKey[] = [
+    "hasMetadata",
+    "hasVariants",
+    "hasLocation",
+    "mainInfo",
+  ];
+  const OPTIONAL_STEPS: StepKey[] = ["hasMedia"];
+  const requiredCompleted = REQUIRED_STEPS.filter((key) => setup[key]).length;
+
   const completed = STEPS.filter(({ key }) => setup[key as StepKey]).length;
 
   const total = STEPS.length;
   const pct = Math.round((completed / total) * 100);
-  const isComplete = completed === total;
+  const isPublishReady = requiredCompleted === REQUIRED_STEPS.length;
+  const missingOptional = OPTIONAL_STEPS.filter((key) => !setup[key]);
+  const optionalLabels: Record<string, string> = {
+    hasMedia: "media uploads",
+  };
 
   return (
     <div
       className={cn(
         "rounded-xl border p-4 space-y-4 transition-colors",
-        isComplete
+        isPublishReady
           ? "border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30"
           : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40",
       )}
@@ -150,12 +163,12 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
           <div
             className={cn(
               "mt-0.5 shrink-0",
-              isComplete
+              isPublishReady
                 ? "text-emerald-500"
                 : "text-amber-600 dark:text-amber-400",
             )}
           >
-            {isComplete ? (
+            {isPublishReady ? (
               <CheckCircle2 className="w-4 h-4" />
             ) : (
               <AlertCircle className="w-4 h-4" />
@@ -166,25 +179,29 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
             <p
               className={cn(
                 "text-sm font-medium",
-                isComplete
+                isPublishReady
                   ? "text-emerald-700 dark:text-emerald-300"
                   : "text-amber-800 dark:text-amber-300",
               )}
             >
-              {isComplete ? "Setup complete" : "Setup incomplete"}
+              {isPublishReady ? "Setup complete" : "Setup incomplete"}
             </p>
 
             <p
               className={cn(
                 "text-xs",
-                isComplete
+                isPublishReady
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-amber-700 dark:text-amber-400",
               )}
             >
-              {isComplete
-                ? "Your service is ready to publish"
-                : `Complete all steps to publish your service`}
+              {isPublishReady
+                ? missingOptional.length
+                  ? `Your service is ready to publish, but adding ${missingOptional
+                      .map((key) => optionalLabels[key])
+                      .join(", ")} will improve visibility and customer trust.`
+                  : "Your service is fully optimized and ready to publish."
+                : "Complete the required setup steps before publishing your service."}
             </p>
           </div>
         </div>
@@ -192,7 +209,7 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
         <span
           className={cn(
             "text-sm font-semibold tabular-nums",
-            isComplete
+            isPublishReady
               ? "text-emerald-600 dark:text-emerald-400"
               : "text-amber-700 dark:text-amber-300",
           )}
@@ -220,12 +237,32 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
         </div>
       )}
 
+      {/* Optional optimization hint */}
+      {isPublishReady && missingOptional.length > 0 && (
+        <div className="rounded-lg border border-emerald-200/60 bg-emerald-100/40 px-3 py-2 dark:border-emerald-900 dark:bg-emerald-950/30">
+          <div className="flex items-start gap-2">
+            <Sparkles className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+
+            <div className="space-y-0.5">
+              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                Optimization recommendation
+              </p>
+
+              <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
+                Services with complete media and presentation assets usually
+                perform better and gain more engagement.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="space-y-1.5">
         <div
           className={cn(
             "flex items-center justify-between text-xs",
-            isComplete
+            isPublishReady
               ? "text-emerald-700 dark:text-emerald-400"
               : "text-amber-700 dark:text-amber-400",
           )}
@@ -238,7 +275,7 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
         <div
           className={cn(
             "h-1.5 rounded-full overflow-hidden",
-            isComplete
+            isPublishReady
               ? "bg-emerald-200 dark:bg-emerald-900"
               : "bg-amber-200 dark:bg-amber-900",
           )}
@@ -246,7 +283,7 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
           <div
             className={cn(
               "h-full rounded-full transition-all duration-500",
-              isComplete ? "bg-emerald-500" : "bg-amber-500",
+              isPublishReady ? "bg-emerald-500" : "bg-amber-500",
             )}
             style={{ width: `${pct}%` }}
           />
@@ -264,7 +301,7 @@ export function SetupProgressCard({ setup }: { setup: SetupProgress }) {
                 className={cn(
                   "w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
                   done
-                    ? isComplete
+                    ? isPublishReady
                       ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400"
                       : "bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
                     : "bg-muted text-muted-foreground/50",
@@ -463,8 +500,52 @@ export function PreviewSkeleton() {
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5 items-start">
           <div className="space-y-7">
+            {/* Setup progress skeleton */}
+            <div className="rounded-xl border border-border p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5 flex-1">
+                  <Skeleton className="size-4 rounded-full mt-0.5 shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-36" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-full max-w-75" />
+                      <Skeleton className="h-3 w-5/6 max-w-65" />
+                    </div>
+                  </div>
+                </div>
+
+                <Skeleton className="h-5 w-10 shrink-0" />
+              </div>
+
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-3">
+                <div className="flex items-start gap-2">
+                  <Skeleton className="w-4 h-4 rounded-full mt-0.5 shrink-0" />
+
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-3 w-40" />
+                    <Skeleton className="h-3 w-full max-w-75" />
+                    <Skeleton className="h-3 w-4/5 max-w-55" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Skeleton className="w-5 h-5 rounded-full shrink-0" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Media */}
             <div className="space-y-2">
               <Skeleton className="w-full aspect-video rounded-2xl" />
@@ -603,6 +684,22 @@ export function PreviewSkeleton() {
                     <Skeleton className="h-3 w-24" />
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Premium status skeleton */}
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-40" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
               </div>
             </div>
           </div>
