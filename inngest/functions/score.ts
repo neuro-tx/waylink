@@ -3,11 +3,12 @@ import {
   getLowestPrice,
   getPriorityBoost,
   getServiceStats,
+  persistScoreResults,
 } from "@/lib/score-calc";
 import { inngest } from "../client";
+import { cron } from "inngest";
 import { db } from "@/db";
-import { productScores } from "@/db/schemas";
-import { eq } from "drizzle-orm";
+import pLimit from "p-limit";
 
 const computeScore = inngest.createFunction(
   {
@@ -15,7 +16,7 @@ const computeScore = inngest.createFunction(
     triggers: { event: "app/product.compute" },
   },
   async ({ event, step }) => {
-    const { serviceId, providerId } = event.data;
+    const { serviceId, providerId, updateProgress } = event.data;
 
     const scoreData = await step.run("get-score-data", async () => {
       const [stats, lowestPrice, priorityBoost] = await Promise.all([
@@ -47,16 +48,11 @@ const computeScore = inngest.createFunction(
     });
 
     await step.run("update-service-score", async () => {
-      await db
-        .update(productScores)
-        .set({
-          popularityScore: score.popularity,
-          priceScore: score.price,
-          ratingScore: score.rating,
-          finalScore: score.finalScore,
-          computedAt: new Date(),
-        })
-        .where(eq(productScores.productId, serviceId));
+      return persistScoreResults({
+        serviceId,
+        updateProgress: Boolean(updateProgress),
+        scores: score,
+      });
     });
 
     return {
@@ -67,4 +63,52 @@ const computeScore = inngest.createFunction(
   },
 );
 
-export const scoreFns = [computeScore];
+export const recomputeAllProductsCron = inngest.createFunction(
+  {
+    id: "recompute-all-products-cron",
+    triggers: [cron("0 3,15 * * *")],
+  },
+  async ({ step }) => {
+    const allProducts = await step.run("fetch-products", async () => {
+      return db.query.products.findMany({
+        columns: {
+          id: true,
+          providerId: true,
+        },
+      });
+    });
+    if (!allProducts.length) {
+      return {
+        success: true,
+        queued: 0,
+      };
+    }
+
+    const limit = pLimit(50);
+
+    let queued = 0;
+    await Promise.all(
+      allProducts.map((product) =>
+        limit(async () => {
+          await inngest.send({
+            name: "app/product.compute",
+            data: {
+              serviceId: product.id,
+              providerId: product.providerId,
+              updateProgress: false,
+            },
+          });
+
+          queued++;
+        }),
+      ),
+    );
+
+    return {
+      success: true,
+      queued,
+    };
+  },
+);
+
+export const scoreFns = [computeScore, recomputeAllProductsCron];

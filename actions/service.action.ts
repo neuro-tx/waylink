@@ -42,6 +42,7 @@ import {
 } from "@/lib/all-types";
 import { locationSlugGenerator } from "@/lib/helpers";
 import { PreviewService, VariantWithSchedules } from "@/lib/panel-types";
+import { inngest } from "@/inngest/client";
 
 type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
@@ -57,6 +58,12 @@ type ActionResult<T = null> =
       success: false;
       error: string;
     };
+
+interface PreviewServiceResponse {
+  success: boolean;
+  data: PreviewService | null;
+  error: string | null;
+}
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -310,7 +317,7 @@ export async function creatExperienceDetails(
   if (!metaData) return { success: false, error: "Empty data not allowed" };
 
   try {
-    await requireProvider(true);
+    const p = await requireProvider(true);
     const validate = experienceSchema.safeParse(metaData);
     if (!validate.success) {
       return {
@@ -394,6 +401,16 @@ export async function creatExperienceDetails(
     if (result.success) {
       await updateSetupProgress(serviceId, {
         hasMetadata: true,
+      });
+
+      // create productStats
+      await inngest.send({
+        name: "app/product.compute",
+        data: {
+          serviceId,
+          providerId: p.id,
+          updateProgress: true,
+        },
       });
     }
 
@@ -533,6 +550,18 @@ export async function createTransportDetails(
       };
     });
 
+    // create productStats
+    if (result.success) {
+      await inngest.send({
+        name: "app/product.compute",
+        data: {
+          serviceId,
+          providerId: p.id,
+          updateProgress: true,
+        },
+      });
+    }
+
     return result;
   } catch (error) {
     console.error(error);
@@ -644,12 +673,6 @@ export async function createSchedules(
           : "Unable to create schedules right now. Please try again.",
     };
   }
-}
-
-interface PreviewServiceResponse {
-  success: boolean;
-  data: PreviewService | null;
-  error: string | null;
 }
 
 export async function previewService(
@@ -772,9 +795,9 @@ export async function addServiceMedia(serviceId: string, media: MediaForm[]) {
 
     await db.insert(productMedia).values(mapped);
 
-    await updateSetupProgress(serviceId ,{
-      hasMedia: true
-    })
+    await updateSetupProgress(serviceId, {
+      hasMedia: true,
+    });
 
     return {
       success: true,

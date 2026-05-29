@@ -1,8 +1,10 @@
 import { db } from "@/db";
 import {
   plans,
+  productScores,
   productStats,
   productVariants,
+  setupProgress,
   subscriptions,
 } from "@/db/schemas";
 import { and, eq, min } from "drizzle-orm";
@@ -263,5 +265,73 @@ export async function getPriorityBoost(providerId: string): Promise<number> {
     return safeNumber(result?.boost, 1);
   } catch {
     return 1;
+  }
+}
+
+export async function persistScoreResults(params: {
+  serviceId: string;
+  updateProgress?: boolean;
+  scores: {
+    popularity: number;
+    price: number;
+    rating: number;
+    finalScore: number;
+  };
+}) {
+  const { serviceId, scores, updateProgress } = params;
+
+  try {
+    return await db.transaction(async (tx) => {
+      const [result] = await tx
+        .insert(productScores)
+        .values({
+          productId: serviceId,
+          popularityScore: scores.popularity,
+          priceScore: scores.price,
+          ratingScore: scores.rating,
+          finalScore: scores.finalScore,
+          computedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: productScores.productId,
+          set: {
+            popularityScore: scores.popularity,
+            priceScore: scores.price,
+            ratingScore: scores.rating,
+            finalScore: scores.finalScore,
+            computedAt: new Date(),
+          },
+        })
+        .returning();
+
+      if (!result) {
+        throw new Error("Failed to update product score");
+      }
+
+      // optional onboarding progress update
+      if (updateProgress) {
+        await tx
+          .insert(setupProgress)
+          .values({
+            productId: serviceId,
+            hasScore: true,
+          })
+          .onConflictDoUpdate({
+            target: setupProgress.productId,
+            set: {
+              hasScore: true,
+            },
+          });
+      }
+
+      return result;
+    });
+  } catch (error) {
+    console.error("Failed to persist score results", {
+      serviceId,
+      error,
+    });
+
+    throw error;
   }
 }
