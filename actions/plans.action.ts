@@ -197,6 +197,13 @@ export async function getActiveSubscription(): Promise<
       .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
+    if (!row)
+      return {
+        success: false,
+        error:
+          "No active subscription found. Your subscription may have expired or been canceled. Please visit the subscription page to renew or view your plan status.",
+      };
+
     return { success: true, data: (row as Subscription) ?? null };
   } catch (err: any) {
     console.error("[getActiveSubscription]", err);
@@ -480,7 +487,7 @@ export async function resumeSubscription(): Promise<ActionResult> {
         endDate: newEndDate,
         pausedAt: null,
         resumeAt: now,
-        status:"active"
+        status: "active",
       })
       .where(eq(subscriptions.id, sub.id));
 
@@ -551,7 +558,7 @@ export async function cancelSubscription(
       .limit(1);
 
     if (!row) throw new Error("this subscription not avaliable");
-    applyRules(immediate ? "expire":"cancel", row.status);
+    applyRules(immediate ? "expire" : "cancel", row.status);
 
     const now = new Date();
 
@@ -667,64 +674,5 @@ export async function upgradeSubscription(
     };
   } finally {
     revalidatePlanPaths();
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
-// Listing count management
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Increment listingsCount on the active subscription by 1 (on adding a service). */
-export async function incrementListingCount(): Promise<ActionResult> {
-  try {
-    const subResult = await getActiveSubscription();
-    if (!subResult.success || !subResult.data) {
-      return { success: false, error: "No active subscription." };
-    }
-
-    const sub = subResult.data;
-
-    // Guard against exceeding limit
-    const limitResult = await hasReachedListingLimit();
-    if (limitResult.data === true) {
-      return {
-        success: false,
-        error: "Listing limit reached. Please upgrade your plan.",
-      };
-    }
-
-    await db
-      .update(subscriptions)
-      .set({ listingsCount: sql`${subscriptions.listingsCount} + 1` })
-      .where(eq(subscriptions.id, sub.id));
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[incrementListingCount]", err);
-    return { success: false, error: err.message ?? "Failed to update count." };
-  }
-}
-
-/** Decrement listingsCount on the active subscription by 1 (on removing a service). */
-export async function decrementListingCount(): Promise<ActionResult> {
-  try {
-    const subResult = await getActiveSubscription();
-    if (!subResult.success || !subResult.data) {
-      return { success: false, error: "No active subscription." };
-    }
-
-    const sub = subResult.data;
-    if (sub.listingsCount <= 0) return { success: true };
-
-    await db
-      .update(subscriptions)
-      .set({
-        listingsCount: sql`GREATEST(${subscriptions.listingsCount} - 1, 0)`,
-      })
-      .where(eq(subscriptions.id, sub.id));
-
-    return { success: true };
-  } catch (err: any) {
-    console.error("[decrementListingCount]", err);
-    return { success: false, error: err.message ?? "Failed to update count." };
   }
 }

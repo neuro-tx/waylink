@@ -9,6 +9,7 @@ import {
   products,
   productVariants,
   setupProgress,
+  subscriptions,
   transports,
   transportSchedules,
 } from "@/db/schemas";
@@ -28,7 +29,7 @@ import {
   VariantForm,
   variantSchema,
 } from "@/validations";
-import { and, eq, inArray, InferInsertModel } from "drizzle-orm";
+import { and, eq, inArray, InferInsertModel, sql } from "drizzle-orm";
 import z from "zod";
 import { generateSlug, getDistanceFromLocations } from "@/lib/utils";
 import { getCurrentProvider } from "@/lib/provider-auth";
@@ -43,6 +44,7 @@ import {
 import { locationSlugGenerator } from "@/lib/helpers";
 import { PreviewService, VariantWithSchedules } from "@/lib/panel-types";
 import { inngest } from "@/inngest/client";
+import { getPlanById } from "./plans.action";
 
 type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
@@ -64,6 +66,13 @@ interface PreviewServiceResponse {
   data: PreviewService | null;
   error: string | null;
 }
+
+type ListingLimitResult = {
+  success: boolean;
+  unlimited: boolean;
+  limit: number | null;
+  error?: string;
+};
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -129,6 +138,9 @@ export async function createService(data: ProductForm) {
         success: false,
         error: "Validation error",
       };
+
+    const { success, error } = await updateListingCount(p.id, "increment");
+    if (!success) return { success: false, error };
 
     const result = await db.transaction(async (tx) => {
       const [res] = await tx
@@ -809,6 +821,95 @@ export async function addServiceMedia(serviceId: string, media: MediaForm[]) {
     return {
       success: false,
       error: "Failed to add service media",
+    };
+  }
+}
+
+export async function updateListingCount(
+  providerId: string,
+  operation: "increment" | "decrement",
+) {
+  try {
+    const [sub] = await db
+      .select({
+        id: subscriptions.id,
+        planId: subscriptions.planId,
+        listingsCount: subscriptions.listingsCount,
+      })
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.providerId, providerId),
+          inArray(subscriptions.status, ["active", "trialing"]),
+        ),
+      )
+      .limit(1);
+
+    if (!sub)
+      return {
+        success: false,
+        error: "No active subscription found",
+      };
+
+    const { limit, success, unlimited, error } = await checkLimit(sub.planId);
+    if (!success) {
+      return {
+        success: false,
+        error,
+      };
+    }
+
+    if (
+      operation === "increment" &&
+      !unlimited &&
+      limit !== null &&
+      sub.listingsCount >= limit
+    ) {
+      return {
+        success: false,
+        error: `Listing limit reached (${limit}/${limit})`,
+      };
+    }
+
+    await db
+      .update(subscriptions)
+      .set({
+        listingsCount:
+          operation === "increment"
+            ? sql`${subscriptions.listingsCount} + 1`
+            : sql`GREATEST(${subscriptions.listingsCount} - 1, 0)`,
+      })
+      .where(eq(subscriptions.id, sub.id));
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[updateListingCount]", err);
+
+    return {
+      success: false,
+      error: err.message ?? "Failed to update listing count.",
+    };
+  }
+}
+
+async function checkLimit(planId: string): Promise<ListingLimitResult> {
+  try {
+    const { success, data, error } = await getPlanById(planId);
+    if (!success || !data)
+      throw new Error(error || "Could not load plan details.");
+
+    const maxListings = data.maxListings;
+    return {
+      success: true,
+      unlimited: maxListings === null,
+      limit: maxListings,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      unlimited: false,
+      limit: null,
+      error: error.message || "Failed to check listing limit.",
     };
   }
 }
