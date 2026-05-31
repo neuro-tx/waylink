@@ -20,8 +20,21 @@ import {
 import { RevenueDataPoint } from "@/lib/panel-types";
 import { Activity } from "lucide-react";
 import { useProviderContext } from "@/components/providers/ProviderContext";
+import { cn } from "@/lib/utils";
 
-export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
+type RevenueChartProps = {
+  data: RevenueDataPoint[];
+  title?: string;
+  description?: string;
+  block?: boolean;
+};
+
+export function RevenueChart({
+  data,
+  title = "Revenue Trends",
+  description = "Activity and revenue patterns over time.",
+  block = true,
+}: RevenueChartProps) {
   const { config } = useProviderContext();
   const baseColr = config?.themeColor || "blue";
 
@@ -55,12 +68,10 @@ export function RevenueChart({ data }: { data: RevenueDataPoint[] }) {
     }).format(val);
 
   return (
-    <Card className="border-border/60">
+    <Card className={cn(block ? "border border-border/60" : "border-none")}>
       <CardHeader>
-        <CardTitle>Revenue Trends</CardTitle>
-        <CardDescription>
-          Activity and revenue patterns over time.
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
 
       <CardContent>

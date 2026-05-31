@@ -292,12 +292,6 @@ export interface PeakBookingHours {
   totalBookingsInPeriod: number;
 }
 
-export interface RevenueDataPoint {
-  date: Date | string;
-  revenue: number;
-  bookings: number;
-}
-
 export interface RevenueOverTime {
   current: RevenueDataPoint[];
   previous: RevenueDataPoint[];
