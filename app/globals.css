@@ -98,6 +98,19 @@
   --waylink-fade: oklch(97.33% 0.00685 88.609);
   --green-1: oklch(74.608% 0.1411 174.692);
   --light-gray: oklch(51.07% 0.01085 62.288);
+
+  --heatmap-0: oklch(0.97 0 0);
+  --heatmap-0-border: oklch(0.922 0 0);
+  --heatmap-1: oklch(0.93 0.04 260);
+  --heatmap-1-text: oklch(0.45 0.18 260);
+  --heatmap-2: oklch(0.82 0.1 255);
+  --heatmap-2-text: oklch(0.3 0.2 260);
+  --heatmap-3: oklch(0.65 0.2 260);
+  --heatmap-3-text: oklch(0.98 0 0);
+  --heatmap-4: oklch(0.48 0.26 260);
+  --heatmap-4-text: oklch(0.98 0 0);
+  --heatmap-peak-badge: oklch(0.7 0.19 39);
+  --heatmap-peak-text: oklch(0.98 0 0);
 }
 
 .dark {
@@ -133,6 +146,19 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
   --waylink-fade: oklab(17.082% 0.00272 -0.00999);
+
+  --heatmap-0: oklch(0.205 0 0);
+  --heatmap-0-border: oklch(1 0 0 / 8%);
+  --heatmap-1: oklch(0.25 0.06 260);
+  --heatmap-1-text: oklch(0.7 0.15 260);
+  --heatmap-2: oklch(0.35 0.14 260);
+  --heatmap-2-text: oklch(0.88 0.1 260);
+  --heatmap-3: oklch(0.5 0.22 260);
+  --heatmap-3-text: oklch(0.98 0 0);
+  --heatmap-4: oklch(0.68 0.24 260);
+  --heatmap-4-text: oklch(0.12 0 0);
+  --heatmap-peak-badge: oklch(0.7 0.19 39);
+  --heatmap-peak-text: oklch(0.98 0 0);
 }
 
 @layer base {

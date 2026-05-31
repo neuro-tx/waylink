@@ -55,7 +55,7 @@ export function ProductGrid({ products }: { products: ProductCardProps[] }) {
 
 export function ProductCard({ product ,detailsUrl }: { product: ProductCardProps; detailsUrl?: string }) {
   const { cover } = displayMedia(product.media);
-  const { to } = normalizeLocation(product.locations);
+  const { to } = normalizeLocation(product.locations || []);
   const router = useRouter();
 
   const alternate = !detailsUrl ? (product.type === "experience" ? `/experiences/${product.id}` : `/transport/${product.id}`) : detailsUrl;

@@ -108,7 +108,7 @@ export function calculateGrowthMetric(
     return {
       value: null,
       direction: curr > 0 ? "up" : "flat",
-      formatted: curr > 0 ? "+100%" : "0%",
+      formatted: curr > 0 ? "New" : "0%",
     };
   }
 

@@ -262,3 +262,47 @@ export type VariantWithSchedules = {
   infantPrice: string;
   transportSchedules: Schedule[];
 };
+
+export interface PayoutSummary {
+  grossEarnings: number;
+  platformFeeAmount: number;
+  platformFeeRate: number;
+  netPayout: number;
+  pendingPayoutAmount: number;
+  nextPayoutDate: Date;
+  periodComparison: {
+    current: number;
+    previous: number;
+    changePercent: number;
+  };
+}
+
+export interface HeatmapCell {
+  dayOfWeek: number;
+  hour: number;
+  count: number;
+  hourLabel: string;
+  intensity: 0 | 1 | 2 | 3 | 4;
+}
+
+export interface PeakBookingHours {
+  cells: HeatmapCell[];
+  peakDay: string;
+  peakHour: string;
+  totalBookingsInPeriod: number;
+}
+
+export interface RevenueDataPoint {
+  date: Date | string;
+  revenue: number;
+  bookings: number;
+}
+
+export interface RevenueOverTime {
+  current: RevenueDataPoint[];
+  previous: RevenueDataPoint[];
+  totalRevenue: number;
+  totalBookings: number;
+  peakDay: RevenueDataPoint;
+  avgDailyRevenue: number;
+}
