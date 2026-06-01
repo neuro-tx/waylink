@@ -9,6 +9,7 @@ import { PayoutSummaryCard } from "../_components/Payoutsummarycard";
 import { StatusPieChart } from "../_components/charts/StatusPieChart";
 import { AnalyticsKpiCards } from "../_components/AnalyticsKpiCards";
 import { ProviderStatsOverview } from "../_components/ProviderStatsOverview";
+import { PeakBookings } from "../_components/Peakbookings";
 
 export const metadata: Metadata = {
   title: "Analytics",
@@ -56,8 +57,15 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
     );
   }
 
-  const { payout, revenues, bookingBreakdown, kpis, stats, peakBooking } =
-    result.data;
+  const {
+    payout,
+    revenues,
+    bookingBreakdown,
+    kpis,
+    stats,
+    peakBooking,
+    statusBars,
+  } = result.data;
 
   return (
     <main className="min-h-screen bg-background">
@@ -71,11 +79,13 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
 
           <AnalyticsRevenue revenues={revenues} />
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <StatusPieChart data={bookingBreakdown} />
 
             <PayoutSummaryCard payout={payout} />
           </div>
+
+          <PeakBookings data={peakBooking} statusBars={statusBars} />
         </div>
       </div>
     </main>

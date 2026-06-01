@@ -17,12 +17,13 @@ interface ProviderStatsProps {
 }
 
 export function ProviderStatsOverview({ stats }: ProviderStatsProps) {
-  const hasLimit = stats.maxListings !== null;
+  const { maxListings, remainingListings } = stats;
+  const hasLimit = maxListings !== null && remainingListings !== null;
+  const used = hasLimit ? maxListings - remainingListings : 0;
 
-  const usagePercentage =
-    stats.maxListings && stats.maxListings > 0
-      ? Math.min((stats.totalProducts / stats.maxListings) * 100, 100)
-      : 0;
+  const usagePercentage = hasLimit
+    ? Math.min((used / maxListings) * 100, 100)
+    : 0;
 
   const progressColor =
     usagePercentage >= 90

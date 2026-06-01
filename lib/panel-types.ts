@@ -300,3 +300,10 @@ export interface RevenueOverTime {
   peakDay: RevenueDataPoint;
   avgDailyRevenue: number;
 }
+
+export type StatusType = "active" | "paused" | "draft" | "archived";
+export type StatusItem = {
+  status: StatusType;
+  count: number;
+  percentage: number;
+};

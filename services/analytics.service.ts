@@ -7,6 +7,7 @@ import {
   PeakBookingHours,
   RevenueDataPoint,
   RevenueOverTime,
+  StatusItem,
 } from "@/lib/panel-types";
 import { and, eq, sql, gte, lte, inArray, sum, count } from "drizzle-orm";
 
@@ -154,7 +155,6 @@ export async function getPeakBookingHours(
         eq(bookings.providerId, providerId),
         inArray(bookings.status, ["confirmed", "completed", "pending"]),
         gte(bookings.createdAt, from),
-        sql`EXTRACT(HOUR FROM ${bookings.createdAt}) BETWEEN 8 AND 22`,
       ),
     )
     .groupBy(
@@ -190,7 +190,7 @@ export async function getPeakBookingHours(
 
   const cells: HeatmapCell[] = [];
 
-  for (let hour = 8; hour <= 22; hour++) {
+  for (let hour = 0; hour <= 24; hour++) {
     for (let day = 0; day <= 6; day++) {
       const count = grid.get(day * 24 + hour) ?? 0;
       let intensity: 0 | 1 | 2 | 3 | 4 = 0;
@@ -312,4 +312,18 @@ export async function getRevenueOverTime(
     peakDay,
     avgDailyRevenue,
   };
+}
+
+export async function getServicesStatus(
+  providerId: string,
+): Promise<StatusItem[]> {
+  return await db
+    .select({
+      status: products.status,
+      count: sql<number>`count(*)`,
+      percentage: sql<number>`round(count(*) * 100.0 / sum(count(*)) over (),1)::float`,
+    })
+    .from(products)
+    .where(eq(products.providerId, providerId))
+    .groupBy(products.status);
 }

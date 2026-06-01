@@ -46,7 +46,7 @@ export function PayoutSummaryCard({ payout }: Props) {
       className: "text-card-foreground",
     },
     {
-      label: `Platform fee (${(payout.platformFeeRate * 100).toFixed(0)}%)`,
+      label: `Platform fee (${(payout.platformFeeRate).toFixed(0)}%)`,
       value: `− ${fmt(payout.platformFeeAmount)}`,
       muted: true,
       className: "text-destructive",

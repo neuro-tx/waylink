@@ -8,6 +8,7 @@ import {
   getPayoutSummary,
   getPeakBookingHours,
   getRevenueOverTime,
+  getServicesStatus,
 } from "@/services/analytics.service";
 import { providerDashboard } from "@/services/providerBoard.service";
 import {
@@ -37,15 +38,23 @@ export async function analyticsController(period: DateRange = "30d") {
     const { provider } = await getCurrentProvider();
     if (!provider) throw new Error("Unauthorized.");
 
-    const [payout, peakBooking, revenues, bookingBreakdown, kpis, stats] =
-      await Promise.all([
-        getPayoutSummary(provider.id, period),
-        getPeakBookingHours(provider.id, period),
-        getRevenueOverTime(provider.id, period),
-        getBookingStatusBreakdown(provider.id),
-        getProviderKPIs(provider.id, period),
-        getProviderStats(provider.id),
-      ]);
+    const [
+      payout,
+      peakBooking,
+      revenues,
+      bookingBreakdown,
+      kpis,
+      stats,
+      statusBars,
+    ] = await Promise.all([
+      getPayoutSummary(provider.id, period),
+      getPeakBookingHours(provider.id, period),
+      getRevenueOverTime(provider.id, period),
+      getBookingStatusBreakdown(provider.id),
+      getProviderKPIs(provider.id, period),
+      getProviderStats(provider.id),
+      getServicesStatus(provider.id),
+    ]);
 
     return {
       success: true,
@@ -56,6 +65,7 @@ export async function analyticsController(period: DateRange = "30d") {
         bookingBreakdown,
         kpis,
         stats,
+        statusBars,
       },
     };
   } catch (error) {
