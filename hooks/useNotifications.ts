@@ -8,6 +8,8 @@ import {
 import { Notification } from "@/db/schemas";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
+export type RecipientType = "user" | "provider" | "admin";
+
 type State = {
   notifications: Notification[];
   unreadCount: number;
@@ -18,7 +20,17 @@ type State = {
   empty: boolean;
 };
 
-export function useNotifications(limit = 20) {
+type UseNotificationsProps = {
+  recipient: RecipientType;
+  recipientId?: string;
+  limit?: number;
+};
+
+export function useNotifications({
+  recipient,
+  recipientId,
+  limit = 20,
+}: UseNotificationsProps) {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<State>({
     notifications: [],
@@ -37,7 +49,11 @@ export function useNotifications(limit = 20) {
     async (p: number) => {
       setState((s) => ({ ...s, isLoading: true, error: null }));
 
-      const result = await getNotifications(limit, (p - 1) * limit);
+      const result = await getNotifications({
+        recipientType: recipient,
+        recipientId: recipientId,
+        pagination: { limit, offset: (p - 1) * limit },
+      });
 
       if (result.success) {
         setState((s) => ({
@@ -85,7 +101,7 @@ export function useNotifications(limit = 20) {
     }));
 
     startTransition(async () => {
-      const result = await markAsRead(id);
+      const result = await markAsRead(id, recipientId);
       if (!result.success) {
         setState((s) => ({
           ...s,
@@ -112,7 +128,7 @@ export function useNotifications(limit = 20) {
     }));
 
     startTransition(async () => {
-      const result = await markAllAsRead();
+      const result = await markAllAsRead(recipientId);
       if (!result.success) {
         fetch(page);
         setState((s) => ({ ...s, error: result.error }));
@@ -134,7 +150,7 @@ export function useNotifications(limit = 20) {
       }));
 
       startTransition(async () => {
-        const result = await deleteNotification(id);
+        const result = await deleteNotification(id, recipientId);
         if (!result.success) {
           setState((s) => ({
             ...s,
@@ -161,7 +177,7 @@ export function useNotifications(limit = 20) {
     }));
 
     startTransition(async () => {
-      const result = await clearReadNotifications();
+      const result = await clearReadNotifications(recipientId);
       if (!result.success) {
         setState((s) => ({
           ...s,

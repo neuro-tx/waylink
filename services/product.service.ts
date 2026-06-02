@@ -304,7 +304,7 @@ const getProductById = async (id: string) => {
     with: {
       variants: {
         with: {
-          transportSchedule: true,
+          transportSchedules: true
         },
       },
     },
