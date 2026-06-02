@@ -10,17 +10,14 @@ import {
   Users,
   Star,
   BarChart3,
-  Settings,
   Bell,
   LucideIcon,
   HelpCircle,
   CreditCard,
-  Layers,
   Cog,
   Loader2,
   User,
   LogOut,
-  Plus,
   LifeBuoy,
 } from "lucide-react";
 
@@ -140,9 +137,14 @@ export function ProviderSidebar() {
 
   const NAV_ACCOUNT: NavItem[] = [
     {
-      title: "Settings",
-      icon: Settings,
-      href: "/provider/settings",
+      title: "Account",
+      icon: User,
+      href: "/account",
+    },
+    {
+      title: "Notifications",
+      href: "/provider/notifications",
+      icon: Bell,
     },
     {
       title: "Help & Support",
@@ -343,66 +345,26 @@ export function ProviderHeader() {
       <div className="flex items-center gap-2 md:gap-3">
         <GlobalSearch />
 
-        <Button size="icon" variant="ghost" className="relative">
-          <Bell className="size-4" />
-          <span
-            className={`absolute top-1.5 right-1.5 size-1.5 rounded-full ${config.twBgColor}`}
-          />
+        <Button size="icon" variant="ghost" className="relative" asChild>
+          <Link href="/provider/notifications">
+            <Bell className="size-4" />
+            <span
+              className={`absolute top-1.5 right-1.5 size-1.5 rounded-full ${config.twBgColor}`}
+            />
+          </Link>
         </Button>
+
         <ThemeToggle />
 
         {user && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="outline-none">
-                <Avatar className="size-8 cursor-pointer">
-                  <AvatarImage src={user.image || ""} />
-                  <AvatarFallback
-                    className={`text-xs font-semibold ${config.twLightBg} ${config.twTextColor}`}
-                  >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="px-2 py-1.5 flex items-center gap-2">
-                <Avatar className="size-8 cursor-pointer">
-                  <AvatarImage src={user.image || ""} />
-                  <AvatarFallback
-                    className={`text-xs font-semibold ${config.twLightBg} ${config.twTextColor}`}
-                  >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium truncate">{user.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.email}
-                  </p>
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem asChild>
-                <Link href="/account">
-                  <User />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600 cursor-pointer"
-                onClick={() => setOpen(true)}
-              >
-                <LogOut className="text-red-600" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Avatar className="size-8">
+            <AvatarImage src={user.image || ""} />
+            <AvatarFallback
+              className={`text-xs font-semibold ${config.twLightBg} ${config.twTextColor}`}
+            >
+              {initials}
+            </AvatarFallback>
+          </Avatar>
         )}
       </div>
     </header>

@@ -16,7 +16,6 @@ import {
   LayoutList,
   Calendar,
   User,
-  Settings,
   LifeBuoy,
   CheckCircle2,
   Clock,
@@ -61,7 +60,6 @@ const categories = [
     icon: User,
     desc: "Staff access and permissions",
   },
-  { title: "Settings", icon: Settings, desc: "Personalize your experience" },
 ];
 
 export default function HelpPage() {
@@ -238,7 +236,7 @@ export default function HelpPage() {
           <Link href="/provider/plans">View Plans</Link>
         </Button>
         <Button variant="outline" asChild size="lg">
-          <Link href="/provider/settings">Account Settings</Link>
+          <Link href="/account">Account</Link>
         </Button>
         <Button size="lg">
           <LifeBuoy className="mr-2 size-4" /> Contact Human Support
