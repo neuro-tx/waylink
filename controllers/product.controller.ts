@@ -20,4 +20,8 @@ async function getProduct(id: string) {
   return productSerices.getProductById(id);
 }
 
-export const productController = { getProducts, getProduct };
+async function productsSearch(url: string) {
+  return await productSerices.getProductsSearch(url);
+}
+
+export const productController = { getProducts, getProduct, productsSearch };

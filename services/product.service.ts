@@ -304,7 +304,7 @@ const getProductById = async (id: string) => {
     with: {
       variants: {
         with: {
-          transportSchedules: true
+          transportSchedules: true,
         },
       },
     },
@@ -378,9 +378,32 @@ const getProductById = async (id: string) => {
   };
 };
 
+const getProductsSearch = async (url: string) => {
+  const { query } = parseQuery(url);
+
+  const whereSQl = buildWhereConditions(query?.where ?? {}, products);
+  const searchSQl = buildSearchQuery(
+    products.searchVector,
+    query?.search?.term,
+    "fts",
+  );
+
+  const final = mergeWhere(whereSQl, searchSQl);
+
+  const { searchVector, ...product } = getTableColumns(products);
+  const result = await db
+    .select({ ...product })
+    .from(products)
+    .where(final)
+    .limit(10);
+
+  return result;
+};
+
 export const productSerices = {
   getProducts,
   getProductById,
   featuredProducts,
   mostRatedProducts,
+  getProductsSearch,
 };

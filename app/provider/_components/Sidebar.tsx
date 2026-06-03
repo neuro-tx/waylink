@@ -277,7 +277,7 @@ export function ProviderSidebar() {
 }
 
 export function ProviderHeader() {
-  const { type, config, user } = useProviderContext();
+  const { type, config, user ,provider } = useProviderContext();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -343,7 +343,7 @@ export function ProviderHeader() {
       </div>
 
       <div className="flex items-center gap-2 md:gap-3">
-        <GlobalSearch />
+        <GlobalSearch providerId={provider?.id} />
 
         <Button size="icon" variant="ghost" className="relative" asChild>
           <Link href="/provider/notifications">
