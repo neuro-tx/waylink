@@ -465,13 +465,7 @@ function CoverPlaceholder({
 
   if (cover) {
     return (
-      <Image
-        src={cover}
-        alt={type}
-        width={200}
-        height={200}
-        className="w-full h-full object-cover"
-      />
+      <img src={cover} alt={type} className="w-full h-full object-cover" />
     );
   }
 

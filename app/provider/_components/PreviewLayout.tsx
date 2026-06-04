@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { DifficultyLevel, SetupProgress } from "@/lib/all-types";
 import {
   FileText,
-  Image,
   GitBranch,
   Tag,
   Star,
@@ -25,9 +24,11 @@ import {
   Route,
   X,
   Clock3,
+  Images,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 
 const STEPS: {
   key: keyof Omit<SetupProgress, "productId" | "createdAt" | "updatedAt">;
@@ -35,7 +36,7 @@ const STEPS: {
   icon: React.ElementType;
 }[] = [
   { key: "mainInfo", label: "Main information", icon: FileText },
-  { key: "hasMedia", label: "Photos & media", icon: Image },
+  { key: "hasMedia", label: "Photos & media", icon: Images },
   { key: "hasVariants", label: "Variants", icon: GitBranch },
   { key: "hasMetadata", label: "Metadata", icon: Tag },
   { key: "hasScore", label: "Score", icon: Star },
@@ -116,10 +117,16 @@ export function MediaGallery({ media }: { media: ServiceMedia[] }) {
                 "shrink-0 size-16 rounded-lg overflow-hidden border-2 transition-all",
                 i === activeIdx
                   ? "border-primary ring-2 ring-primary/20"
-                  : "border-transparent opacity-60 hover:opacity-100",
+                  : "border-transparent opacity-70 hover:opacity-100",
               )}
             >
-              <img src={m.url} alt="" className="w-full h-full object-cover" />
+              <Image
+                src={m.url}
+                width={90}
+                height={90}
+                alt="Picture of the author"
+                className="w-full h-full object-cover"
+              />
             </button>
           ))}
         </div>

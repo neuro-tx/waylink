@@ -1,5 +1,7 @@
 import { db } from "@/db";
 import {
+  bookingItems,
+  bookings,
   experiences,
   location,
   productMedia,
@@ -7,8 +9,10 @@ import {
   products,
   productScores,
   productStats,
+  productVariants,
   providers,
   transports,
+  wishlistItems,
 } from "@/db/schemas";
 import { parseQuery } from "@/lib/query_parser/analyzer";
 import {
@@ -19,6 +23,7 @@ import {
 } from "@/lib/query_parser/helpers";
 import {
   and,
+  count,
   desc,
   eq,
   getTableColumns,
@@ -400,10 +405,149 @@ const getProductsSearch = async (url: string) => {
   return result;
 };
 
+const getServiceAnalytics = async (providerId: string, id: string) => {
+  const [service] = await db
+    .select({
+      id: products.id,
+      providerId: products.providerId,
+    })
+    .from(products)
+    .where(eq(products.id, id))
+    .limit(1);
+
+  if (!service) throw new Error("Service not found.");
+  if (service.providerId !== providerId)
+    throw new Error("You do not have permission to access this service.");
+
+  const [
+    [stats],
+    [score],
+    [wishListCount],
+    variantsTable,
+    bookingStatusBreakdown,
+    passengerBreakDown,
+    recentBookings,
+    monthlyTrends,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(productStats)
+      .where(eq(productStats.productId, id))
+      .limit(1),
+
+    db
+      .select()
+      .from(productScores)
+      .where(eq(productScores.productId, id))
+      .limit(1),
+
+    db
+      .select({ total: count() })
+      .from(wishlistItems)
+      .where(eq(wishlistItems.itemId, id)),
+
+    db
+      .select({
+        varId: productVariants.id,
+        name: productVariants.name,
+        status: productVariants.status,
+        capacity: productVariants.capacity,
+        adultPrice: productVariants.adultPrice,
+        childPrice: productVariants.childPrice,
+        infantPrice: productVariants.infantPrice,
+        bookingsCount: count(bookings.id),
+        totalParticipantsCount: sql<number>`coalesce(sum(${bookings.participantsCount}), 0)`,
+        revenue: sql<number>`coalesce(sum(
+          case
+            when ${bookings.status} in ('completed','confirmed')
+            then ${bookings.totalAmount}
+            else 0
+          end
+        ),0)`,
+      })
+      .from(productVariants)
+      .leftJoin(
+        bookings,
+        and(
+          eq(bookings.variantId, productVariants.id),
+          eq(bookings.productId, id),
+        ),
+      )
+      .where(eq(productVariants.productId, id))
+      .groupBy(productVariants.id),
+
+    db
+      .select({
+        status: bookings.status,
+        count: count(),
+        percentage: sql<number>`round(count(*) * 100.0 / sum(count(*)) over (), 1)::float`,
+      })
+      .from(bookings)
+      .where(eq(bookings.productId, id))
+      .groupBy(bookings.status),
+
+    db
+      .select({
+        passengerType: bookingItems.passengerType,
+        count: sql<number>`coalesce(sum(${bookingItems.quantity}), 0)`,
+      })
+      .from(bookings)
+      .innerJoin(bookingItems, eq(bookingItems.bookingId, bookings.id))
+      .where(eq(bookings.productId, id))
+      .groupBy(bookingItems.passengerType),
+
+    db
+      .select({
+        id: bookings.id,
+        status: bookings.status,
+        totalAmount: bookings.totalAmount,
+        participantsCount: bookings.participantsCount,
+        createdAt: bookings.createdAt,
+        variantName: productVariants.name,
+        customerId: bookings.userId,
+      })
+      .from(bookings)
+      .leftJoin(productVariants, eq(productVariants.id, bookings.variantId))
+      .where(eq(bookings.productId, id))
+      .orderBy(desc(bookings.createdAt))
+      .limit(10),
+
+    db
+      .select({
+        monthNumber: sql<number>`extract(month from ${bookings.createdAt})::int`,
+        monthName: sql<string>`to_char(${bookings.createdAt}, 'Mon')`,
+        bookingsCount: count(bookings.id),
+        revenue: sql<number>`coalesce(sum(
+          case when ${bookings.status} in ('completed','confirmed')
+               then ${bookings.totalAmount} else 0 end
+        ), 0)`,
+      })
+      .from(bookings)
+      .where(eq(bookings.productId, id))
+      .groupBy(
+        sql`extract(month from ${bookings.createdAt})`,
+        sql`to_char(${bookings.createdAt}, 'Mon')`,
+      )
+      .orderBy(sql`extract(month from ${bookings.createdAt})`),
+  ]);
+
+  return {
+    stats,
+    score,
+    wishListCount: wishListCount.total,
+    variants: variantsTable,
+    bookingStatusBreakdown,
+    passengerBreakDown,
+    recentBookings,
+    monthlyTrends,
+  };
+};
+
 export const productSerices = {
   getProducts,
   getProductById,
   featuredProducts,
   mostRatedProducts,
   getProductsSearch,
+  getServiceAnalytics,
 };

@@ -17,6 +17,7 @@ import {
   RevenueOverTime,
 } from "@/lib/panel-types";
 import { ProviderStats } from "@/lib/all-types";
+import { productSerices } from "@/services/product.service";
 
 const { getBookingStatusBreakdown, getProviderKPIs, getProviderStats } =
   providerDashboard;
@@ -80,74 +81,11 @@ export async function analyticsController(period: DateRange = "30d") {
   }
 }
 
-// export interface PayoutSummary {
-//   grossEarnings: number;
-//   platformFeeAmount: number;
-//   platformFeeRate: number;
-//   netPayout: number;
-//   pendingPayoutAmount: number;
-//   nextPayoutDate: Date;
-//   periodComparison: {
-//     current: number;
-//     previous: number;
-//     changePercent: number;
-//   };
-// }
+export async function getServiceAnalytics(serviceId: string) {
+  if (!serviceId) throw new Error("Service ID is required.");
+  const { provider } = await getCurrentProvider();
+  if (!provider)
+    throw new Error("You must be signed in to view service analytics.");
 
-// export interface HeatmapCell {
-//   dayOfWeek: number;
-//   hour: number;
-//   count: number;
-//   hourLabel: string;
-//   intensity: 0 | 1 | 2 | 3 | 4;
-// }
-
-// export interface PeakBookingHours {
-//   cells: HeatmapCell[];
-//   peakDay: string;
-//   peakHour: string;
-//   totalBookingsInPeriod: number;
-// }
-
-// export interface RevenueDataPoint {
-//   date: Date | string;
-//   revenue: number;
-//   bookings: number;
-// }
-
-// export interface RevenueOverTime {
-//   current: RevenueDataPoint[];
-//   previous: RevenueDataPoint[];
-//   totalRevenue: number;
-//   totalBookings: number;
-//   peakDay: RevenueDataPoint;
-//   avgDailyRevenue: number;
-// }
-// export interface BookingStatusBreakdown {
-//   status: BookingStatus;
-//   count: number;
-//   percentage: number;
-// }
-// export type GrowthMetric = {
-//   value: number | null;
-//   direction: "up" | "down" | "flat" | "n/a";
-//   formatted: string;
-// };
-
-// export interface ProviderKPIs {
-//   repeatCustomerRate: number;
-//   avgRevenuePerBooking: number;
-//   revenueGrowth: GrowthMetric;
-//   bookingGrowth: GrowthMetric;
-//   cancellationRate: number;
-// }
-// export type ProviderStats = {
-//   totalServices: number;
-//   avgRating: string;
-//   totalReviews: number;
-//   fiveStar: number;
-//   fourStar: number;
-//   threeStar: number;
-//   twoStar: number;
-//   oneStar: number;
-// };
+  return await productSerices.getServiceAnalytics(provider.id, serviceId);
+}

@@ -306,7 +306,6 @@ async function getServices(
       })
       .from(products)
       .innerJoin(productStats, eq(products.id, productStats.productId))
-      .leftJoin(providers, eq(products.providerId, providers.id))
       .leftJoin(productMedia, eq(products.id, productMedia.productId))
       .leftJoin(location, eq(products.id, location.productId))
       .where(baseWhere)
