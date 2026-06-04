@@ -151,3 +151,11 @@ export function locationSlugGenerator(data: {
   const base = `${generateSlug(initials(data.city + data.country))}-${data.type}`;
   return `${base}-${nanoid(6)}`;
 }
+
+type Status = "draft" | "active" | "paused" | "archived";
+export const actionTransitions: Record<Status, Exclude<Status, "draft">[]> = {
+  draft: ["active", "archived"],
+  active: ["paused", "archived"],
+  paused: ["active", "archived"],
+  archived: ["active"],
+};

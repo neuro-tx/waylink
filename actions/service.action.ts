@@ -41,7 +41,11 @@ import {
   TransportClass,
   TransportType,
 } from "@/lib/all-types";
-import { locationSlugGenerator } from "@/lib/helpers";
+import {
+  actionTransitions,
+  isFullyComplete,
+  locationSlugGenerator,
+} from "@/lib/helpers";
 import { PreviewService, VariantWithSchedules } from "@/lib/panel-types";
 import { inngest } from "@/inngest/client";
 import { getPlanById } from "./plans.action";
@@ -73,6 +77,12 @@ type ListingLimitResult = {
   limit: number | null;
   error?: string;
 };
+
+type Status = "draft" | "active" | "paused" | "archived";
+type BulkUpdatePayload = {
+  id: string;
+  status: Status;
+}[];
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -910,6 +920,146 @@ async function checkLimit(planId: string): Promise<ListingLimitResult> {
       unlimited: false,
       limit: null,
       error: error.message || "Failed to check listing limit.",
+    };
+  }
+}
+
+export async function updateServicesStatus(
+  providerId: string,
+  payload: BulkUpdatePayload,
+) {
+  if (!payload?.length) {
+    return { success: false, error: "No services provided." };
+  }
+
+  const targetStatus = payload[0].status;
+  if (targetStatus === "draft") {
+    return { success: false, error: "Cannot set services back to draft." };
+  }
+
+  if (payload.some((p) => p.status !== targetStatus)) {
+    return {
+      success: false,
+      error: "All items in a bulk update must share the same target status.",
+    };
+  }
+
+  try {
+    const p = await requireProvider();
+    if (p.id !== providerId)
+      return {
+        success: false,
+        error: "You do not have permission to execute this action.",
+      };
+
+    const ids = payload.map((p) => p.id);
+
+    const existingServices = await db
+      .select({
+        title: products.title,
+        id: products.id,
+        status: products.status,
+        providerId: products.providerId,
+      })
+      .from(products)
+      .where(inArray(products.id, ids));
+
+    const notFound = ids.filter(
+      (id) => !existingServices.find((s) => s.id === id),
+    );
+    if (notFound.length) {
+      return {
+        success: false,
+        error: `Service(s) not found: ${notFound.join(", ")}`,
+      };
+    }
+
+    const unauthorized = existingServices.filter(
+      (s) => s.providerId !== providerId,
+    );
+    if (unauthorized.length) {
+      return {
+        success: false,
+        error: "One or more services do not belong to your account.",
+      };
+    }
+
+    const transitionErrors: Record<
+      string,
+      {
+        title: string;
+        error: string;
+      }
+    > = {};
+    for (const service of existingServices) {
+      const currentStatus = service.status as Status;
+      const allowed = actionTransitions[currentStatus];
+      if (!allowed.includes(targetStatus as Exclude<Status, "draft">)) {
+        transitionErrors[service.id] = {
+          title: service.title,
+          error: `Cannot transition from "${currentStatus}" to "${targetStatus}".`,
+        };
+      }
+    }
+
+    if (targetStatus === "active") {
+      await Promise.all(
+        existingServices
+          .filter((s) => !transitionErrors[s.id])
+          .map(async (service) => {
+            const setup = await getServiceSetup(service.id);
+            const passed = isFullyComplete(setup);
+            if (!passed) {
+              transitionErrors[service.id] = {
+                title: service.title,
+                error: `Service setup is incomplete and cannot be activated.`,
+              };
+            }
+          }),
+      );
+    }
+
+    if (Object.keys(transitionErrors).length > 0) {
+      if (Object.keys(transitionErrors).length === ids.length) {
+        return {
+          success: false,
+          error:
+            ids.length === 1
+              ? Object.values(transitionErrors)[0].error
+              : "None of the selected services could be updated.",
+          details: transitionErrors,
+        };
+      }
+
+      const validIds = ids.filter((id) => !transitionErrors[id]);
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(products)
+          .set({ status: targetStatus, updatedAt: new Date() })
+          .where(inArray(products.id, validIds));
+      });
+
+      return {
+        success: false,
+        error: `${validIds.length} of ${ids.length} services updated. Some could not be changed.`,
+        details: transitionErrors,
+      };
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(products)
+        .set({ status: targetStatus })
+        .where(inArray(products.id, ids));
+    });
+
+    return { success: true, updated: ids.length };
+  } catch (err) {
+    console.error("Bulk update error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update services.",
     };
   }
 }

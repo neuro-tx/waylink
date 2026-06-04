@@ -5,14 +5,8 @@ import {
   CheckSquare,
   Square,
   Star,
-  MoreHorizontal,
-  Trash2,
-  Edit2,
-  ToggleLeft,
-  ToggleRight,
   MapPin,
   Users,
-  Pencil,
   Navigation,
   Compass,
   Search,
@@ -23,18 +17,10 @@ import {
 import { useSelect } from "@/hooks/useSelect";
 import { Media, Product } from "@/lib/all-types";
 import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { displayMedia, initials, normalizeLocation } from "@/lib/helpers";
 import Image from "next/image";
 import { useProviderContext } from "@/components/providers/ProviderContext";
 import { Separator } from "@/components/ui/separator";
-import * as SwitchPrimitives from "@radix-ui/react-switch";
 import { RouteBadge } from "@/components/Transport";
 import { Input } from "@/components/ui/input";
 import {
@@ -48,7 +34,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
@@ -115,45 +100,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-type ServiceSwitchProps = {
-  type: "transport" | "experience";
-  status: "active" | "draft" | "paused" | "archived";
-  onToggleStatus: (checked: boolean) => void;
-};
-
-export function ServiceSwitch({
-  type,
-  status,
-  onToggleStatus,
-}: ServiceSwitchProps) {
-  if (status !== "active" && status !== "paused") return null;
-  const isChecked = status === "active";
-
-  const switchColor =
-    type === "transport"
-      ? "data-[state=checked]:bg-blue-600 dark:data-[state=checked]:bg-blue-400 focus-visible:ring-blue-600/20 dark:focus-visible:ring-blue-400/40"
-      : "data-[state=checked]:bg-orange-600 dark:data-[state=checked]:bg-orange-400 focus-visible:ring-orange-600/20 dark:focus-visible:ring-orange-400/40";
-
-  return (
-    <SwitchPrimitives.Root
-      checked={isChecked}
-      onCheckedChange={onToggleStatus}
-      className={cn(
-        "peer bg-border inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-        switchColor,
-      )}
-    >
-      <SwitchPrimitives.Thumb
-        className={cn(
-          "pointer-events-none block size-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-          "translate-x-5 data-[state=checked]:translate-x-0",
-        )}
-      />
-    </SwitchPrimitives.Root>
-  );
-}
-
 function StatusBadge({ status }: { status: ProductStatus }) {
   const cfg = STATUS_CONFIG[status];
   return (
@@ -173,18 +119,19 @@ export function ServiceListRow({
   service,
   selected,
   onSelect,
-  onToggleStatus,
   onEdit,
+  onView,
 }: {
   service: ProductProps;
   selected: boolean;
   onSelect: () => void;
-  onToggleStatus: () => void;
   onEdit: () => void;
+  onView: () => void;
 }) {
   const { config } = useProviderContext();
   const { cover } = displayMedia(service.media);
-  const type = service.type;
+  const actionBtnBase =
+    "px-3.5 py-1.5 rounded-md text-xs font-medium border transition-all duration-200 cursor-pointer flex items-center gap-1.5";
 
   return (
     <motion.div
@@ -213,7 +160,7 @@ export function ServiceListRow({
       </button>
 
       <div
-        className="shrink-0 size-10 rounded-xl overflow-hidden hidden md:flex items-center justify-center"
+        className="shrink-0 size-10 rounded-lg overflow-hidden hidden md:flex items-center justify-center"
         style={{ background: "linear-gradient(135deg, #FF6B3518, #FF6B3506)" }}
       >
         {cover ? (
@@ -288,50 +235,31 @@ export function ServiceListRow({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="shrink-0 flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <motion.button
-          whileTap={{ scale: 0.98 }}
-          className="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer border transition-all duration-200 hidden md:block"
+          onClick={onEdit}
+          whileTap={{ scale: 0.96 }}
+          className={actionBtnBase}
           style={{
             color: config.themeColor,
-            borderColor: `${config.themeColor}40`,
-            background: `${config.themeColor}08`,
+            borderColor: `${config.themeColor}50`,
+            background: `${config.themeColor}10`,
           }}
-          onClick={onEdit}
         >
           Edit
         </motion.button>
-
-        <ServiceSwitch
-          type={type}
-          status={service.status}
-          onToggleStatus={onToggleStatus}
-        />
-
-        {service.status !== "archived" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-7 h-7 hover:bg-muted cursor-pointer rounded-sm flex items-center justify-center transition-colors">
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {}}
-                className="gap-2 text-sm cursor-pointer md:hidden"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {}}
-                className="gap-2 text-sm cursor-pointer text-red-500! hover:bg-red-500/10!"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-red-500" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <motion.button
+          onClick={onView}
+          whileTap={{ scale: 0.96 }}
+          className={actionBtnBase}
+          style={{
+            color: config.twTextColor || "#64748b",
+            borderColor: "rgba(148, 163, 184, 0.35)",
+            background: "rgba(148, 163, 184, 0.08)",
+          }}
+        >
+          View
+        </motion.button>
       </div>
     </motion.div>
   );
@@ -343,11 +271,13 @@ export function ServiceGridCard({
   onSelect,
   onEdit,
   isFirst,
+  onView,
 }: {
   service: ProductProps;
   selected: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onView: () => void;
   isFirst: boolean;
 }) {
   const { config } = useProviderContext();
@@ -365,6 +295,9 @@ export function ServiceGridCard({
       localStorage.setItem("multi-select-hint", "1");
     }
   }, []);
+
+  const actionBtnBase =
+    "px-3.5 py-1.5 rounded-md text-xs font-medium border transition-all duration-200 cursor-pointer flex items-center gap-1.5";
 
   return (
     <Tooltip>
@@ -447,18 +380,32 @@ export function ServiceGridCard({
               </div>
 
               {/* CTA */}
-              <motion.button
-                onClick={onEdit}
-                whileTap={{ scale: 0.96 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer"
-                style={{
-                  color: config.themeColor,
-                  borderColor: `${config.themeColor}50`,
-                  background: `${config.themeColor}10`,
-                }}
-              >
-                Edit
-              </motion.button>
+              <div className="flex items-center gap-1">
+                <motion.button
+                  onClick={onEdit}
+                  whileTap={{ scale: 0.96 }}
+                  className={actionBtnBase}
+                  style={{
+                    color: config.themeColor,
+                    borderColor: `${config.themeColor}50`,
+                    background: `${config.themeColor}10`,
+                  }}
+                >
+                  Edit
+                </motion.button>
+                <motion.button
+                  onClick={onView}
+                  whileTap={{ scale: 0.96 }}
+                  className={actionBtnBase}
+                  style={{
+                    color: config.twTextColor || "#64748b",
+                    borderColor: "rgba(148, 163, 184, 0.35)",
+                    background: "rgba(148, 163, 184, 0.08)",
+                  }}
+                >
+                  View
+                </motion.button>
+              </div>
             </div>
           </div>
         </motion.div>

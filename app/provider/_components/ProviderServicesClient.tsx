@@ -15,6 +15,7 @@ import { useProviderContext } from "@/components/providers/ProviderContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { serviceUrl } from "@/lib/url-builder";
 import { Pagination } from "@/lib/all-types";
+import ServiceActions, { SelectedItem } from "./ServiceActions";
 
 type SortKey =
   | "all"
@@ -61,12 +62,15 @@ export default function ProviderServicesClient() {
   const [pageState, setPageState] = useState<PageState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Map<string, SelectedItem>>(
+    new Map(),
+  );
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("all");
   const [status, setStatus] = useState<Status>("all");
   const [page, setPage] = useState(1);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const debouncedSearch = useDebounce(search, 400);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
@@ -74,7 +78,7 @@ export default function ProviderServicesClient() {
 
   useEffect(() => {
     setPage(1);
-    setSelected(new Set());
+    setSelected(new Map());
   }, [debouncedSearch, sort, status]);
 
   useEffect(() => {
@@ -127,7 +131,7 @@ export default function ProviderServicesClient() {
       controller.abort();
       isFetchingRef.current = false;
     };
-  }, [debouncedSearch, sort, status, page]);
+  }, [debouncedSearch, sort, status, page, retryKey]);
 
   useEffect(() => {
     const el = loadMoreRef.current;
@@ -165,34 +169,29 @@ export default function ProviderServicesClient() {
     localStorage.setItem("services-view", view);
   }, [view, isHydrated]);
 
-  const toggleStatus = (id: string) => {};
-  const toggleSelect = useCallback((id: string) => {
-    setSelected((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-  }, []);
+  const toggleSelect = useCallback(
+    (id: string, mainStatus: "draft" | "active" | "paused" | "archived") => {
+      setSelected((prev) => {
+        const n = new Map(prev);
+        n.has(id)
+          ? n.delete(id)
+          : n.set(id, {
+              id,
+              status: mainStatus || "draft",
+            });
+        return n;
+      });
+    },
+    [],
+  );
 
-  const clearSelection = useCallback(() => setSelected(new Set()), []);
+  const clearSelection = useCallback(() => setSelected(new Map()), []);
 
   const selectAll = useCallback(() => {
-    setSelected(new Set(services.map((s) => s.id)));
+    setSelected(
+      new Map(services.map((s) => [s.id, { id: s.id, status: s.status }])),
+    );
   }, [services]);
-
-  const bulkUpdateStatus = () => {};
-  const bulkDelete = () => {};
-
-  const handleRetry = useCallback(() => {
-    setPageState("loading");
-    setPage((p) => {
-      if (p === 1) {
-        isFetchingRef.current = false;
-        return 1;
-      }
-      return 1;
-    });
-  }, []);
 
   const activeFiltersCount = [
     status !== "all",
@@ -243,51 +242,21 @@ export default function ProviderServicesClient() {
 
       <AnimatePresence>
         {selected.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl border mb-4"
-            style={{
-              borderColor: `color-mix(in srgb, ${config.themeColor} 20%, transparent)`,
-              backgroundColor: `color-mix(in srgb, ${config.themeColor} 6%, transparent)`,
+          <ServiceActions
+            selected={selected}
+            total={pagination.total}
+            selectAll={selectAll}
+            clearSelection={clearSelection}
+            onSuccess={(ids, status) => {
+              const idsSet = new Set(ids);
+
+              setServices((prev) =>
+                prev.map((service) =>
+                  idsSet.has(service.id) ? { ...service, status } : service,
+                ),
+              );
             }}
-          >
-            <span className={cn("text-sm font-medium", config.twTextColor)}>
-              {selected.size} selected
-            </span>
-            <button
-              onClick={selectAll}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              Select all {services.length}
-            </button>
-            <div className="flex-1" />
-            <button
-              onClick={() => bulkUpdateStatus()}
-              className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
-            >
-              Activate
-            </button>
-            <button
-              onClick={() => bulkUpdateStatus()}
-              className="text-xs px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              Pause
-            </button>
-            <button
-              onClick={bulkDelete}
-              className="text-xs px-3 py-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-            >
-              Delete
-            </button>
-            <button
-              onClick={clearSelection}
-              className="text-muted-foreground hover:text-foreground ml-1 cursor-pointer"
-            >
-              <X className="size-3" />
-            </button>
-          </motion.div>
+          />
         )}
       </AnimatePresence>
 
@@ -356,7 +325,7 @@ export default function ProviderServicesClient() {
             {error || "Failed to load services"}
           </p>
           <button
-            onClick={handleRetry}
+            onClick={() => setRetryKey((k) => k + 1)}
             className="text-sm px-4 py-2 rounded-lg border border-border hover:bg-muted transition cursor-pointer"
           >
             Retry
@@ -412,9 +381,10 @@ export default function ProviderServicesClient() {
                 key={s.id}
                 service={s}
                 selected={selected.has(s.id)}
-                onSelect={() => toggleSelect(s.id)}
+                onSelect={() => toggleSelect(s.id, s.status)}
                 onEdit={() => router.push(`/provider/services/${s.id}/edit`)}
                 isFirst={i === 0}
+                onView={() => router.push(`/provider/services/${s.id}/review`)}
               />
             ))}
           </AnimatePresence>
@@ -429,9 +399,9 @@ export default function ProviderServicesClient() {
                 key={s.id}
                 service={s}
                 selected={selected.has(s.id)}
-                onSelect={() => toggleSelect(s.id)}
+                onSelect={() => toggleSelect(s.id, s.status)}
                 onEdit={() => router.push(`/provider/services/${s.id}/edit`)}
-                onToggleStatus={() => toggleStatus(s.id)}
+                onView={() => router.push(`/provider/services/${s.id}/review`)}
               />
             ))}
           </AnimatePresence>
