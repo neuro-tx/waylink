@@ -8,7 +8,6 @@ import {
   DifficultyLevel,
   SetupProgress,
 } from "./all-types";
-// export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export type PassengerType = "adult" | "child" | "infant";
 
@@ -307,3 +306,59 @@ export type StatusItem = {
   count: number;
   percentage: number;
 };
+
+export interface ServiceAnalyticsData {
+  stats: {
+    bookingsCount: number;
+    completedBookingsCount: number;
+    cancelledBookingsCount: number;
+    reviewsCount: number;
+    averageRating: string | null;
+    totalRevenue: string;
+    lastBookedAt: Date | null;
+    lastReviewedAt: Date | null;
+  };
+  score: {
+    priceScore: number;
+    popularityScore: number;
+    ratingScore: number;
+    finalScore: number;
+  };
+  wishListCount: number;
+  variants: {
+    varId: string;
+    name: string | null;
+    status: "cancelled" | "available" | "sold_out";
+    capacity: number;
+    adultPrice: string;
+    childPrice: string;
+    infantPrice: string;
+    bookingsCount: number;
+    totalParticipantsCount: number;
+    revenue: number;
+  }[];
+  bookingStatusBreakdown: {
+    status: BookingStatus;
+    count: number;
+    percentage: number;
+  }[];
+  passengerBreakDown: {
+    passengerType: PassengerType;
+    count: number;
+  }[];
+  recentBookings: {
+    id: string;
+    status: BookingStatus;
+    totalAmount: string;
+    participantsCount: number;
+    createdAt: Date;
+    variantName: string | null;
+    customerId: string;
+  }[];
+  monthlyTrends: {
+    monthNumber: number;
+    monthName: string;
+    bookingsCount: number;
+    revenue: number;
+  }[];
+}

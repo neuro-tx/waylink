@@ -531,6 +531,35 @@ const getServiceAnalytics = async (providerId: string, id: string) => {
       .orderBy(sql`extract(month from ${bookings.createdAt})`),
   ]);
 
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const fullSeries = Array.from({ length: 12 }, (_, i) => {
+    const monthNumber = i + 1;
+    const found = monthlyTrends.find((m) => m.monthNumber === monthNumber);
+
+    return (
+      found ?? {
+        monthNumber,
+        monthName: months[i],
+        bookingsCount: 0,
+        revenue: 0,
+      }
+    );
+  });
+
   return {
     stats,
     score,
@@ -539,7 +568,7 @@ const getServiceAnalytics = async (providerId: string, id: string) => {
     bookingStatusBreakdown,
     passengerBreakDown,
     recentBookings,
-    monthlyTrends,
+    monthlyTrends: fullSeries,
   };
 };
 

@@ -17,6 +17,7 @@ import {
   PauseCircle,
   FilePenLine,
   Archive,
+  BarChart3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -411,8 +412,20 @@ export default function ServicePreview() {
                   size="default"
                   onClick={openSheet}
                 >
-                  <Layers3 className="w-3.5 h-3.5 mr-2" />
+                  <Layers3 className="w-3.5 h-3.5" />
                   Show variants & pricing
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full cursor-pointer"
+                  size="default"
+                  onClick={() =>
+                    router.push(`/provider/services/${serviceId}/analysis`)
+                  }
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  Show Analysis
                 </Button>
               </div>
             </div>
