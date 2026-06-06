@@ -177,6 +177,7 @@ function AnalysisClient({ data }: { data: ServiceAnalyticsData }) {
             label: "Total revenue",
             value: fmtCurrency(parseFloat(stats.totalRevenue)),
             sub: `${fmtN(stats.bookingsCount)} bookings`,
+            color: "text-pink-500",
           },
           {
             icon: <CalendarCheck className="h-4 w-4" />,
@@ -185,12 +186,14 @@ function AnalysisClient({ data }: { data: ServiceAnalyticsData }) {
             sub: stats.lastBookedAt
               ? `Last: ${fmtDate(stats.lastBookedAt)}`
               : "No bookings yet",
+            color: "text-violet-500",
           },
           {
             icon: <CheckCircle2 className="h-4 w-4" />,
             label: "Completed",
             value: fmtN(stats.completedBookingsCount),
             sub: `${completionRate}% completion`,
+            color: "text-green-500",
           },
           {
             icon: <Star className="h-4 w-4" />,
@@ -199,33 +202,45 @@ function AnalysisClient({ data }: { data: ServiceAnalyticsData }) {
               ? parseFloat(stats.averageRating).toFixed(1)
               : "—",
             sub: `${fmtN(stats.reviewsCount)} reviews`,
+            color: "text-amber-500",
           },
           {
             icon: <Heart className="h-4 w-4" />,
             label: "Wishlisted",
             value: fmtN(wishListCount),
             sub: "saved by users",
+            color: "text-rose-500",
           },
           {
             icon: <XCircle className="h-4 w-4" />,
             label: "Cancellation",
             value: `${cancelRate}%`,
             sub: `${fmtN(stats.cancelledBookingsCount)} cancelled`,
+            color:
+              cancelRate > 15
+                ? "text-red-500"
+                : cancelRate > 5
+                  ? "text-amber-500"
+                  : "text-emerald-500",
           },
-        ].map(({ icon, label, value, sub }) => (
+        ].map(({ icon, label, value, sub, color }) => (
           <Card key={label} className="gap-2 bg-card/50">
             <CardHeader className="px-3">
-              <CardDescription className="flex items-center gap-1.5 text-xs">
+              <CardDescription
+                className={`flex items-center gap-1.5 text-xs font-medium ${color}`}
+              >
                 {icon}
                 {label}
               </CardDescription>
             </CardHeader>
+
             <CardContent className="px-3">
               <p className="text-xl font-semibold tabular-nums leading-none">
                 {value}
               </p>
+
               {sub && (
-                <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
               )}
             </CardContent>
           </Card>

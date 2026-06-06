@@ -63,6 +63,7 @@ export function AnalyticsKpiCards({ kpis, revenues }: Props) {
       sub: `${revenues.totalBookings.toLocaleString()} bookings`,
       growth: kpis.revenueGrowth,
       accent: "border-l-blue-10",
+      text: "text-blue-10",
     },
     {
       label: "Total bookings",
@@ -70,6 +71,7 @@ export function AnalyticsKpiCards({ kpis, revenues }: Props) {
       sub: `Avg ${fmt(kpis.avgRevenuePerBooking, "currency")} / booking`,
       growth: kpis.bookingGrowth,
       accent: "border-l-green-500",
+      text: "text-green-500",
     },
     {
       label: "Repeat customers",
@@ -77,6 +79,7 @@ export function AnalyticsKpiCards({ kpis, revenues }: Props) {
       sub: "Return booking rate",
       growth: null,
       accent: "border-l-orange-1",
+      text: "text-orange-500",
     },
     {
       label: "Cancellation rate",
@@ -85,6 +88,7 @@ export function AnalyticsKpiCards({ kpis, revenues }: Props) {
       growth: null,
       invert: true,
       accent: "border-l-blue-20",
+      text: "text-blue-20",
     },
   ];
 
@@ -102,11 +106,15 @@ export function AnalyticsKpiCards({ kpis, revenues }: Props) {
           }}
           className={cn(
             "bg-card border border-border rounded-lg px-4 py-3.5",
-            "border-l-[3px]",
+            "border-l-[3px] rounded-l-xs",
             c.accent,
           )}
         >
-          <p className="text-[11px] text-muted-foreground mb-1.5 uppercase tracking-wide">
+          <p
+            className={cn(
+              "text-[11px] text-muted-foreground mb-1.5 uppercase tracking-wide",
+            c.text)}
+          >
             {c.label}
           </p>
           <p className="text-2xl font-semibold text-card-foreground tabular-nums leading-none mb-1.5">

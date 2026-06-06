@@ -36,8 +36,14 @@ export function AnalyticsHeader({ current }: Props) {
     <div className="flex items-center justify-between gap-4 mb-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
-        <p className="text-base text-muted-foreground">
-          Performance overview for your provider account
+
+        <p className="text-base text-muted-foreground max-w-xl">
+          Analytics are calculated for the{" "}
+          <span className="font-medium text-primary">
+            currently selected date range
+          </span>
+          . Dashboard metrics represent your overall performance across all
+          time.
         </p>
       </div>
 
