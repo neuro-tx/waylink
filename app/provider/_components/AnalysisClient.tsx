@@ -183,7 +183,7 @@ function AnalysisClient({ data }: { data: ServiceAnalyticsData }) {
             label: "Bookings",
             value: fmtN(stats.bookingsCount),
             sub: stats.lastBookedAt
-              ? `Last: ${new Date(stats.lastBookedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              ? `Last: ${fmtDate(stats.lastBookedAt)}`
               : "No bookings yet",
           },
           {
@@ -776,7 +776,7 @@ export function ClientPage({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4">
+      <div className="flex h-[95vh] w-full flex-col items-center justify-center gap-4">
         <Loader className="size-7 animate-spin text-primary" />
 
         <div className="text-center">
