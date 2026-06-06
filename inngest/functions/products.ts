@@ -8,27 +8,29 @@ type ProductStatsProps = InferInsertModel<typeof productStats>;
 
 // Aggregate booking stats for ALL services.
 async function calcServiceStats() {
-  const bookingStats = await db
-    .select({
-      productId: bookings.productId,
-      bookingsCount: count(),
-      completedBookingsCount: sql<number>`count(*) filter (where ${bookings.status} = 'completed')`,
-      cancelledBookingsCount: sql<number>`count(*) filter (where ${bookings.status} = 'cancelled')`,
-      totalRevenue: sql<string>`coalesce(sum(${bookings.totalAmount}) filter (where ${bookings.status} in ('completed', 'confirmed')), 0)`,
-      lastBookedAt: max(bookings.createdAt),
-    })
-    .from(bookings)
-    .groupBy(bookings.productId);
+  const [bookingStats, reviewStats] = await Promise.all([
+    db
+      .select({
+        productId: bookings.productId,
+        bookingsCount: count(),
+        completedBookingsCount: sql<number>`count(*) filter (where ${bookings.status} = 'completed')`,
+        cancelledBookingsCount: sql<number>`count(*) filter (where ${bookings.status} = 'cancelled')`,
+        totalRevenue: sql<string>`coalesce(sum(${bookings.totalAmount}) filter (where ${bookings.status} in ('completed', 'confirmed')), 0)`,
+        lastBookedAt: max(bookings.createdAt),
+      })
+      .from(bookings)
+      .groupBy(bookings.productId),
 
-  const reviewStats = await db
-    .select({
-      productId: productReviews.productId,
-      reviewsCount: count(),
-      averageRating: avg(productReviews.rating),
-      lastReviewedAt: max(productReviews.createdAt),
-    })
-    .from(productReviews)
-    .groupBy(productReviews.productId);
+    db
+      .select({
+        productId: productReviews.productId,
+        reviewsCount: count(),
+        averageRating: avg(productReviews.rating),
+        lastReviewedAt: max(productReviews.createdAt),
+      })
+      .from(productReviews)
+      .groupBy(productReviews.productId),
+  ]);
 
   return { bookingStats, reviewStats };
 }
@@ -96,7 +98,7 @@ const updateProductStateWorker = inngest.createFunction(
       // Bulk upsert all stats in a single query.
       const rows = [...statsMap.values()];
 
-      const update = await db
+      await db
         .insert(productStats)
         .values(rows)
         .onConflictDoUpdate({
@@ -124,7 +126,7 @@ const updateProductStateWorker = inngest.createFunction(
         });
 
       return {
-        updated: update.rows.length,
+        updated: rows.length,
       };
     });
 

@@ -1,6 +1,7 @@
 import { bookingsFuncs } from "./functions/bookings";
 import { plansFuncs } from "./functions/plans";
 import { productsFns } from "./functions/products";
+import { providerFns } from "./functions/provider";
 import { scoreFns } from "./functions/score";
 
 export const functions = [
@@ -8,4 +9,5 @@ export const functions = [
   ...plansFuncs,
   ...scoreFns,
   ...productsFns,
+  ...providerFns,
 ];
