@@ -5,6 +5,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import AdminSidebar from "./_components/AdminSidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import AdminHeader from "./_components/AdminHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,28 +39,29 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SidebarProvider
-            style={
-              {
-                "--sidebar-width": "calc(var(--spacing) * 72)",
-                "--header-height": "calc(var(--spacing) * 12)",
-              } as React.CSSProperties
-            }
-          >
-            <main>
+          <AuthProvider>
+            <SidebarProvider
+              style={
+                {
+                  "--sidebar-width": "calc(var(--spacing) * 72)",
+                  "--header-height": "calc(var(--spacing) * 12)",
+                } as React.CSSProperties
+              }
+            >
               <AdminSidebar variant="sidebar" />
-              <SidebarInset>
-                <div className="flex flex-1 flex-col">
-                  <div className="@container/main flex flex-1 flex-col gap-2">
-                    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                      {children}
+              <main className="overflow-x-hidden w-full">
+                <SidebarInset>
+                  <AdminHeader />
+                  <div className="flex flex-1 flex-col  ">
+                    <div className="w-full relative">
+                      <div className="px-4 md:px-6 py-8">{children}</div>
                     </div>
                   </div>
-                </div>
-              </SidebarInset>
-              <ThemedToaster />
-            </main>
-          </SidebarProvider>
+                </SidebarInset>
+                <ThemedToaster />
+              </main>
+            </SidebarProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

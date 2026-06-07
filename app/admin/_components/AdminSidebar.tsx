@@ -6,21 +6,22 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
-  Map,
   CalendarCheck,
-  CreditCard,
   Shield,
-  ImageIcon,
   LucideIcon,
   Package,
-  Repeat,
+  PieChart,
+  BellPlus,
+  Layers,
+  Settings2,
 } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -29,8 +30,8 @@ export type AdminNavItem = {
   title: string;
   url: string;
   icon?: LucideIcon;
-  iconColor? :string;
-  exact?:boolean;
+  iconColor?: string;
+  exact?: boolean;
 };
 
 export const adminNav: AdminNavItem[] = [
@@ -38,75 +39,81 @@ export const adminNav: AdminNavItem[] = [
     title: "Dashboard",
     url: "/admin",
     icon: LayoutDashboard,
-    iconColor:"text-green-500",
-    exact: true
+    iconColor: "text-green-500",
+    exact: true,
   },
   {
-    title: "Trips",
-    url: "/admin/trips",
-    icon: Map,
-    iconColor: "text-cyan-500"
+    title: "Analytics",
+    url: "/admin/nnalytics",
+    icon: PieChart,
+    iconColor: "text-green-500",
+  },
+  {
+    title: "Products Moderation",
+    url: "/admin/products_moderation",
+    icon: Settings2,
+    iconColor: "text-cyan-500",
   },
   {
     title: "Bookings",
     url: "/admin/bookings",
     icon: CalendarCheck,
-    iconColor: "text-indigo-500"
+    iconColor: "text-indigo-500",
   },
   {
-    title: "Users",
-    url: "/admin/users",
+    title: "Provider Management",
+    url: "/admin/provider_management",
     icon: Users,
-    iconColor:"text-pink-500"
+    iconColor: "text-pink-500",
   },
   {
-    title: "Billing",
-    url: "/admin/billing",
-    icon: CreditCard,
-    iconColor:"text-fuchsia-500"
-  },
-  {
-    title: "Media",
-    url: "/admin/media",
-    icon: ImageIcon,
-    iconColor:"text-yellow-500"
+    title: "Notification Center",
+    url: "/admin/notification_center",
+    icon: BellPlus,
+    iconColor: "text-yellow-500",
   },
   {
     title: "Plans",
     url: "/admin/plans",
     icon: Package,
-    iconColor: "text-red-500"
+    iconColor: "text-red-500",
   },
   {
     title: "Subscriptions",
     url: "/admin/subscriptions",
-    icon: Repeat,
-    iconColor: "text-purple-500"
+    icon: Layers,
+    iconColor: "text-purple-500",
   },
   {
     title: "Roles & Permissions",
     url: "/admin/roles",
     icon: Shield,
-    iconColor:"text-emerald-500"
+    iconColor: "text-rose-500",
   },
 ];
-
-const user = {
-  name: "neuro-tx",
-  email: "neuro@gmail.com",
-  avatar: "/avatar.jpg",
-};
 
 export function AdminSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const { setOpen } = useSidebar();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setOpen(window.innerWidth <= 1024 ? false : true);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setOpen]);
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <Link
-            href="/"
-            className="w-full flex items-center transition border-b select-none"
+            href="/admin"
+            className="w-full h-15 flex items-center transition border-b select-none"
           >
             <Image
               src="/icons/logo-alt.svg"
@@ -125,7 +132,7 @@ export function AdminSidebar({
         <NavMain items={adminNav} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );
