@@ -15,13 +15,12 @@ import {
   LayoutDashboard,
   Users,
   CalendarCheck,
-  Shield,
   LucideIcon,
   Package,
   PieChart,
   BellPlus,
   Layers,
-  Settings2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -39,7 +38,7 @@ export const adminNav: AdminNavItem[] = [
     title: "Dashboard",
     url: "/admin",
     icon: LayoutDashboard,
-    iconColor: "text-green-500",
+    iconColor: "text-rose-500",
     exact: true,
   },
   {
@@ -51,7 +50,7 @@ export const adminNav: AdminNavItem[] = [
   {
     title: "Products Moderation",
     url: "/admin/products_moderation",
-    icon: Settings2,
+    icon: SlidersHorizontal,
     iconColor: "text-cyan-500",
   },
   {
@@ -83,12 +82,6 @@ export const adminNav: AdminNavItem[] = [
     url: "/admin/subscriptions",
     icon: Layers,
     iconColor: "text-purple-500",
-  },
-  {
-    title: "Roles & Permissions",
-    url: "/admin/roles",
-    icon: Shield,
-    iconColor: "text-rose-500",
   },
 ];
 

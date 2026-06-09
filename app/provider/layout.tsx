@@ -40,7 +40,7 @@ export default async function ProviderLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         <ThemeProvider
           attribute="class"
@@ -66,7 +66,7 @@ export default async function ProviderLayout({
                 <ProviderSidebar />
                 <SidebarInset className="flex flex-col min-w-0 flex-1">
                   <ProviderHeader />
-                  <main className="flex-1 overflow-x-hidden w-full relative">
+                  <main className="flex-1 w-full relative">
                     {children}
                   </main>
                 </SidebarInset>

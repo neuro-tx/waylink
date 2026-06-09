@@ -50,7 +50,7 @@ const AdminHeader = () => {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <header className="sticky top-0 z-999">
+      <header className="sticky top-0 z-50">
         <div className="absolute inset-0 border-b border-border/60 bg-background/80 backdrop-blur-md" />
 
         <div className="relative flex h-17 items-center justify-between gap-4 px-4 md:px-6">

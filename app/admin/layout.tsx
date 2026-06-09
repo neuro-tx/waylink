@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         <ThemeProvider
           attribute="class"
@@ -49,17 +49,13 @@ export default function RootLayout({
               }
             >
               <AdminSidebar variant="sidebar" />
-              <main className="overflow-x-hidden w-full">
-                <SidebarInset>
-                  <AdminHeader />
-                  <div className="flex flex-1 flex-col  ">
-                    <div className="w-full relative">
-                      <div className="px-4 md:px-6 py-8">{children}</div>
-                    </div>
-                  </div>
-                </SidebarInset>
-                <ThemedToaster />
-              </main>
+              <SidebarInset className="w-full">
+                <AdminHeader />
+                <div className="flex flex-1 flex-col">
+                  <div className="w-full relative">{children} </div>
+                </div>
+              </SidebarInset>
+              <ThemedToaster />
             </SidebarProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -43,7 +43,9 @@ export function NavMain({
                 <item.icon
                   className={cn(
                     "w-5 h-5",
-                    isActive(item.url) ? "text-white" : item.iconColor,
+                    isActive(item.url, item.exact)
+                      ? "text-white"
+                      : item.iconColor,
                   )}
                 />
               )}
