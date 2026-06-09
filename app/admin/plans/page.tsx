@@ -1,7 +1,15 @@
 import React from "react";
+import PlansPage from "../_components/Planspage";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Plans Management | Admin",
+  description:
+    "Create, update, and manage subscription plans, pricing, commissions, listing limits, trials, and plan availability across the platform.",
+};
 
 const page = () => {
-  return <div className="px-4 md:px-6 py-6">page</div>;
+  return <PlansPage />;
 };
 
 export default page;

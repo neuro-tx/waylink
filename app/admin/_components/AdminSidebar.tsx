@@ -91,15 +91,16 @@ export function AdminSidebar({
   const { setOpen } = useSidebar();
 
   useEffect(() => {
-    const handleResize = () => {
-      setOpen(window.innerWidth <= 1024 ? false : true);
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      setOpen(e.matches);
     };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
+    handler(mq);
 
-    return () => window.removeEventListener("resize", handleResize);
-  }, [setOpen]);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
