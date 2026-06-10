@@ -1,10 +1,26 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { AlertCircle, LayoutGrid, PackageX, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Check,
+  LayoutGrid,
+  Loader,
+  PackageX,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import PlansControlBar, { PlansFilters } from "./Planscontrolbar";
+import {
+  PlansControlBar,
+  PlansFilters,
+  SelectedPlanBanner,
+} from "./Planscontrolbar";
 import { Plan } from "@/lib/all-types";
+import { getAllPlans } from "@/actions/plans.action";
+import { PlanCard } from "@/app/provider/_components/Plansclient";
+import { cn } from "@/lib/utils";
+
+type Status = "idle" | "loading" | "success" | "error";
 
 const EmptyState = ({
   hasFilters,
@@ -33,7 +49,13 @@ const EmptyState = ({
   </div>
 );
 
-const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
+const ErrorState = ({
+  onRetry,
+  error,
+}: {
+  error: string;
+  onRetry: () => void;
+}) => (
   <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
       <AlertCircle className="h-5 w-5 text-destructive" />
@@ -43,7 +65,7 @@ const ErrorState = ({ onRetry }: { onRetry: () => void }) => (
         Failed to load plans
       </p>
       <p className="text-xs text-muted-foreground mt-0.5">
-        Something went wrong while fetching plans.
+        {error || "Something went wrong while fetching plans."}
       </p>
     </div>
     <Button variant="outline" size="sm" className="text-xs" onClick={onRetry}>
@@ -60,22 +82,38 @@ const defaultFilters: PlansFilters = {
 };
 
 const PlansPage = () => {
-  const [loading, setloading] = useState(false);
+  const [status, setStatus] = useState<Status>("loading");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [filters, setFilters] = useState<PlansFilters>(defaultFilters);
   const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(
+    null,
+  );
 
-  const handleFilterChange = useCallback((updated: Partial<PlansFilters>) => {
-    setFilters((prev) => ({ ...prev, ...updated }));
+  const fetchPlans = useCallback(async () => {
+    setStatus("loading");
+    setError(null);
+
+    try {
+      const res = await getAllPlans();
+      const data = Array.isArray(res) ? res : [res];
+
+      setPlans(data ?? []);
+      setStatus("success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setStatus("error");
+    }
   }, []);
 
-  const clearAllFilters = () => {
-    setFilters(defaultFilters);
-  };
+  useEffect(() => {
+    fetchPlans();
+  }, [fetchPlans]);
 
-  const filteredPlans = useMemo(() => {
-    return plans.filter((plan) => {
+  const computed = useMemo(() => {
+    let active = 0;
+
+    const filtered = plans.filter((plan) => {
       const matchesSearch =
         !filters.search ||
         plan.name.toLowerCase().includes(filters.search.toLowerCase());
@@ -90,48 +128,123 @@ const PlansPage = () => {
       const matchesBilling =
         filters.billing === "all" || plan.billingCycle === filters.billing;
 
-      return matchesSearch && matchesTier && matchesStatus && matchesBilling;
+      const match =
+        matchesSearch && matchesTier && matchesStatus && matchesBilling;
+
+      if (plan.isActive) active++;
+
+      return match;
     });
+
+    return {
+      filtered,
+      active,
+      total: plans.length,
+    };
   }, [plans, filters]);
 
-  const hasActiveFilters =
-    filters.search ||
-    filters.tier !== "all" ||
-    filters.status !== "all" ||
-    filters.billing !== "all";
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.search ||
+      filters.tier !== "all" ||
+      filters.status !== "all" ||
+      filters.billing !== "all"
+    );
+  }, [filters]);
 
-  const totalPlans = plans.length;
-  const activePlans = plans.filter((plan) => plan.isActive).length;
+  const handleFilterChange = useCallback((updated: Partial<PlansFilters>) => {
+    setFilters((prev) => ({ ...prev, ...updated }));
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setFilters(defaultFilters);
+  }, []);
+
+  const handleSelect = (
+    e: React.MouseEvent,
+    plan: { id: string; name: string },
+  ) => {
+    if (e.ctrlKey || e.metaKey) {
+      setSelected((prev) => (prev?.id === plan.id ? null : plan));
+
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  if (status === "loading")
+    return (
+      <div className="w-full h-[calc(100dvh-100px)] p-4 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-2">
+          <Loader className="w-5 h-5 animate-spin" />
+          <p className="text-muted-foreground font-mono font-medium">
+            Loading ...
+          </p>
+        </div>
+      </div>
+    );
 
   return (
     <div className="space-y-5 px-4 py-6 md:px-6 w-full">
-      <PlansPageHeader totalPlans={totalPlans} activePlans={activePlans} />
+      <PlansPageHeader
+        totalPlans={computed.total}
+        activePlans={computed.active}
+      />
 
       <PlansControlBar
         filters={filters}
         onChange={handleFilterChange}
-        resultCount={loading ? undefined : filteredPlans.length}
+        resultCount={computed.filtered.length}
       />
 
-      {error ? (
-        <ErrorState
-          onRetry={() => {
-            setError(null);
-            setRetryKey((k) => k + 1);
-          }}
-        />
-      ) : loading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {/* will add skelton or loader later */}
-        </div>
-      ) : plans.length === 0 ? (
+      <SelectedPlanBanner
+        selected={selected}
+        onClear={() => setSelected(null)}
+        onSuccess={(plans) => {}}
+      />
+
+      {status === "error" ? (
+        <ErrorState error={error || ""} onRetry={fetchPlans} />
+      ) : computed.filtered.length === 0 ? (
         <EmptyState
           hasFilters={Boolean(hasActiveFilters)}
           onClear={clearAllFilters}
         />
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {/* Will put the plans card here later */}
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3  2xl:grid-cols-4 gap-4">
+          {computed.filtered.map((plan) => {
+            const isSelected = selected?.id === plan.id;
+
+            return (
+              <div
+                onClick={(e) =>
+                  handleSelect(e, {
+                    id: plan.id,
+                    name: plan.name,
+                  })
+                }
+                key={plan.id}
+                className={cn(
+                  "relative h-full",
+                  isSelected && "ring-2 ring-primary rounded-xl",
+                )}
+              >
+                {isSelected && (
+                  <span className="absolute top-4 right-4 size-6 rounded-full bg-foreground text-background z-10 grid place-items-center">
+                    <Check className="size-4" />
+                  </span>
+                )}
+
+                <PlanCard
+                  plan={plan}
+                  billingCycle={plan.billingCycle}
+                  isCurrent={false}
+                  onSelect={() => {}}
+                  disabledActions
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -86,16 +86,18 @@ function ctaLabel(plan: Plan): string {
   return "Get started";
 }
 
-function PlanCard({
+export function PlanCard({
   plan,
   billingCycle,
   isCurrent,
   onSelect,
+  disabledActions = false,
 }: {
   plan: Plan;
   billingCycle: PlanBillingCycle;
   isCurrent: boolean;
   onSelect: (plan: Plan) => void;
+  disabledActions?: boolean;
 }) {
   const meta = TIER_META[plan.tier] ?? TIER_META.free;
   const isEnterprise = plan.tier === "enterprise";
@@ -104,7 +106,7 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border bg-card p-6 transition-all duration-200",
+        "relative h-full flex flex-col rounded-xl border bg-card p-6 transition-all duration-200",
         "hover:shadow-sm",
         isCurrent
           ? "border-primary ring-1 ring-primary"
@@ -147,10 +149,7 @@ function PlanCard({
             <p className="text-sm font-semibold leading-tight">{plan.name}</p>
             <Badge
               variant="outline"
-              className={cn(
-                "capitalize",
-                meta.badgeCls,
-              )}
+              className={cn("capitalize", meta.badgeCls)}
             >
               {plan.tier}
             </Badge>
@@ -249,32 +248,34 @@ function PlanCard({
         </ul>
       )}
 
-      <div className="mt-auto pt-1">
-        {isCurrent ? (
-          <Button variant="outline" className="w-full" disabled>
-            Current plan
-          </Button>
-        ) : isEnterprise ? (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() =>
-              window.open(
-                "mailto:sales@waylink.com?subject=Enterprise Plan Inquiry",
-              )
-            }
-          >
-            Contact sales <ArrowUpRight className="size-3.5" />
-          </Button>
-        ) : (
-          <Button
-            className={cn("w-full", meta.ctaCls ?? "")}
-            onClick={() => onSelect(plan)}
-          >
-            {ctaLabel(plan)}
-          </Button>
-        )}
-      </div>
+      {!disabledActions && (
+        <div className="mt-auto pt-1">
+          {isCurrent ? (
+            <Button variant="outline" className="w-full" disabled>
+              Current plan
+            </Button>
+          ) : isEnterprise ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() =>
+                window.open(
+                  "mailto:sales@waylink.com?subject=Enterprise Plan Inquiry",
+                )
+              }
+            >
+              Contact sales <ArrowUpRight className="size-3.5" />
+            </Button>
+          ) : (
+            <Button
+              className={cn("w-full", meta.ctaCls ?? "")}
+              onClick={() => onSelect(plan)}
+            >
+              {ctaLabel(plan)}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

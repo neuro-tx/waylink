@@ -273,6 +273,16 @@ export async function hasReachedListingLimit(): Promise<ActionResult<boolean>> {
   }
 }
 
+export async function getAllPlans() {
+  try {
+    return await db.select().from(plans).orderBy(plans.createdAt);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to get plans data",
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Subscription mutations
 // ─────────────────────────────────────────────────────────────────────────────

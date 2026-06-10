@@ -1,7 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, X, ChevronDown, Plus } from "lucide-react";
+import React, { useEffect, useState, useTransition } from "react";
+import {
+  Search,
+  X,
+  ChevronDown,
+  Plus,
+  Pencil,
+  Trash2,
+  Ban,
+  Loader,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +27,19 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import PlanDialog from "./PlanDialog";
+import { useDebounce } from "@/hooks/useDebounce";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plan } from "@/lib/all-types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type TierFilter = "all" | "free" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "inactive";
@@ -51,17 +74,21 @@ const activeFilterCount = (f: PlansFilters) => {
   return count;
 };
 
-const PlansControlBar = ({
+export const PlansControlBar = ({
   filters,
   onChange,
   resultCount,
 }: PlansControlBarProps) => {
   const [searchValue, setSearchValue] = useState(filters.search);
   const filtersActive = activeFilterCount(filters);
+  const debouncedSearch = useDebounce(searchValue);
+
+  useEffect(() => {
+    onChange({ search: debouncedSearch });
+  }, [debouncedSearch, onChange]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
-    onChange({ search: e.target.value });
   };
 
   const clearSearch = () => {
@@ -100,9 +127,8 @@ const PlansControlBar = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
                   className={cn(
-                    "text-xs font-medium",
+                    "text-xs h-9 font-medium",
                     filters.tier !== "all" &&
                       "border-primary/40 bg-primary/5 text-primary",
                   )}
@@ -140,9 +166,8 @@ const PlansControlBar = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
                   className={cn(
-                    "text-xs font-medium",
+                    "text-xs h-9 font-medium",
                     filters.status !== "all" &&
                       "border-primary/40 bg-primary/5 text-primary",
                   )}
@@ -186,9 +211,8 @@ const PlansControlBar = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
                   className={cn(
-                    "text-xs font-medium",
+                    "text-xs h-9 font-medium",
                     filters.billing !== "all" &&
                       "border-primary/40 bg-primary/5 text-primary",
                   )}
@@ -274,4 +298,123 @@ const PlansControlBar = ({
   );
 };
 
-export default PlansControlBar;
+export function SelectedPlanBanner({
+  selected,
+  onSuccess,
+  onClear,
+}: {
+  selected: { id: string; name: string } | null;
+  onClear: () => void;
+  onSuccess?: (plan: Plan) => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const onEdit = (id: string) => {
+    startTransition(async () => {
+      console.log("edit", id);
+    });
+  };
+  const onRemove = (id: string) => {
+    startTransition(async () => {
+      console.log("remove", id);
+    });
+  };
+  const onToggleActive = (id: string) => {
+    startTransition(async () => {
+      console.log("toggle", id);
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      {selected && (
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -20, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="w-full border-b"
+        >
+          <div className="flex justify-between px-4 py-3 flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex items-center gap-3">
+              {isPending && <Loader className="animate-spin size-4" />}
+              <div className="text-sm font-medium">
+                1 plan selected :
+                <span className="ml-1 text-green-500">{selected.name}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onEdit(selected.id)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                Edit
+              </Button>
+
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => onRemove(selected.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Remove
+              </Button>
+
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => onToggleActive(selected.id)}
+              >
+                <Ban className="h-3.5 w-3.5 mr-1" />
+                Disable
+              </Button>
+
+              <Button size="sm" variant="ghost" onClick={onClear}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      <AlertDialog open={!!error} onOpenChange={() => setError(null)}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-destructive/10 border border-destructive/20">
+                <AlertCircle className="size-5 text-destructive" />
+              </div>
+
+              <div className="text-left">
+                <AlertDialogTitle className="text-lg font-semibold">
+                  Something went wrong
+                </AlertDialogTitle>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-md border bg-muted/50 px-3 py-2 w-full">
+                <p className="text-sm font-medium wrap-break-word font-mono text-destructive">
+                  {error}
+                </p>
+              </div>
+            )}
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogAction
+              className="w-full sm:w-30"
+              onClick={() => setError(null)}
+            >
+              Got it
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AnimatePresence>
+  );
+}
