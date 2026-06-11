@@ -283,6 +283,84 @@ export async function getAllPlans() {
   }
 }
 
+export async function toogleActivePlan(planId: string) {
+  if (!planId) {
+    throw new Error("Missing plan id");
+  }
+
+  const plan = await db.query.plans.findFirst({
+    where: eq(plans.id, planId),
+    with: {
+      subscriptions: {
+        columns: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!plan) {
+    throw new Error("Plan not found");
+  }
+
+  // Prevent disabling plans that have subscriptions
+  if (plan.isActive && plan.subscriptions.length > 0)
+    throw new Error(
+      "This plan cannot be deactivated while it is associated with active or paused subscriptions.",
+    );
+
+  const [res] = await db
+    .update(plans)
+    .set({
+      isActive: !plan.isActive,
+    })
+    .where(eq(plans.id, planId))
+    .returning();
+
+  return {
+    success: true,
+    data: res,
+  };
+}
+
+export async function deletePlan(planId: string) {
+  if (!planId) {
+    throw new Error("Missing plan id.");
+  }
+
+  const plan = await db.query.plans.findFirst({
+    where: eq(plans.id, planId),
+    with: {
+      subscriptions: {
+        columns: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  if (!plan) {
+    throw new Error("Plan not found.");
+  }
+
+  if (plan.subscriptions.length > 0) {
+    throw new Error(
+      "This plan cannot be deleted because it has associated subscriptions.",
+    );
+  }
+
+  if (plan.isActive) {
+    throw new Error("Please deactivate this plan before deleting it.");
+  }
+
+  await db
+    .delete(plans)
+    .where(eq(plans.id, planId))
+    .returning();
+
+  return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Subscription mutations
 // ─────────────────────────────────────────────────────────────────────────────

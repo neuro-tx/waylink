@@ -11,6 +11,7 @@ import {
   Ban,
   Loader,
   AlertCircle,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { deletePlan, toogleActivePlan } from "@/actions/plans.action";
 
 type TierFilter = "all" | "free" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "inactive";
@@ -57,6 +59,10 @@ interface PlansControlBarProps {
   onChange: (updated: Partial<PlansFilters>) => void;
   resultCount?: number;
 }
+
+type PlanSuccessAction =
+  | { type: "updated"; plan: Plan }
+  | { type: "deleted"; planId: string };
 
 const tierOptions: { value: TierFilter; label: string }[] = [
   { value: "all", label: "All tiers" },
@@ -302,84 +308,127 @@ export function SelectedPlanBanner({
   selected,
   onSuccess,
   onClear,
+  // onEdit
 }: {
-  selected: { id: string; name: string } | null;
+  selected: Plan;
   onClear: () => void;
-  onSuccess?: (plan: Plan) => void;
+  onSuccess?: (action: PlanSuccessAction) => void;
+  // onEdit: ()=> void
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const onEdit = (id: string) => {
-    startTransition(async () => {
-      console.log("edit", id);
-    });
-  };
   const onRemove = (id: string) => {
     startTransition(async () => {
-      console.log("remove", id);
+      try {
+        const res = await deletePlan(id);
+        if (!res.success) {
+          setError("Failed to delete plan.");
+          return;
+        }
+
+        onSuccess?.({
+          type: "deleted",
+          planId: id,
+        });
+        onClear();
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while deleting the plan.",
+        );
+      }
     });
   };
+
   const onToggleActive = (id: string) => {
     startTransition(async () => {
-      console.log("toggle", id);
+      startTransition(async () => {
+        try {
+          const res = await toogleActivePlan(id);
+          if (!res.success) {
+            setError("Failed to change plan status.");
+            return;
+          }
+
+          onSuccess?.({
+            type: "updated",
+            plan: res?.data,
+          });
+          onClear();
+        } catch (error) {
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Something went wrong while updating the plan.",
+          );
+        }
+      });
     });
   };
 
   return (
-    <AnimatePresence>
-      {selected && (
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -20, opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="w-full border-b"
-        >
-          <div className="flex justify-between px-4 py-3 flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex items-center gap-3">
-              {isPending && <Loader className="animate-spin size-4" />}
-              <div className="text-sm font-medium">
-                1 plan selected :
-                <span className="ml-1 text-green-500">{selected.name}</span>
-              </div>
-            </div>
+    <motion.div
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -20, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="w-full border-b"
+    >
+      <div className="flex justify-between px-4 py-3 flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex items-center gap-3">
+          {isPending && <Loader className="animate-spin size-4" />}
+          <div className="text-sm font-medium">
+            1 plan selected :
+            <span className="ml-1 text-green-500">{selected.name}</span>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onEdit(selected.id)}
-              >
+        <div className="flex items-center gap-2">
+          <PlanDialog
+            trigger={
+              <Button size="sm" variant="outline" disabled={isPending}>
                 <Pencil className="h-3.5 w-3.5 mr-1" />
                 Edit
               </Button>
+            }
+          />
 
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => onRemove(selected.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Remove
-              </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => onRemove(selected.id)}
+            disabled={isPending}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1" />
+            Remove
+          </Button>
 
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => onToggleActive(selected.id)}
-              >
-                <Ban className="h-3.5 w-3.5 mr-1" />
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onToggleActive(selected.id)}
+            disabled={isPending}
+          >
+            {selected.isActive ? (
+              <>
+                <Ban className="h-3.5 w-3.5" />
                 Disable
-              </Button>
+              </>
+            ) : (
+              <>
+                <Activity className="h-3.5 w-3.5" />
+                Activate
+              </>
+            )}
+          </Button>
 
-              <Button size="sm" variant="ghost" onClick={onClear}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      )}
+          <Button size="sm" variant="ghost" onClick={onClear}>
+            Cancel
+          </Button>
+        </div>
+      </div>
 
       <AlertDialog open={!!error} onOpenChange={() => setError(null)}>
         <AlertDialogContent className="sm:max-w-md">
@@ -397,8 +446,8 @@ export function SelectedPlanBanner({
             </div>
 
             {error && (
-              <div className="rounded-md border bg-muted/50 px-3 py-2 w-full">
-                <p className="text-sm font-medium wrap-break-word font-mono text-destructive">
+              <div className="rounded-md border bg-muted/50 px-3 py-2 w-full overflow-hidden">
+                <p className="text-sm font-medium text-destructive wrap-break-word whitespace-pre-wrap">
                   {error}
                 </p>
               </div>
@@ -415,6 +464,6 @@ export function SelectedPlanBanner({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AnimatePresence>
+    </motion.div>
   );
 }

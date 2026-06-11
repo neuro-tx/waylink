@@ -19,6 +19,7 @@ import { Plan } from "@/lib/all-types";
 import { getAllPlans } from "@/actions/plans.action";
 import { PlanCard } from "@/app/provider/_components/Plansclient";
 import { cn } from "@/lib/utils";
+import { AnimatePresence } from "motion/react";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -86,9 +87,7 @@ const PlansPage = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [filters, setFilters] = useState<PlansFilters>(defaultFilters);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<{ id: string; name: string } | null>(
-    null,
-  );
+  const [selected, setSelected] = useState<Plan | null>(null);
 
   const fetchPlans = useCallback(async () => {
     setStatus("loading");
@@ -160,10 +159,7 @@ const PlansPage = () => {
     setFilters(defaultFilters);
   }, []);
 
-  const handleSelect = (
-    e: React.MouseEvent,
-    plan: { id: string; name: string },
-  ) => {
+  const handleSelect = (e: React.MouseEvent, plan: Plan) => {
     if (e.ctrlKey || e.metaKey) {
       setSelected((prev) => (prev?.id === plan.id ? null : plan));
 
@@ -197,11 +193,30 @@ const PlansPage = () => {
         resultCount={computed.filtered.length}
       />
 
-      <SelectedPlanBanner
-        selected={selected}
-        onClear={() => setSelected(null)}
-        onSuccess={(plans) => {}}
-      />
+      <AnimatePresence>
+        {selected && (
+          <SelectedPlanBanner
+            selected={selected}
+            onClear={() => setSelected(null)}
+            onSuccess={(action) => {
+              setPlans((prev) => {
+                switch (action.type) {
+                  case "updated":
+                    return prev.map((p) =>
+                      p.id === action.plan.id ? action.plan : p,
+                    );
+
+                  case "deleted":
+                    return prev.filter((p) => p.id !== action.planId);
+
+                  default:
+                    return prev;
+                }
+              });
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {status === "error" ? (
         <ErrorState error={error || ""} onRetry={fetchPlans} />
@@ -217,12 +232,7 @@ const PlansPage = () => {
 
             return (
               <div
-                onClick={(e) =>
-                  handleSelect(e, {
-                    id: plan.id,
-                    name: plan.name,
-                  })
-                }
+                onClick={(e) => handleSelect(e, plan)}
                 key={plan.id}
                 className={cn(
                   "relative h-full",
@@ -230,7 +240,7 @@ const PlansPage = () => {
                 )}
               >
                 {isSelected && (
-                  <span className="absolute top-4 right-4 size-6 rounded-full bg-foreground text-background z-10 grid place-items-center">
+                  <span className="absolute top-3 left-3 size-6 rounded-full bg-foreground text-background z-10 grid place-items-center">
                     <Check className="size-4" />
                   </span>
                 )}
@@ -241,6 +251,7 @@ const PlansPage = () => {
                   isCurrent={false}
                   onSelect={() => {}}
                   disabledActions
+                  ActiveMark
                 />
               </div>
             );

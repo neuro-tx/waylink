@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
   Sparkles,
   Clock,
+  Check,
+  Ban,
 } from "lucide-react";
 import { SubscribeDialog } from "./Subscribedialog";
 import type { Plan, PlanBillingCycle, Subscription } from "@/lib/all-types";
@@ -92,12 +94,14 @@ export function PlanCard({
   isCurrent,
   onSelect,
   disabledActions = false,
+  ActiveMark = false,
 }: {
   plan: Plan;
   billingCycle: PlanBillingCycle;
   isCurrent: boolean;
   onSelect: (plan: Plan) => void;
   disabledActions?: boolean;
+  ActiveMark?: boolean;
 }) {
   const meta = TIER_META[plan.tier] ?? TIER_META.free;
   const isEnterprise = plan.tier === "enterprise";
@@ -156,14 +160,39 @@ export function PlanCard({
           </div>
         </div>
 
-        {plan.featuredInSearch && !isCurrent && (
-          <Badge
-            variant="outline"
-            className="h-5 shrink-0 border-amber-300 text-amber-600 dark:text-amber-400 dark:border-amber-700"
-          >
-            <Star className="size-2.5" /> Featured
-          </Badge>
-        )}
+        <div className="flex flex-col gap-1 items-end">
+          {plan.featuredInSearch && !isCurrent && (
+            <Badge
+              variant="outline"
+              className="h-5 shrink-0 border-amber-300 text-amber-600 dark:text-amber-400 dark:border-amber-700"
+            >
+              <Star className="size-2.5" /> Featured
+            </Badge>
+          )}
+          {ActiveMark && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "h-5 shrink-0",
+                plan.isActive
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400"
+                  : "border-muted bg-muted/40 text-muted-foreground",
+              )}
+            >
+              {plan.isActive ? (
+                <>
+                  <Check className="size-3" />
+                  Active
+                </>
+              ) : (
+                <>
+                  <Ban className="size-3" />
+                  Inactive
+                </>
+              )}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed min-h-10">
