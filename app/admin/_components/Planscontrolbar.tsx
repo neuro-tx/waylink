@@ -29,14 +29,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import PlanDialog from "./PlanDialog";
 import { useDebounce } from "@/hooks/useDebounce";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Plan } from "@/lib/all-types";
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -308,12 +306,10 @@ export function SelectedPlanBanner({
   selected,
   onSuccess,
   onClear,
-  // onEdit
 }: {
   selected: Plan;
   onClear: () => void;
   onSuccess?: (action: PlanSuccessAction) => void;
-  // onEdit: ()=> void
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -374,7 +370,7 @@ export function SelectedPlanBanner({
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: -20, opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="w-full border-b"
+      className="w-full border-b sticky backdrop-blur-lg top-17 z-10"
     >
       <div className="flex justify-between px-4 py-3 flex-col gap-3 lg:flex-row lg:items-center">
         <div className="flex items-center gap-3">
@@ -393,6 +389,8 @@ export function SelectedPlanBanner({
                 Edit
               </Button>
             }
+            defaultValues={selected}
+            mode="update"
           />
 
           <Button

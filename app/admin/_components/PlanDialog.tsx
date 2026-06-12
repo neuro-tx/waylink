@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -32,58 +32,78 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, X, Loader2, AlertCircle } from "lucide-react";
+import { Plus, X, Loader2, AlertCircle, Save } from "lucide-react";
 import { PlanFormValues, planSchema } from "@/validations";
+import { Plan } from "@/lib/all-types";
 
 interface AddPlanDialogProps {
   trigger: React.ReactNode;
-  onSubmit?: (values: PlanFormValues) => Promise<void>;
+  mode?: "create" | "update";
+  defaultValues?: Plan;
 }
 
-const sectionClass = "flex flex-col gap-4";
+const sectionClass = "flex flex-col gap-0";
 const labelClass =
   "text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3 block";
 
-const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
+const PlanDialog = ({
+  trigger,
+  defaultValues,
+  mode = "create",
+}: AddPlanDialogProps) => {
   const [open, setOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  function planToFormValues(plan?: Plan): PlanFormValues {
+    return {
+      name: plan?.name ?? "",
+      tier: plan?.tier ?? "pro",
+      price: plan?.price ?? 0,
+      isFree: plan?.isFree ?? false,
+      priorityBoost: Number(plan?.priorityBoost ?? 1),
+      featuredInSearch: plan?.featuredInSearch ?? false,
+      badgeLabel: plan?.badgeLabel ?? "",
+      billingCycle: plan?.billingCycle ?? "monthly",
+      commissionRate: Number(plan?.commissionRate ?? 0),
+      maxListings: plan?.maxListings ?? null,
+      description: plan?.description ?? "",
+      isActive: plan?.isActive ?? true,
+      highlights: plan?.highlights ?? [],
+      trialEnabled: plan?.trialEnabled ?? false,
+      trialDays: plan?.trialDays ?? null,
+      trialEndsAt: plan?.trialEndsAt ?? null,
+    };
+  }
+
   const form = useForm({
     resolver: zodResolver(planSchema),
-    defaultValues: {
-      name: "",
-      tier: "pro",
-      price: 0,
-      isFree: false,
-      priorityBoost: 1,
-      featuredInSearch: false,
-      badgeLabel: "",
-      billingCycle: "monthly",
-      commissionRate: 0,
-      maxListings: null,
-      description: "",
-      isActive: true,
-      highlights: [],
-      trialEnabled: false,
-      trialDays: null,
-      trialEndsAt: null,
-    },
+    defaultValues: planToFormValues(defaultValues),
   });
+
+  const {
+    formState: { isDirty, isSubmitting },
+  } = form;
+
+  const canUpdate = mode === "create" || isDirty;
+
+  useEffect(() => {
+    form.reset(planToFormValues(defaultValues));
+  }, [defaultValues, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    // @ts-expect-error highlights is a string array, react-hook-form fieldArray expects objects  
+    // @ts-expect-error highlights is a string array, react-hook-form fieldArray expects objects
     name: "highlights",
   });
 
   const isFree = form.watch("isFree");
   const trialEnabled = form.watch("trialEnabled");
-  const isSubmitting = form.formState.isSubmitting;
+  const submitting = form.formState.isSubmitting;
 
   const handleSubmit = async (values: PlanFormValues) => {
     setSubmitError(null);
     try {
-      await onSubmit?.(values);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       form.reset();
       setOpen(false);
     } catch (err) {
@@ -94,7 +114,7 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (!next && isSubmitting) return;
+    if (!next && submitting) return;
     if (!next) {
       form.reset();
       setSubmitError(null);
@@ -110,10 +130,18 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
 
       <AlertDialog open={open} onOpenChange={handleOpenChange}>
         <AlertDialogContent className="w-full p-0 gap-0 overflow-hidden">
-          <AlertDialogHeader className="px-6 py-3 border-b border-border">
-            <AlertDialogTitle className="text-base font-medium">
-              Plan Form
-            </AlertDialogTitle>
+          <AlertDialogHeader className="border-b border-border px-6 py-3">
+            <div className="space-y-1">
+              <AlertDialogTitle className="font-mono text-lg font-semibold">
+                {mode === "create" ? "Plan Creation" : "Update Plan"} Form
+              </AlertDialogTitle>
+
+              {mode === "update" && !isDirty && (
+                <p className="text-sm text-muted-foreground">
+                  No changes detected.
+                </p>
+              )}
+            </div>
           </AlertDialogHeader>
 
           <ScrollArea className="max-h-[55dvh]">
@@ -121,7 +149,7 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
               <form
                 id="add-plan-form"
                 onSubmit={form.handleSubmit(handleSubmit)}
-                className="px-6 py-5 flex flex-col gap-6"
+                className="px-6 py-5 flex flex-col gap-5"
               >
                 {/* ── BASICS ─────────────────────────────────────────── */}
                 <div className={sectionClass}>
@@ -358,67 +386,69 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
                 {/* ── FEATURES ───────────────────────────────────────── */}
                 <div className={sectionClass}>
                   <span className={labelClass}>Features & limits</span>
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Priority boost */}
-                    <FormField
-                      control={form.control}
-                      name="priorityBoost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Priority boost
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={9.99}
-                              step={0.1}
-                              className="h-8 text-sm"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormDescription className="text-xs">
-                            0 – 9.99
-                          </FormDescription>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Priority boost */}
+                      <FormField
+                        control={form.control}
+                        name="priorityBoost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Priority boost
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={9.99}
+                                step={0.1}
+                                className="h-8 text-sm"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs">
+                              0 – 9.99
+                            </FormDescription>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
 
-                    {/* Max listings */}
-                    <FormField
-                      control={form.control}
-                      name="maxListings"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">
-                            Max listings
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={1}
-                              placeholder="Unlimited"
-                              className="h-8 text-sm"
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value
-                                    ? parseInt(e.target.value, 10)
-                                    : null,
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormDescription className="text-xs">
-                            Leave blank for unlimited.
-                          </FormDescription>
-                          <FormMessage className="text-xs" />
-                        </FormItem>
-                      )}
-                    />
+                      {/* Max listings */}
+                      <FormField
+                        control={form.control}
+                        name="maxListings"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Max listings
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder="Unlimited"
+                                className="h-8 text-sm"
+                                {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value
+                                      ? parseInt(e.target.value, 10)
+                                      : null,
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs">
+                              Leave blank for unlimited.
+                            </FormDescription>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     {/* Featured in search */}
                     <FormField
@@ -473,7 +503,7 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
                   <div className="flex flex-col gap-2 mt-1">
                     <FormLabel className="text-xs">Highlights</FormLabel>
                     {fields.map((field, index) => (
-                      <div key={field.id} className="flex items-center gap-2">
+                      <div key={field.id} className="flex items-center gap-1">
                         <FormField
                           control={form.control}
                           name={`highlights.${index}`}
@@ -628,23 +658,33 @@ const PlanDialog = ({ trigger, onSubmit }: AddPlanDialogProps) => {
               variant="outline"
               size="sm"
               onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={submitting}
             >
               Cancel
             </Button>
+
             <Button
               type="submit"
               form="add-plan-form"
               size="sm"
               className="cursor-pointer"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canUpdate}
             >
               {isSubmitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
+              ) : mode === "create" ? (
                 <Plus />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
               )}
-              {isSubmitting ? "Creating..." : "Create plan"}
+
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Updating..."
+                : mode === "create"
+                  ? "Create plan"
+                  : "Update plan"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

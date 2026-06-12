@@ -161,7 +161,7 @@ const PlansPage = () => {
 
   const handleSelect = (e: React.MouseEvent, plan: Plan) => {
     if (e.ctrlKey || e.metaKey) {
-      setSelected((prev) => (prev?.id === plan.id ? null : plan));
+      setSelected(plan);
 
       e.preventDefault();
       e.stopPropagation();

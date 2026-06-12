@@ -277,9 +277,13 @@ export async function getAllPlans() {
   try {
     return await db.select().from(plans).orderBy(plans.createdAt);
   } catch (error) {
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to get plans data",
-    );
+    console.error("Failed to get plans:", error);
+
+    if (error instanceof Error && !error.message.startsWith("Failed query:")) {
+      throw error;
+    }
+
+    throw new Error("Failed to retrieve plans data.");
   }
 }
 
@@ -353,10 +357,7 @@ export async function deletePlan(planId: string) {
     throw new Error("Please deactivate this plan before deleting it.");
   }
 
-  await db
-    .delete(plans)
-    .where(eq(plans.id, planId))
-    .returning();
+  await db.delete(plans).where(eq(plans.id, planId)).returning();
 
   return { success: true };
 }
