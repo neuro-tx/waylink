@@ -393,7 +393,9 @@ export function SelectedPlanBanner({
           <Button
             size="sm"
             variant="link"
-            onClick={() => router.push(`/admin/subscriptions?${selected.id}`)}
+            onClick={() =>
+              router.push(`/admin/subscriptions?plan=${selected.id}`)
+            }
             disabled={isPending}
           >
             <Receipt className="h-3.5 w-3.5" />
