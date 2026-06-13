@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -35,10 +35,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, X, Loader2, AlertCircle, Save } from "lucide-react";
 import { PlanFormValues, planSchema } from "@/validations";
 import { Plan } from "@/lib/all-types";
+import { PlanMutationResult } from "@/hooks/usePlans";
+
+type SavePlanFn = (
+  mode: "create" | "update",
+  values: PlanFormValues,
+  id?: string,
+) => Promise<PlanMutationResult>;
 
 interface AddPlanDialogProps {
   trigger: React.ReactNode;
-  mode?: "create" | "update";
+  mode: "create" | "update";
+  savePlan: SavePlanFn;
   defaultValues?: Plan;
 }
 
@@ -49,10 +57,13 @@ const labelClass =
 const PlanDialog = ({
   trigger,
   defaultValues,
-  mode = "create",
+  mode,
+  savePlan,
 }: AddPlanDialogProps) => {
   const [open, setOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const id = defaultValues?.id;
 
   function planToFormValues(plan?: Plan): PlanFormValues {
     return {
@@ -71,7 +82,6 @@ const PlanDialog = ({
       highlights: plan?.highlights ?? [],
       trialEnabled: plan?.trialEnabled ?? false,
       trialDays: plan?.trialDays ?? null,
-      trialEndsAt: plan?.trialEndsAt ?? null,
     };
   }
 
@@ -102,8 +112,15 @@ const PlanDialog = ({
 
   const handleSubmit = async (values: PlanFormValues) => {
     setSubmitError(null);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const res = await savePlan(mode, values, id);
+
+      if (!res.success) {
+        setSubmitError(res.error);
+        return;
+      }
+
       form.reset();
       setOpen(false);
     } catch (err) {
@@ -121,6 +138,18 @@ const PlanDialog = ({
     }
     setOpen(next);
   };
+
+  const trialEndsAt = useMemo(() => {
+    const enabled = form.watch("trialEnabled");
+    const days = form.watch("trialDays");
+
+    if (!enabled || !days) return null;
+
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+
+    return date;
+  }, [form.watch("trialEnabled"), form.watch("trialDays")]);
 
   return (
     <>
@@ -369,9 +398,14 @@ const PlanDialog = ({
                               type="number"
                               min={0}
                               max={50}
-                              step={0.1}
                               className="h-8 text-sm"
-                              {...field}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === ""
+                                    ? 0
+                                    : Number(e.target.value),
+                                )
+                              }
                             />
                           </FormControl>
                           <FormMessage className="text-xs" />
@@ -404,7 +438,13 @@ const PlanDialog = ({
                                 max={9.99}
                                 step={0.1}
                                 className="h-8 text-sm"
-                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === ""
+                                      ? 0
+                                      : Number(e.target.value),
+                                  )
+                                }
                               />
                             </FormControl>
                             <FormDescription className="text-xs">
@@ -573,70 +613,43 @@ const PlanDialog = ({
                   />
 
                   {trialEnabled && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="trialDays"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              Trial days{" "}
-                              <span className="text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                className="h-8 text-sm"
-                                {...field}
-                                value={field.value ?? ""}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? parseInt(e.target.value, 10)
-                                      : null,
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="trialEndsAt"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              Trial end date
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                type="date"
-                                className="h-8 text-sm"
-                                {...field}
-                                value={
-                                  field.value
-                                    ? new Date(field.value)
-                                        .toISOString()
-                                        .split("T")[0]
-                                    : ""
-                                }
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value
-                                      ? new Date(e.target.value)
-                                      : null,
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="trialDays"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs mt-2">
+                            Trial days{" "}
+                            <span className="text-destructive">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              className="h-8 text-sm"
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : null,
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                          {trialEndsAt && (
+                            <p className="text-sm mt-1 text-right">
+                              Trial ends at:{" "}
+                              <span className="font-medium underline text-emerald-500">
+                                {trialEndsAt.toLocaleDateString()}
+                              </span>
+                            </p>
+                          )}
+                        </FormItem>
+                      )}
+                    />
                   )}
                 </div>
 

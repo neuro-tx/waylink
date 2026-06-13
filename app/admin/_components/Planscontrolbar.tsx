@@ -12,6 +12,7 @@ import {
   Loader,
   AlertCircle,
   Activity,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deletePlan, toogleActivePlan } from "@/actions/plans.action";
+import { PlanMutationResult } from "@/hooks/usePlans";
+import { PlanFormValues } from "@/validations";
+import { useRouter } from "next/navigation";
 
 type TierFilter = "all" | "free" | "pro" | "business" | "enterprise";
 type StatusFilter = "all" | "active" | "inactive";
@@ -52,15 +55,18 @@ export interface PlansFilters {
   billing: BillingFilter;
 }
 
+type SavePlanFn = (
+  mode: "create" | "update",
+  values: PlanFormValues,
+  id?: string,
+) => Promise<PlanMutationResult>;
+
 interface PlansControlBarProps {
   filters: PlansFilters;
   onChange: (updated: Partial<PlansFilters>) => void;
   resultCount?: number;
+  savePlan: SavePlanFn;
 }
-
-type PlanSuccessAction =
-  | { type: "updated"; plan: Plan }
-  | { type: "deleted"; planId: string };
 
 const tierOptions: { value: TierFilter; label: string }[] = [
   { value: "all", label: "All tiers" },
@@ -82,6 +88,7 @@ export const PlansControlBar = ({
   filters,
   onChange,
   resultCount,
+  savePlan,
 }: PlansControlBarProps) => {
   const [searchValue, setSearchValue] = useState(filters.search);
   const filtersActive = activeFilterCount(filters);
@@ -284,6 +291,8 @@ export const PlansControlBar = ({
                 Add plan
               </Button>
             }
+            mode="create"
+            savePlan={savePlan}
           />
         </div>
 
@@ -304,63 +313,50 @@ export const PlansControlBar = ({
 
 export function SelectedPlanBanner({
   selected,
-  onSuccess,
   onClear,
+  remove,
+  toggleActive,
+  savePlan,
 }: {
   selected: Plan;
+  remove: (id: string) => Promise<PlanMutationResult>;
+  toggleActive: (id: string) => Promise<PlanMutationResult>;
   onClear: () => void;
-  onSuccess?: (action: PlanSuccessAction) => void;
+  savePlan: SavePlanFn;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-  const onRemove = (id: string) => {
+  const onRemove = (plan: Plan) => {
     startTransition(async () => {
-      try {
-        const res = await deletePlan(id);
-        if (!res.success) {
-          setError("Failed to delete plan.");
-          return;
-        }
-
-        onSuccess?.({
-          type: "deleted",
-          planId: id,
-        });
-        onClear();
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while deleting the plan.",
-        );
+      if (plan.isActive) {
+        setError("Please deactivate this plan before deleting it.");
+        return;
       }
+
+      const id = plan.id;
+      const res = await remove(id);
+
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+
+      onClear();
     });
   };
 
   const onToggleActive = (id: string) => {
     startTransition(async () => {
-      startTransition(async () => {
-        try {
-          const res = await toogleActivePlan(id);
-          if (!res.success) {
-            setError("Failed to change plan status.");
-            return;
-          }
+      const res = await toggleActive(id);
 
-          onSuccess?.({
-            type: "updated",
-            plan: res?.data,
-          });
-          onClear();
-        } catch (error) {
-          setError(
-            error instanceof Error
-              ? error.message
-              : "Something went wrong while updating the plan.",
-          );
-        }
-      });
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+
+      onClear();
     });
   };
 
@@ -391,12 +387,23 @@ export function SelectedPlanBanner({
             }
             defaultValues={selected}
             mode="update"
+            savePlan={savePlan}
           />
 
           <Button
             size="sm"
+            variant="link"
+            onClick={() => router.push(`/admin/subscriptions?${selected.id}`)}
+            disabled={isPending}
+          >
+            <Receipt className="h-3.5 w-3.5" />
+            Show subscriptions
+          </Button>
+
+          <Button
+            size="sm"
             variant="destructive"
-            onClick={() => onRemove(selected.id)}
+            onClick={() => onRemove(selected)}
             disabled={isPending}
           >
             <Trash2 className="h-3.5 w-3.5 mr-1" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   AlertCircle,
   Check,
@@ -16,12 +16,10 @@ import {
   SelectedPlanBanner,
 } from "./Planscontrolbar";
 import { Plan } from "@/lib/all-types";
-import { getAllPlans } from "@/actions/plans.action";
 import { PlanCard } from "@/app/provider/_components/Plansclient";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "motion/react";
-
-type Status = "idle" | "loading" | "success" | "error";
+import { usePlans } from "@/hooks/usePlans";
 
 const EmptyState = ({
   hasFilters,
@@ -83,31 +81,18 @@ const defaultFilters: PlansFilters = {
 };
 
 const PlansPage = () => {
-  const [status, setStatus] = useState<Status>("loading");
-  const [plans, setPlans] = useState<Plan[]>([]);
   const [filters, setFilters] = useState<PlansFilters>(defaultFilters);
-  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Plan | null>(null);
-
-  const fetchPlans = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
-
-    try {
-      const res = await getAllPlans();
-      const data = Array.isArray(res) ? res : [res];
-
-      setPlans(data ?? []);
-      setStatus("success");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-      setStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
+  const {
+    error,
+    fetchPlans,
+    plans,
+    remove,
+    status,
+    toggleActive,
+    savePlan,
+    initialized,
+  } = usePlans();
 
   const computed = useMemo(() => {
     let active = 0;
@@ -168,7 +153,7 @@ const PlansPage = () => {
     }
   };
 
-  if (status === "loading")
+  if (!initialized || status === "loading")
     return (
       <div className="w-full h-[calc(100dvh-100px)] p-4 flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
@@ -191,6 +176,7 @@ const PlansPage = () => {
         filters={filters}
         onChange={handleFilterChange}
         resultCount={computed.filtered.length}
+        savePlan={savePlan}
       />
 
       <AnimatePresence>
@@ -198,22 +184,9 @@ const PlansPage = () => {
           <SelectedPlanBanner
             selected={selected}
             onClear={() => setSelected(null)}
-            onSuccess={(action) => {
-              setPlans((prev) => {
-                switch (action.type) {
-                  case "updated":
-                    return prev.map((p) =>
-                      p.id === action.plan.id ? action.plan : p,
-                    );
-
-                  case "deleted":
-                    return prev.filter((p) => p.id !== action.planId);
-
-                  default:
-                    return prev;
-                }
-              });
-            }}
+            remove={remove}
+            toggleActive={toggleActive}
+            savePlan={savePlan}
           />
         )}
       </AnimatePresence>

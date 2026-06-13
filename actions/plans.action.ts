@@ -15,6 +15,9 @@ import { db } from "@/db";
 import { plans, subscriptions } from "@/db/schemas";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import { detectSubscriptionAction, isExpired } from "@/lib/utils";
+import { PlanFormValues, planSchema } from "@/validations";
+import { adminAuth } from "@/lib/admin-auth";
+import z from "zod";
 
 type DBTX = NodePgDatabase<any>;
 
@@ -360,6 +363,163 @@ export async function deletePlan(planId: string) {
   await db.delete(plans).where(eq(plans.id, planId)).returning();
 
   return { success: true };
+}
+
+function computeTrialEndsAt(trialEnabled: boolean, trialDays: number | null) {
+  if (!trialEnabled || !trialDays) return null;
+
+  const now = new Date();
+  const result = new Date(now);
+
+  result.setDate(result.getDate() + trialDays);
+
+  return result;
+}
+
+export async function createPlan(data: PlanFormValues) {
+  try {
+    const { admin, status } = await adminAuth();
+    if (status !== "ok" || !admin) {
+      throw new Error("Permission denied, access not allowed");
+    }
+
+    const validate = planSchema.safeParse(data);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Validation error",
+      };
+    }
+
+    const computedTrialEndsAt = computeTrialEndsAt(
+      validate.data.trialEnabled,
+      validate.data.trialDays ?? null,
+    );
+
+    const normalized = {
+      ...validate.data,
+      trialDays: validate.data.trialEnabled ? validate.data.trialDays : null,
+      trialEndsAt: computedTrialEndsAt,
+      commissionRate: String(validate.data.commissionRate),
+      priorityBoost: String(validate.data.priorityBoost),
+    };
+
+    const res = await db.insert(plans).values(normalized).returning();
+    if (!res.length) {
+      return {
+        success: false,
+        error: "Failed to create plan",
+      };
+    }
+
+    return {
+      success: true,
+      data: res[0],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export async function EditPlan(planId: string, data: Partial<PlanFormValues>) {
+  try {
+    if (!planId) {
+      throw new Error("Missing plan id");
+    }
+
+    const { admin, status } = await adminAuth();
+
+    if (status !== "ok" || !admin) {
+      throw new Error("Permission denied, access not allowed");
+    }
+
+    const existingPlan = await getPlanById(planId);
+    const planData = existingPlan.data;
+    if (!existingPlan.success || !planData) {
+      return {
+        success: false,
+        error: "Plan not found",
+      };
+    }
+
+    const merged: PlanFormValues = {
+      name: data.name ?? planData.name,
+      tier: data.tier ?? planData.tier,
+      price: data.price ?? planData.price,
+      isFree: data.isFree ?? planData.isFree,
+      priorityBoost: data.priorityBoost ?? Number(planData.priorityBoost),
+      featuredInSearch: data.featuredInSearch ?? planData.featuredInSearch,
+      billingCycle: data.billingCycle ?? planData.billingCycle,
+      commissionRate: data.commissionRate ?? Number(planData.commissionRate),
+      isActive: data.isActive ?? planData.isActive,
+      highlights: data.highlights ?? planData.highlights ?? [],
+      trialEnabled: data.trialEnabled ?? planData.trialEnabled,
+      badgeLabel: data.badgeLabel ?? planData.badgeLabel,
+      maxListings: data.maxListings ?? planData.maxListings,
+      description: data.description ?? planData.description,
+      trialDays: data.trialDays ?? planData.trialDays,
+    };
+
+    const validate = planSchema.safeParse(merged);
+    if (!validate.success) {
+      return {
+        success: false,
+        error: "Validation error",
+      };
+    }
+
+    const values = validate.data;
+
+    const trialChanged =
+      data.trialEnabled !== undefined || data.trialDays !== undefined;
+    const computedTrialEndsAt = trialChanged
+      ? computeTrialEndsAt(values.trialEnabled, values.trialDays ?? null)
+      : planData.trialEndsAt;
+
+    const updates: Partial<typeof plans.$inferInsert> = {};
+    const normalized = {
+      ...values,
+      trialDays: values.trialEnabled ? values.trialDays : null,
+      trialEndsAt: computedTrialEndsAt,
+      commissionRate: String(values.commissionRate),
+      priorityBoost: String(values.priorityBoost),
+    };
+
+    for (const [key, value] of Object.entries(normalized)) {
+      if (
+        JSON.stringify(existingPlan[key as keyof typeof existingPlan]) !==
+        JSON.stringify(value)
+      ) {
+        updates[key as keyof typeof normalized] = value as never;
+      }
+    }
+
+    if (!Object.keys(updates).length) {
+      return {
+        success: false,
+        error: "No changes detected",
+      };
+    }
+
+    const [updated] = await db
+      .update(plans)
+      .set(updates)
+      .where(eq(plans.id, planId))
+      .returning();
+
+    return {
+      success: true,
+      data: updated,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

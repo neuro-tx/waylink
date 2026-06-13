@@ -25,7 +25,7 @@ export const planSchema = z
       .int("Price must be a whole number")
       .min(0, "Price cannot be negative"),
     isFree: z.boolean().default(false),
-    priorityBoost: z
+    priorityBoost: z.coerce
       .number()
       .min(0, "Priority boost cannot be negative")
       .max(9.99, "Priority boost cannot exceed 9.99")
@@ -38,7 +38,7 @@ export const planSchema = z
       .nullable()
       .optional(),
     billingCycle: z.enum(billingCycleValues).default("monthly"),
-    commissionRate: z
+    commissionRate: z.coerce
       .number()
       .min(0, "Commission rate cannot be negative")
       .max(50.0, "Commission rate cannot exceed 50.00"),
@@ -65,7 +65,6 @@ export const planSchema = z
       .positive("Trial days must be greater than 0")
       .nullable()
       .optional(),
-    trialEndsAt: z.date().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     /**
