@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useTransition, useState } from "react";
 import {
   Table,
@@ -10,9 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,54 +18,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Check, X, Inbox, Trash2 } from "lucide-react";
+import { cn, fmtDate } from "@/lib/utils";
+import { ActivePlans, SubscriptionRow } from "@/lib/admin-types";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Search, MoreHorizontal, Check, X, Inbox } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { SubscriptionRow } from "@/lib/admin-types";
-import { SubscriptionStatus } from "@/lib/all-types";
-import { useDebounce } from "@/hooks/useDebounce";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ActivePlan {
-  id: string;
-  name: string;
-  tier: string;
-  price: string;
-  billingCycle: string;
-}
+  BusinessType,
+  ProviderStatus,
+  SubscriptionStatus,
+} from "@/lib/all-types";
+import { fmtCurrency } from "@/lib/helpers";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
   data: SubscriptionRow[];
   total: number;
   page: number;
   totalPages: number;
-  activePlans: ActivePlan[];
+  activePlans: ActivePlans[];
   filters: {
-    search?: string;
     status?: SubscriptionStatus;
     planId?: string;
     type?: "trial" | "paid";
   };
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
+type StatusBadgeType = SubscriptionStatus | ProviderStatus;
 
-const STATUS_STYLES: Record<SubscriptionStatus, string> = {
+const STATUS_STYLES = {
+  // Subscription statuses
   active:
     "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
   trialing:
@@ -78,9 +56,42 @@ const STATUS_STYLES: Record<SubscriptionStatus, string> = {
     "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900",
   expired:
     "bg-zinc-100 text-zinc-500 border-zinc-200 dark:bg-zinc-800/40 dark:text-zinc-400 dark:border-zinc-700",
+
+  // Provider statuses
+  pending:
+    "bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-950/40 dark:text-yellow-400 dark:border-yellow-900",
+
+  approved:
+    "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
+
+  inactive:
+    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700",
+
+  suspended:
+    "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900",
+
+  rejected:
+    "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900",
+} as const;
+
+const BUSINESS_TYPE_STYLES: Record<BusinessType, string> = {
+  individual:
+    "bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-950/40 dark:text-sky-400 dark:border-sky-900",
+
+  company:
+    "bg-violet-50 text-violet-700 border-violet-100 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900",
+
+  agency:
+    "bg-orange-50 text-orange-700 border-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900",
 };
 
-function StatusBadge({ status }: { status: SubscriptionStatus }) {
+const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  individual: "Individual",
+  company: "Company",
+  agency: "Agency",
+};
+
+function StatusBadge({ status }: { status: StatusBadgeType }) {
   return (
     <span
       className={cn(
@@ -108,7 +119,25 @@ function TypeBadge({ type }: { type: "trial" | "paid" | null }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function BusinessTypeBadge({
+  type,
+  className,
+}: {
+  type: BusinessType;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        BUSINESS_TYPE_STYLES[type],
+        className,
+      )}
+    >
+      {BUSINESS_TYPE_LABELS[type]}
+    </span>
+  );
+}
 
 export function SubscriptionsTable({
   data,
@@ -121,78 +150,63 @@ export function SubscriptionsTable({
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Modal state
-  const [changePlanRow, setChangePlanRow] = useState<SubscriptionRow | null>(
-    null,
-  );
-  const [cancelRow, setCancelRow] = useState<SubscriptionRow | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const searchParams = useSearchParams();
+  const hasFilters = searchParams.toString().length > 0;
 
-  // URL-based filter helpers
   const pushParams = useCallback(
     (updates: Record<string, string | undefined>) => {
-      const params = new URLSearchParams();
-      const merged = { ...filters, page: "1", ...updates };
-      for (const [k, v] of Object.entries(merged)) {
-        if (v) params.set(k, v);
-      }
-      // startTransition(() => router.push(`${pathname}?${params.toString()}`));
+      startTransition(() => {
+        const params = new URLSearchParams();
+        const merged = {
+          ...filters,
+          page: "1",
+          ...updates,
+        };
+        Object.entries(merged).forEach(([key, value]) => {
+          if (value) {
+            params.set(key, value);
+          }
+        });
+
+        router.push(`${pathname}?${params.toString()}`);
+      });
     },
     [filters, pathname, router],
   );
 
-  const handleSearch = useDebounce((val: string) => {
-    pushParams({ search: val || undefined });
-  }, 300);
+  const resetFilters = useCallback(() => {
+    startTransition(() => {
+      router.replace(pathname);
+    });
+  }, [pathname, router, startTransition]);
 
-  // Actions
-  async function handleChangePlan() {
-    if (!changePlanRow || !selectedPlanId) return;
-    setIsSubmitting(true);
-    // await changePlanAction(changePlanRow.id, selectedPlanId);
-    setIsSubmitting(false);
-    setChangePlanRow(null);
-  }
-
-  async function handleCancel() {
-    if (!cancelRow) return;
-    setIsSubmitting(true);
-    // await cancelSubscriptionAction(cancelRow.id);
-    setIsSubmitting(false);
-    setCancelRow(null);
-  }
-
-  function openChangePlan(row: SubscriptionRow) {
-    setSelectedPlanId(row.planId);
-    setChangePlanRow(row);
-  }
-
-  const canCancel = (s: SubscriptionStatus) =>
-    s !== "cancelled" && s !== "expired";
+  const allSelected = data.length > 0 && selectedIds.length === data.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((selectedId) => selectedId !== id)
+        : [...prev, id],
+    );
+  };
+  const toggleAll = () => {
+    setSelectedIds((prev) =>
+      prev.length === data.length ? [] : data.map((row) => row.id),
+    );
+  };
 
   return (
-    <>
-      {/* Filter bar */}
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-50">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            defaultValue={filters.search}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search by provider or plan…"
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-
         <Select
           defaultValue={filters.status ?? "all"}
           onValueChange={(v) =>
             pushParams({ status: v === "all" ? undefined : v })
           }
         >
-          <SelectTrigger className="h-8 w-35 text-sm">
+          <SelectTrigger className="h-8 w-30 text-sm" disabled={isPending}>
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -211,7 +225,7 @@ export function SubscriptionsTable({
             pushParams({ planId: v === "all" ? undefined : v })
           }
         >
-          <SelectTrigger className="h-8 w-32.5 text-sm">
+          <SelectTrigger className="h-8 w-30 text-sm" disabled={isPending}>
             <SelectValue placeholder="All plans" />
           </SelectTrigger>
           <SelectContent>
@@ -232,7 +246,7 @@ export function SubscriptionsTable({
             })
           }
         >
-          <SelectTrigger className="h-8 w-27.5 text-sm">
+          <SelectTrigger className="h-8 w-27 text-sm" disabled={isPending}>
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
@@ -242,6 +256,19 @@ export function SubscriptionsTable({
           </SelectContent>
         </Select>
 
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="h-9 text-sm"
+            disabled={isPending}
+          >
+            <Trash2 className="size-4" />
+            Reset Filters
+          </Button>
+        )}
+
         {total > 0 && (
           <span className="ml-auto text-xs text-muted-foreground">
             {total} result{total !== 1 ? "s" : ""}
@@ -249,23 +276,31 @@ export function SubscriptionsTable({
         )}
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border mt-5 border-border/50 overflow-hidden">
+      <div className="rounded-md border border-border/50 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="text-xs font-medium w-40">
-                Provider
-              </TableHead>
-              <TableHead className="text-xs font-medium w-27.5">
-                Plan
+              <TableHead className="w-6 pl-5">
+                <Checkbox
+                  checked={
+                    allSelected ? true : someSelected ? "indeterminate" : false
+                  }
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all"
+                />
               </TableHead>
               <TableHead className="text-xs font-medium w-25">
-                Status
+                Provider
               </TableHead>
               <TableHead className="text-xs font-medium w-20">
-                Type
+                Provider Status
               </TableHead>
+              <TableHead className="w-24 text-xs font-medium">
+                Business
+              </TableHead>
+              <TableHead className="text-xs font-medium w-27.5">Plan</TableHead>
+              <TableHead className="text-xs font-medium w-25">Status</TableHead>
+              <TableHead className="text-xs font-medium w-20">Type</TableHead>
               <TableHead className="text-xs font-medium w-27.5">
                 Start date
               </TableHead>
@@ -273,20 +308,19 @@ export function SubscriptionsTable({
                 End date
               </TableHead>
               <TableHead className="text-xs font-medium text-center w-20">
-                Listings
+                Used Listings
               </TableHead>
               <TableHead className="text-xs font-medium text-center w-22.5">
                 Auto-renew
               </TableHead>
-              <TableHead className="text-xs font-medium w-12.5" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-48 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Inbox className="h-7 w-7 opacity-40" />
+                <TableCell colSpan={11} className="h-48 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground transition-all">
+                    <Inbox className="h-7 w-7" />
                     <span className="text-sm">
                       No subscriptions match your filters.
                     </span>
@@ -297,15 +331,42 @@ export function SubscriptionsTable({
               data.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={cn(isPending && "opacity-60")}
+                  className={cn(
+                    "transition-colors duration-200",
+                    isPending && "opacity-60",
+                    selectedIds.includes(row.id) &&
+                      "bg-amber-500/7 hover:bg-amber-500/10",
+                  )}
                 >
+                  <TableCell className="w-6 pl-5">
+                    <Checkbox
+                      checked={selectedIds.includes(row.id)}
+                      onCheckedChange={() => toggleRow(row.id)}
+                      aria-label={`Select ${row.provider}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium text-sm">
-                    {row.providerId}
+                    <p className="text-sm font-medium">{row.provider}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.businessEmail}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    {row.providerStats ? (
+                      <StatusBadge status={row.providerStats} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground border px-2 py-0.5 rounded-full">
+                        Not detected
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <BusinessTypeBadge type={row.businessType} />
                   </TableCell>
                   <TableCell className="text-sm">
                     <span className="text-foreground">{row.planName}</span>
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ${Number(row.planPrice).toLocaleString()}
+                    <span className="text-xs text-muted-foreground">
+                      {fmtCurrency(row.planPrice)}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -315,54 +376,20 @@ export function SubscriptionsTable({
                     <TypeBadge type={row.type} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {row.startDate.toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {fmtDate(row.startDate)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {row.endDate.toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {fmtDate(row.endDate)}
                   </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {row.listingsCount}
                   </TableCell>
                   <TableCell className="text-center">
                     {row.autoRenew ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-500 mx-auto" />
+                      <Check className="size-4 text-emerald-500 mx-auto" />
                     ) : (
-                      <X className="h-3.5 w-3.5 text-muted-foreground/50 mx-auto" />
+                      <X className="size-4 text-destructive mx-auto" />
                     )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreHorizontal className="h-3.5 w-3.5" />
-                          <span className="sr-only">Row actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 text-sm">
-                        <DropdownMenuItem onClick={() => openChangePlan(row)}>
-                          Change plan
-                        </DropdownMenuItem>
-                        {canCancel(row.status) && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setCancelRow(row)}
-                            >
-                              Cancel subscription
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -370,13 +397,12 @@ export function SubscriptionsTable({
           </TableBody>
         </Table>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-border/50 bg-muted/20">
             <span className="text-xs text-muted-foreground">
               Page {page} of {totalPages} · {total} total
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -394,7 +420,7 @@ export function SubscriptionsTable({
                     key={p}
                     variant={p === page ? "default" : "outline"}
                     size="sm"
-                    className="h-7 w-7 text-xs p-0"
+                    className="h-7 w-7 text-xs"
                     onClick={() => pushParams({ page: String(p) })}
                   >
                     {p}
@@ -414,88 +440,6 @@ export function SubscriptionsTable({
           </div>
         )}
       </div>
-
-      {/* Change plan dialog */}
-      <Dialog
-        open={!!changePlanRow}
-        onOpenChange={(o) => !o && setChangePlanRow(null)}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Change plan</DialogTitle>
-            <DialogDescription>
-              Select a new plan for provider{" "}
-              <span className="font-medium text-foreground">
-                {changePlanRow?.providerId}
-              </span>{" "}
-              (currently on{" "}
-              <span className="font-medium text-foreground">
-                {changePlanRow?.planName}
-              </span>
-              ).
-            </DialogDescription>
-          </DialogHeader>
-          <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Pick a plan" />
-            </SelectTrigger>
-            <SelectContent>
-              {activePlans.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  <span className="flex items-center justify-between w-full gap-4">
-                    <span>{p.name}</span>
-                    <span className="text-muted-foreground text-xs">
-                      ${Number(p.price).toLocaleString()}/{p.billingCycle}
-                    </span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setChangePlanRow(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleChangePlan}
-              disabled={
-                isSubmitting || selectedPlanId === changePlanRow?.planId
-              }
-            >
-              {isSubmitting ? "Saving…" : "Confirm change"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel dialog */}
-      <Dialog open={!!cancelRow} onOpenChange={(o) => !o && setCancelRow(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Cancel subscription</DialogTitle>
-            <DialogDescription>
-              This will cancel{" "}
-              <span className="font-medium text-foreground">
-                {cancelRow?.providerId}
-              </span>
-              's subscription. They'll lose access at the end of their current
-              billing period. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelRow(null)}>
-              Keep subscription
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Cancelling…" : "Yes, cancel"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 }

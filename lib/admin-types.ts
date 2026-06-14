@@ -1,8 +1,19 @@
-import { PlanTier, SubscriptionStatus } from "./all-types";
+import {
+  BusinessType,
+  PlanTier,
+  ProviderStatus,
+  ServiceType,
+  SubscriptionStatus,
+} from "./all-types";
 
 export interface SubscriptionRow {
   id: string;
   providerId: string;
+  businessEmail: string | null;
+  provider: string;
+  serviceType: ServiceType;
+  businessType: BusinessType;
+  providerStats: ProviderStatus | null;
   planId: string;
   planName: string;
   planTier: PlanTier;
@@ -41,3 +52,23 @@ export interface SubscriptionsAnalytics {
   mrrTrend: { month: string; mrr: number; newMrr: number }[];
   planDistribution: { planName: string; planTier: string; count: number }[];
 }
+
+export interface ActivePlans {
+  id: string;
+  name: string;
+  tier: "free" | "pro" | "business" | "enterprise";
+  price: number;
+  billingCycle: "monthly" | "yearly";
+}
+
+export type SubscriptionsData = {
+  subscriptions: {
+    data: SubscriptionRow[];
+    total: number;
+    page: number;
+    perPage: number;
+    totalPages: number;
+  };
+  analytics: SubscriptionsAnalytics;
+  activePlans: ActivePlans[];
+};

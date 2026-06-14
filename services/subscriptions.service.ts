@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { plans, subscriptions } from "@/db/schemas";
+import { plans, providers, subscriptions } from "@/db/schemas";
 import {
   SubscriptionRow,
   SubscriptionsAnalytics,
@@ -16,7 +16,7 @@ export async function getSubscriptions(
   perPage: number;
   totalPages: number;
 }> {
-  const { status, planId, type, page = 1, perPage = 4 } = filters;
+  const { status, planId, type, page = 1, perPage = 15 } = filters;
   const offset = (page - 1) * perPage;
 
   const conditions = [];
@@ -38,6 +38,11 @@ export async function getSubscriptions(
       .select({
         id: subscriptions.id,
         providerId: subscriptions.providerId,
+        businessEmail: providers.businessEmail,
+        provider: providers.name,
+        serviceType: providers.serviceType,
+        businessType: providers.businessType,
+        providerStats: providers.status,
         planId: subscriptions.planId,
         planName: plans.name,
         planTier: plans.tier,
@@ -56,6 +61,7 @@ export async function getSubscriptions(
       })
       .from(subscriptions)
       .innerJoin(plans, eq(subscriptions.planId, plans.id))
+      .innerJoin(providers, eq(providers.id, subscriptions.providerId))
       .where(where)
       .orderBy(desc(subscriptions.createdAt))
       .limit(perPage)
@@ -185,13 +191,11 @@ export async function getSubscriptionsAnalytics(): Promise<SubscriptionsAnalytic
 
   const mrr = Number(mrrResult?.mrr ?? 0);
 
-  // Trial conversion rate: (trials that became paid in last 90 days) / (trials started in last 90 days)
+  const started = Number(trialsStarted?.count ?? 0);
+  const converted = Number(trialsConverted?.count ?? 0);
+
   const trialConversionRate =
-    Number(trialsStarted?.count) > 0
-      ? Math.round(
-          (Number(trialsConverted?.count) / Number(trialsStarted?.count)) * 100,
-        )
-      : 0;
+    started > 0 ? Math.min(100, Math.round((converted / started) * 100)) : 0;
 
   // Churn rate: cancelled this month / active at start of month
   const churnRate =
@@ -206,11 +210,40 @@ export async function getSubscriptionsAnalytics(): Promise<SubscriptionsAnalytic
       : 0;
 
   // MRR trend: last 6 months
-  const mrrTrend = mrrTrendRaw.map((r) => ({
-    month: r.month,
-    mrr: Number(r.mrr ?? 0),
-    newMrr: Number(r.newCount) * (mrr / Math.max(activeCount, 1)),
-  }));
+  const months: string[] = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now);
+    date.setMonth(date.getMonth() - i);
+
+    months.push(
+      date.toLocaleString("en-US", {
+        month: "short",
+      }),
+    );
+  }
+
+  const trendMap = new Map(
+    mrrTrendRaw.map((r) => [
+      r.month,
+      {
+        mrr: Number(r.mrr ?? 0),
+        newMrr: Number(r.mrr ?? 0),
+        newCount: Number(r.newCount),
+      },
+    ]),
+  );
+
+  const mrrTrend = months.map((month) => {
+    const existing = trendMap.get(month);
+
+    return {
+      month,
+      mrr: existing?.mrr ?? 0,
+      newMrr: existing?.newMrr ?? 0,
+      newCount: existing?.newCount ?? 0,
+    };
+  });
 
   const planDistribution = planDistributionRaw.map((r) => ({
     planName: r.planName,
