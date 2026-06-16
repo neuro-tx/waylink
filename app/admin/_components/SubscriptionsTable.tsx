@@ -28,6 +28,9 @@ import {
 } from "@/lib/all-types";
 import { fmtCurrency } from "@/lib/helpers";
 import { Checkbox } from "@/components/ui/checkbox";
+import SubscriptionActionsBar, {
+  SelectedModelProps,
+} from "./SubscriptionActionsBar";
 
 interface Props {
   data: SubscriptionRow[];
@@ -150,7 +153,7 @@ export function SubscriptionsTable({
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selected, setSelected] = useState<SelectedModelProps[]>([]);
 
   const searchParams = useSearchParams();
   const hasFilters = searchParams.toString().length > 0;
@@ -182,23 +185,47 @@ export function SubscriptionsTable({
     });
   }, [pathname, router, startTransition]);
 
-  const allSelected = data.length > 0 && selectedIds.length === data.length;
-  const someSelected = selectedIds.length > 0 && !allSelected;
-  const toggleRow = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((selectedId) => selectedId !== id)
-        : [...prev, id],
-    );
+  const selectedIds = new Set(selected.map((item) => item.subscriptionId));
+
+  const allSelected = data.length > 0 && selected.length === data.length;
+  const someSelected = selected.length > 0 && !allSelected;
+  const toggleRow = (subscription: SelectedModelProps) => {
+    setSelected((prev) => {
+      const exists = prev.some(
+        (item) => item.subscriptionId === subscription.subscriptionId,
+      );
+
+      if (exists) {
+        return prev.filter(
+          (item) => item.subscriptionId !== subscription.subscriptionId,
+        );
+      }
+
+      return [...prev, subscription];
+    });
   };
   const toggleAll = () => {
-    setSelectedIds((prev) =>
-      prev.length === data.length ? [] : data.map((row) => row.id),
+    setSelected((prev) =>
+      prev.length === data.length
+        ? []
+        : data.map((row) => ({
+            subscriptionId: row.id,
+            providerId: row.providerId,
+            planId: row.planId,
+            status: row.status,
+            planName: row.planId,
+          })),
     );
   };
 
   return (
     <div className="space-y-4">
+      {someSelected && (
+        <SubscriptionActionsBar
+          selected={selected}
+          clearFilter={() => setSelected([])}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           defaultValue={filters.status ?? "all"}
@@ -334,14 +361,22 @@ export function SubscriptionsTable({
                   className={cn(
                     "transition-colors duration-200",
                     isPending && "opacity-60",
-                    selectedIds.includes(row.id) &&
+                    selectedIds.has(row.id) &&
                       "bg-amber-500/7 hover:bg-amber-500/10",
                   )}
                 >
                   <TableCell className="w-6 pl-5">
                     <Checkbox
-                      checked={selectedIds.includes(row.id)}
-                      onCheckedChange={() => toggleRow(row.id)}
+                      checked={selectedIds.has(row.id)}
+                      onCheckedChange={() =>
+                        toggleRow({
+                          subscriptionId: row.id,
+                          providerId: row.providerId,
+                          planId: row.planId,
+                          status: row.status,
+                          planName: row.planName,
+                        })
+                      }
                       aria-label={`Select ${row.provider}`}
                     />
                   </TableCell>
