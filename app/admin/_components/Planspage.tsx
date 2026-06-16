@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Check,
@@ -20,6 +20,7 @@ import { PlanCard } from "@/app/provider/_components/Plansclient";
 import { cn } from "@/lib/utils";
 import { AnimatePresence } from "motion/react";
 import { usePlans } from "@/hooks/usePlans";
+import { useSearchParams } from "next/navigation";
 
 const EmptyState = ({
   hasFilters,
@@ -93,6 +94,24 @@ const PlansPage = () => {
     savePlan,
     initialized,
   } = usePlans();
+  const params = useSearchParams();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const search = params.get("search")?.trim() ?? "";
+
+  useEffect(() => {
+    if (!search) return;
+
+    setFilters((prev) => {
+      if (prev.search === search) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        search,
+      };
+    });
+  }, [search]);
 
   const computed = useMemo(() => {
     let active = 0;
@@ -153,6 +172,19 @@ const PlansPage = () => {
     }
   };
 
+  const handleTouchStart = (plan: Plan) => {
+    longPressTimer.current = setTimeout(() => {
+      setSelected(plan);
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   if (!initialized || status === "loading")
     return (
       <div className="w-full h-[calc(100dvh-100px)] p-4 flex items-center justify-center">
@@ -206,6 +238,9 @@ const PlansPage = () => {
             return (
               <div
                 onClick={(e) => handleSelect(e, plan)}
+                onTouchStart={() => handleTouchStart(plan)}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
                 key={plan.id}
                 className={cn(
                   "relative h-full",

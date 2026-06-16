@@ -115,7 +115,7 @@ export const PlansControlBar = ({
     <TooltipProvider delayDuration={300}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center flex-wrap gap-3">
             <div className="relative flex-1 min-w-60 max-w-sm">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -297,14 +297,36 @@ export const PlansControlBar = ({
         </div>
 
         {resultCount !== undefined && (
-          <p className="text-xs text-muted-foreground">
-            Showing{" "}
-            <span className="font-medium text-foreground">{resultCount}</span>{" "}
-            {resultCount === 1 ? "plan" : "plans"}
-            {filtersActive > 0 || filters.search
-              ? " matching current filters"
-              : ""}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <p>
+              Showing{" "}
+              <span className="font-medium text-foreground">{resultCount}</span>{" "}
+              {resultCount === 1 ? "plan" : "plans"}
+              {filtersActive > 0 || filters.search
+                ? " matching current filters"
+                : ""}
+            </p>
+
+            {resultCount > 1 && (
+              <>
+                <span className="hidden sm:block text-border">•</span>
+
+                <div className="flex items-center gap-1">
+                  <kbd className="pointer-events-none inline-flex h-5 items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                    Ctrl
+                  </kbd>
+
+                  <span>+</span>
+
+                  <kbd className="pointer-events-none inline-flex h-5 items-center rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                    Click
+                  </kbd>
+
+                  <span>to select</span>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </TooltipProvider>
@@ -377,7 +399,7 @@ export function SelectedPlanBanner({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2">
           <PlanDialog
             trigger={
               <Button size="sm" variant="outline" disabled={isPending}>
@@ -394,7 +416,7 @@ export function SelectedPlanBanner({
             size="sm"
             variant="link"
             onClick={() =>
-              router.push(`/admin/subscriptions?plan=${selected.id}`)
+              router.push(`/admin/plans?plan=${selected.id}&name=${selected.name}`)
             }
             disabled={isPending}
           >

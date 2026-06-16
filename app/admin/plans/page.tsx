@@ -1,6 +1,7 @@
 import React from "react";
 import PlansPage from "../_components/Planspage";
 import { Metadata } from "next";
+import { PlanSubscriptionsPanel } from "../_components/PlanSubscriptionsPanel";
 
 export const metadata: Metadata = {
   title: "Plans Management | Admin",
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
 };
 
 const page = () => {
-  return <PlansPage />;
+  return (
+    <>
+      <PlansPage />
+      <PlanSubscriptionsPanel />
+    </>
+  );
 };
 
 export default page;

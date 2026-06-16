@@ -1,10 +1,12 @@
 import { db } from "@/db";
 import { plans, providers, subscriptions } from "@/db/schemas";
+import { adminAuth } from "@/lib/admin-auth";
 import {
   SubscriptionRow,
   SubscriptionsAnalytics,
   SubscriptionsFilters,
 } from "@/lib/admin-types";
+import { Subscription } from "@/lib/all-types";
 import { and, count, desc, eq, gte, sum, isNull, sql } from "drizzle-orm";
 
 export async function getSubscriptions(
@@ -278,4 +280,81 @@ export async function getActivePlans() {
     .from(plans)
     .where(eq(plans.isActive, true))
     .orderBy(plans.price);
+}
+
+export async function getPlanSubscriptions(
+  planId: string,
+  limit: number,
+  offset: number,
+) {
+  const baseWhere = eq(subscriptions.planId, planId);
+
+  const [rows, stats] = await Promise.all([
+    db
+      .select()
+      .from(subscriptions)
+      .where(baseWhere)
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(limit + 1)
+      .offset(offset),
+
+    db
+      .select({
+        total: count(),
+        active: sql<number>`sum(case when ${subscriptions.status} = 'active' then 1 else 0 end)`,
+        trial: sql<number>`sum(case when ${subscriptions.status} = 'trialing' then 1 else 0 end)`,
+        paused: sql<number>`sum(case when ${subscriptions.status} = 'paused' then 1 else 0 end)`,
+        cancelled: sql<number>`sum(case when ${subscriptions.status} = 'cancelled' then 1 else 0 end)`,
+        expired: sql<number>`sum(case when ${subscriptions.status} = 'expired' then 1 else 0 end)`,
+        autoRenew: sql<number>`sum(case when ${subscriptions.autoRenew} = true then 1 else 0 end)`,
+      })
+      .from(subscriptions)
+      .where(baseWhere),
+  ]);
+
+  const statsRow = stats[0];
+  const total = Number(statsRow.total ?? 0);
+
+  const hasMore = rows.length > limit;
+  const data = hasMore
+    ? (rows.slice(0, limit) as Subscription[])
+    : (rows as Subscription[]);
+
+  const active = Number(statsRow.active ?? 0);
+  const trial = Number(statsRow.trial ?? 0);
+  const paused = Number(statsRow.paused ?? 0);
+  const cancelled = Number(statsRow.cancelled ?? 0);
+  const expired = Number(statsRow.expired ?? 0);
+  const autoRenew = Number(statsRow.autoRenew ?? 0);
+
+  const pct = (value: number) =>
+    total ? Math.round((value / total) * 100) : 0;
+
+  const statsData = {
+    total,
+
+    active,
+    trial,
+    paused,
+    cancelled,
+    expired,
+
+    autoRenewPct: pct(autoRenew),
+
+    statusPct: {
+      active: pct(active),
+      trial: pct(trial),
+      paused: pct(paused),
+      cancelled: pct(cancelled),
+      expired: pct(expired),
+    },
+  };
+
+  return {
+    success: true,
+    data,
+    hasMore,
+    nextOffset: hasMore ? offset + limit : null,
+    stats: statsData,
+  };
 }
