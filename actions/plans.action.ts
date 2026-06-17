@@ -10,6 +10,7 @@ import type {
   ActionResult,
   PlanBillingCycle,
   PlanTier,
+  SubscriptionStatus,
 } from "@/lib/all-types";
 import { db } from "@/db";
 import { plans, subscriptions } from "@/db/schemas";
@@ -18,6 +19,7 @@ import { detectSubscriptionAction, isExpired } from "@/lib/utils";
 import { PlanFormValues, planSchema } from "@/validations";
 import { adminAuth } from "@/lib/admin-auth";
 import z from "zod";
+import pLimit from "p-limit";
 
 type DBTX = NodePgDatabase<any>;
 
@@ -652,19 +654,31 @@ export async function subscribeToPlan(
  * pause the provider's active subscription at period end.
  * The sub stays active until currentPeriodEnd — provider keeps access.
  */
-export async function pauseSubscription(): Promise<ActionResult> {
+export async function pauseSubscription(
+  subId?: string,
+  role: "admin" | "provider" = "provider",
+): Promise<ActionResult> {
   try {
-    const provider = await requireProvider();
+    const conditions = [];
+    if (role === "provider") {
+      const provider = await requireProvider(true);
+      conditions.push(eq(subscriptions.providerId, provider.id));
+    } else {
+      const { status, admin } = await adminAuth();
+
+      if (status !== "ok" || !admin) {
+        throw new Error("Permission denied.");
+      }
+    }
+
+    if (subId) {
+      conditions.push(eq(subscriptions.id, subId));
+    }
 
     const [sub] = await db
       .select()
       .from(subscriptions)
-      .where(
-        and(
-          eq(subscriptions.providerId, provider.id),
-          eq(subscriptions.status, "active"),
-        ),
-      )
+      .where(and(...conditions, eq(subscriptions.status, "active")))
       .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
@@ -698,20 +712,33 @@ export async function pauseSubscription(): Promise<ActionResult> {
 /**
  * Resume a paused subscription before period end.
  */
-export async function resumeSubscription(): Promise<ActionResult> {
+export async function resumeSubscription(
+  subId?: string,
+  role: "admin" | "provider" = "provider",
+): Promise<ActionResult> {
   try {
-    const provider = await requireProvider();
+    const conditions = [];
+    if (role === "provider") {
+      const provider = await requireProvider(true);
+      conditions.push(eq(subscriptions.providerId, provider.id));
+    } else {
+      const { status, admin } = await adminAuth();
+
+      if (status !== "ok" || !admin) {
+        throw new Error("Permission denied.");
+      }
+    }
+
+    if (subId) {
+      conditions.push(eq(subscriptions.id, subId));
+    }
+
     const now = new Date();
 
     const [sub] = await db
       .select()
       .from(subscriptions)
-      .where(
-        and(
-          eq(subscriptions.providerId, provider.id),
-          eq(subscriptions.status, "paused"),
-        ),
-      )
+      .where(and(...conditions, eq(subscriptions.status, "paused")))
       .limit(1);
 
     if (!sub || !sub.pausedAt || sub.status !== "paused") {
@@ -791,19 +818,28 @@ export async function renewSubscription(
 export async function cancelSubscription(
   subId: string,
   immediate = false,
+  role: "admin" | "provider" = "provider",
 ): Promise<ActionResult<Subscription>> {
   try {
-    const provider = await requireProvider(true);
+    const conditions = [eq(subscriptions.id, subId)];
+    if (role === "provider") {
+      const provider = await requireProvider(true);
+      conditions.push(eq(subscriptions.providerId, provider.id));
+    } else {
+      const { status, admin } = await adminAuth();
+
+      if (status !== "ok" || !admin) {
+        throw new Error("Permission denied.");
+      }
+    }
+
+    const { status, admin } = await adminAuth();
+    if (status !== "ok" || !admin) throw new Error("Permission denied.");
 
     const [row] = await db
       .select()
       .from(subscriptions)
-      .where(
-        and(
-          eq(subscriptions.providerId, provider.id),
-          eq(subscriptions.id, subId),
-        ),
-      )
+      .where(and(...conditions))
       .limit(1);
 
     if (!row) throw new Error("this subscription not avaliable");
@@ -923,5 +959,71 @@ export async function upgradeSubscription(
     };
   } finally {
     revalidatePlanPaths();
+  }
+}
+
+export async function handleSubscriptions(
+  ids: string | string[],
+  targetStatus: SubscriptionStatus,
+) {
+  try {
+    const subscriptionIds = Array.isArray(ids) ? ids : [ids];
+
+    const handler = (id: string) => {
+      switch (targetStatus) {
+        case "paused":
+          return pauseSubscription(id, "admin");
+
+        case "active":
+          return resumeSubscription(id, "admin");
+
+        case "cancelled":
+          return cancelSubscription(id, false, "admin");
+
+        case "expired":
+          return cancelSubscription(id, true, "admin");
+
+        default:
+          throw new Error(`Unsupported status: ${targetStatus}`);
+      }
+    };
+
+    if (subscriptionIds.length === 1) {
+      return await handler(subscriptionIds[0]);
+    }
+
+    const limit = pLimit(5);
+
+    const results = await Promise.all(
+      subscriptionIds.map((id) =>
+        limit(async () => ({
+          id,
+          result: await handler(id),
+        })),
+      ),
+    );
+
+    const completed = results.filter(({ result }) => result.success);
+    const failed = results.filter(({ result }) => !result.success);
+
+    return {
+      success: failed.length === 0,
+      message:
+        failed.length === 0
+          ? `${completed.length} subscriptions updated successfully.`
+          : `${completed.length} succeeded, ${failed.length} failed.`,
+      completed: completed.length,
+      failed: failed.length,
+      errors: failed
+        .map(({ id, result }) => `${id}: ${result.error ?? "Unknown error"}`)
+        .slice(0, 10),
+    };
+  } catch (error: any) {
+    console.error("[handleSubscriptions]", error);
+
+    return {
+      success: false,
+      error: error?.message ?? "Failed to process subscriptions.",
+    };
   }
 }

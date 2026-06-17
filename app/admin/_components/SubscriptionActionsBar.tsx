@@ -45,10 +45,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getPlanById } from "@/actions/plans.action";
+import { getPlanById, handleSubscriptions } from "@/actions/plans.action";
+import {
+  SubscriptionActionResultDialog,
+  SubscriptionActionResultState,
+} from "./SubscriptionActionResultDialog";
 
 interface StatusOption {
-  value: SubscriptionStatus;
+  action: SubscriptionAction;
+  targetStatus: SubscriptionStatus;
   label: string;
   icon: React.ReactNode;
   destructive?: boolean;
@@ -67,7 +72,17 @@ interface BarProps {
   selected: SelectedModelProps[];
   clearFilter: () => void;
 }
+
 type Status = "idle" | "loading" | "success" | "error";
+
+type SubscriptionAction = "cancel" | "expire" | "pause" | "resume";
+const transitions: Record<SubscriptionStatus, SubscriptionAction[]> = {
+  active: ["cancel", "pause"],
+  cancelled: [],
+  expired: [],
+  paused: ["resume", "cancel", "expire"],
+  trialing: ["cancel", "expire"],
+};
 
 function Portal({ children }: { children: React.ReactNode }) {
   return createPortal(children, document.body);
@@ -86,36 +101,33 @@ function Sep({ className }: { className?: string }) {
 
 const STATUS_OPTIONS: StatusOption[] = [
   {
-    value: "active",
-    label: "Active",
-    icon: <PlayCircle className="size-4 text-emerald-500" />,
-    description: "Subscription will be reactivated immediately.",
-  },
-  {
-    value: "trialing",
-    label: "Trialing",
-    icon: <Clock3 className="size-4 text-blue-500" />,
-    description: "Subscription will be moved into trial mode.",
-  },
-  {
-    value: "paused",
-    label: "Paused",
+    action: "pause",
+    targetStatus: "paused",
+    label: "Pause",
     icon: <PauseCircle className="size-4 text-amber-500" />,
-    description: "Subscription will be paused. Provider loses access.",
+    description: "Pause the subscription.",
   },
   {
-    value: "expired",
-    label: "Expired",
+    action: "resume",
+    targetStatus: "active",
+    label: "Resume",
+    icon: <PlayCircle className="size-4 text-emerald-500" />,
+    description: "Reactivate the subscription.",
+  },
+  {
+    action: "expire",
+    targetStatus: "expired",
+    label: "Expire",
     icon: <Clock3 className="size-4 text-zinc-400" />,
-    description: "Subscription will be marked as expired.",
+    description: "Mark as expired.",
   },
   {
-    value: "cancelled",
-    label: "Cancelled",
-    icon: <Ban className="size-4 text-destructive" />,
+    action: "cancel",
+    targetStatus: "cancelled",
+    label: "Cancel",
     destructive: true,
-    description:
-      "Subscription will be cancelled immediately. This cannot be undone.",
+    icon: <Ban className="size-4 text-destructive" />,
+    description: "Cancel immediately.",
   },
 ];
 
@@ -160,6 +172,8 @@ const SubscriptionActionsBar = ({ selected, clearFilter }: BarProps) => {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [planStatus, setPlanStatus] = useState<Status>("idle");
+  const [actionResult, setActionResult] =
+    useState<SubscriptionActionResultState | null>(null);
 
   function handleStatusSelect(option: StatusOption) {
     setError(null);
@@ -174,13 +188,25 @@ const SubscriptionActionsBar = ({ selected, clearFilter }: BarProps) => {
       setError(null);
       setSuccessMsg(null);
       try {
-        setSuccessMsg(
-          `${selected.length} subscription${selected.length > 1 ? "s" : ""} updated to "${pendingStatus.label}".`,
+        const ids = selected.map((s) => s.subscriptionId);
+        const result = await handleSubscriptions(
+          ids,
+          pendingStatus.targetStatus,
         );
 
-        setTimeout(() => {
-          setSuccessMsg(null);
-        }, 3000);
+        setActionResult({
+          result: result as any,
+          totalSubmitted: ids.length,
+          targetStatus: pendingStatus.targetStatus,
+          targetLabel: pendingStatus.label,
+        });
+
+        if (result.success) {
+          router.push(
+            `/admin/subscriptions?status=${pendingStatus.targetStatus}`,
+          );
+        }
+
         setPendingStatus(null);
       } catch (err) {
         setError(
@@ -222,6 +248,20 @@ const SubscriptionActionsBar = ({ selected, clearFilter }: BarProps) => {
   const planUrl = `/admin/plans?search=${selected[0].planName}`;
   const providerUrl = `/admin/provider_management/${selected[0].providerId}`;
   const disable = selected.length > 1 || isPending;
+
+  const availableActions: SubscriptionAction[] =
+    selected.length === 0
+      ? []
+      : selected
+          .map((sub) => transitions[sub.status] ?? [])
+          .reduce<SubscriptionAction[]>((acc, actions, index) => {
+            if (index === 0) return actions;
+            return acc.filter((action) => actions.includes(action));
+          }, []);
+
+  const availableOptions = STATUS_OPTIONS.filter((option) =>
+    availableActions.includes(option.action),
+  );
 
   return (
     <Portal>
@@ -317,27 +357,32 @@ const SubscriptionActionsBar = ({ selected, clearFilter }: BarProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-44">
-                {STATUS_OPTIONS.map((opt) =>
-                  opt.destructive ? (
-                    <React.Fragment key={opt.value}>
-                      <Separator className="my-1" />
+                {availableOptions.length > 0 ? (
+                  availableOptions.map((opt) =>
+                    opt.destructive ? (
+                      <React.Fragment key={opt.action}>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
+                          onClick={() => handleStatusSelect(opt)}
+                        >
+                          {opt.icon}
+                          {opt.label}
+                        </DropdownMenuItem>
+                      </React.Fragment>
+                    ) : (
                       <DropdownMenuItem
-                        className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
+                        key={opt.action}
                         onClick={() => handleStatusSelect(opt)}
                       >
                         {opt.icon}
                         {opt.label}
                       </DropdownMenuItem>
-                    </React.Fragment>
-                  ) : (
-                    <DropdownMenuItem
-                      key={opt.value}
-                      onClick={() => handleStatusSelect(opt)}
-                    >
-                      {opt.icon}
-                      {opt.label}
-                    </DropdownMenuItem>
-                  ),
+                    ),
+                  )
+                ) : (
+                  <DropdownMenuItem disabled>
+                    No available actions
+                  </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -585,6 +630,14 @@ const SubscriptionActionsBar = ({ selected, clearFilter }: BarProps) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <SubscriptionActionResultDialog
+        state={actionResult}
+        onClose={() => {
+          setActionResult(null);
+          clearFilter();
+        }}
+      />
     </Portal>
   );
 };
