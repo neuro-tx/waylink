@@ -4,3 +4,4 @@ export * from "./user";
 export * from "./provider";
 export * from "./service";
 export * from "./plan";
+export * from "./notification";

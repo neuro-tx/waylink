@@ -49,10 +49,10 @@ export default function RootLayout({
               }
             >
               <AdminSidebar variant="sidebar" />
-              <SidebarInset className="w-full">
+              <SidebarInset className="flex-1 min-w-0">
                 <AdminHeader />
                 <div className="flex flex-1 flex-col">
-                  <div className="w-full relative">{children} </div>
+                  <div className="elative w-full min-w-0">{children} </div>
                 </div>
               </SidebarInset>
               <ThemedToaster />
