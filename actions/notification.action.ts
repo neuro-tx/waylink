@@ -6,7 +6,8 @@ import { RecipientType } from "@/hooks/useNotifications";
 import { protectAction } from "@/lib/aj-actions";
 import { NotificationType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, SQL } from "drizzle-orm";
+import { adminAuth } from "@/lib/admin-auth";
 
 type GetNotificationsResult =
   | { success: true; data: Notification[]; unreadCount: number; total: number }
@@ -21,11 +22,13 @@ interface NotificationsOpts {
     limit?: number;
     offset?: number;
   };
+  ignoreRole?: boolean;
 }
 
 async function resolveRecipientId(
   recipientId?: string,
   recipientType?: RecipientType,
+  ignoreRole?: boolean,
 ): Promise<
   { success: true; recipientId: string } | { success: false; error: string }
 > {
@@ -41,6 +44,21 @@ async function resolveRecipientId(
     return {
       success: false,
       error: guard.message || "Security system unavailable. Try again later.",
+    };
+  }
+
+  if (ignoreRole) {
+    const { admin, status } = await adminAuth();
+    if (status !== "ok" || !admin) {
+      return {
+        success: false,
+        error: "Security system: Access denied.",
+      };
+    }
+
+    return {
+      success: true,
+      recipientId: admin.id,
     };
   }
 
@@ -62,12 +80,20 @@ export async function getNotifications({
   recipientId,
   recipientType,
   pagination,
+  ignoreRole,
 }: NotificationsOpts): Promise<GetNotificationsResult> {
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
 
   try {
-    const resolved = await resolveRecipientId(recipientId, recipientType);
+    let whereClause: SQL | undefined;
+    let unreadWhereClause: SQL | undefined;
+
+    const resolved = await resolveRecipientId(
+      recipientId,
+      recipientType,
+      ignoreRole,
+    );
     if (!resolved.success) {
       return {
         success: false,
@@ -75,19 +101,25 @@ export async function getNotifications({
       };
     }
 
-    const targetRecipientId = resolved.recipientId;
+    if (!ignoreRole) {
+      const targetRecipientId = resolved.recipientId;
+
+      whereClause = and(
+        eq(notifications.recipientId, targetRecipientId),
+        eq(notifications.recipientType, recipientType ?? "user"),
+      );
+      unreadWhereClause = and(
+        eq(notifications.recipientId, targetRecipientId),
+        eq(notifications.isRead, false),
+      );
+    }
 
     const [rows, [{ value: unreadCount }], [{ value: total }]] =
       await Promise.all([
         db
           .select()
           .from(notifications)
-          .where(
-            and(
-              eq(notifications.recipientId, targetRecipientId),
-              eq(notifications.recipientType, recipientType ?? "user"),
-            ),
-          )
+          .where(whereClause)
           .orderBy(desc(notifications.createdAt))
           .limit(limit)
           .offset(offset),
@@ -95,17 +127,8 @@ export async function getNotifications({
         db
           .select({ value: count() })
           .from(notifications)
-          .where(
-            and(
-              eq(notifications.recipientId, targetRecipientId),
-              eq(notifications.isRead, false),
-            ),
-          ),
-
-        db
-          .select({ value: count() })
-          .from(notifications)
-          .where(and(eq(notifications.recipientId, targetRecipientId))),
+          .where(unreadWhereClause),
+        db.select({ value: count() }).from(notifications).where(whereClause),
       ]);
 
     return {
@@ -183,9 +206,10 @@ export async function markAllAsRead(
 export async function deleteNotification(
   notificationId: string,
   recipientId?: string,
+  ignoreRole?: boolean,
 ): Promise<ActionResult> {
   try {
-    const resolved = await resolveRecipientId(recipientId, "admin");
+    const resolved = await resolveRecipientId(recipientId, "admin", ignoreRole);
     if (!resolved.success) {
       return {
         success: false,
@@ -195,14 +219,14 @@ export async function deleteNotification(
 
     const targetRecipientId = resolved.recipientId;
 
-    await db
-      .delete(notifications)
-      .where(
-        and(
+    const whereClause = ignoreRole
+      ? eq(notifications.id, notificationId)
+      : and(
           eq(notifications.id, notificationId),
           eq(notifications.recipientId, targetRecipientId),
-        ),
-      );
+        );
+
+    await db.delete(notifications).where(whereClause);
 
     return { success: true };
   } catch {

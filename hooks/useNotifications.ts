@@ -24,12 +24,14 @@ type UseNotificationsProps = {
   recipient: RecipientType;
   recipientId?: string;
   limit?: number;
+  ignoreRole?: boolean;
 };
 
 export function useNotifications({
   recipient,
   recipientId,
   limit = 20,
+  ignoreRole = false,
 }: UseNotificationsProps) {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<State>({
@@ -53,6 +55,7 @@ export function useNotifications({
         recipientType: recipient,
         recipientId: recipientId,
         pagination: { limit, offset: (p - 1) * limit },
+        ignoreRole,
       });
 
       if (result.success) {
@@ -150,7 +153,7 @@ export function useNotifications({
       }));
 
       startTransition(async () => {
-        const result = await deleteNotification(id, recipientId);
+        const result = await deleteNotification(id, recipientId ,ignoreRole);
         if (!result.success) {
           setState((s) => ({
             ...s,
