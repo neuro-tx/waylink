@@ -20,7 +20,7 @@ export const sendNotificationSchema = z
       "system_warning",
       "promotion",
       "general",
-    ]),
+    ]).default("general"),
     recipientType: z
       .enum(["user", "provider", "admin"])
       .nullable()

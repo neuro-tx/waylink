@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { Notification, notifications, user } from "@/db/schemas";
+import { Notification, notifications, providers, user } from "@/db/schemas";
 import { RecipientType } from "@/hooks/useNotifications";
 import { protectAction } from "@/lib/aj-actions";
 import { NotificationType } from "@/lib/all-types";
@@ -10,6 +10,8 @@ import { and, count, desc, eq, SQL } from "drizzle-orm";
 import { adminAuth } from "@/lib/admin-auth";
 import { parseQuery } from "@/lib/query_parser/analyzer";
 import { buildWhereConditions } from "@/lib/query_parser/helpers";
+import { sendNotificationSchema, SendNotificationValues } from "@/validations";
+import { inngest } from "@/inngest/client";
 
 type GetNotificationsResult =
   | { success: true; data: Notification[]; unreadCount: number; total: number }
@@ -328,35 +330,148 @@ export async function sendNotification(payload: {
   }
 }
 
-export async function broadcastAnnouncement({
-  title,
-  message,
-  scope = "user",
-}: {
-  title: string;
-  message: string;
-  scope?: "user" | "provider" | "admin";
-}) {
-  const session = await getAuthSession();
-  if (!session || session.user.role !== "admin") {
-    return { success: false, error: "Unauthorized" };
+export async function broadcastAnnouncement(
+  data: SendNotificationValues,
+  targetRecipitent?: string,
+) {
+  try {
+    const { admin, status } = await adminAuth();
+    if (status !== "ok" || !admin) {
+      return {
+        success: false,
+        error: "Unauthorized",
+      };
+    }
+
+    const validated = sendNotificationSchema.safeParse(data);
+    if (!validated.success)
+      return {
+        success: false,
+        error: validated.error.message,
+      };
+
+    const { broadcastAll, message, recipientType, title, type } =
+      validated.data;
+
+    // Single recipient notification
+    if (targetRecipitent && !broadcastAll) {
+      const notification = await db.transaction(async (tx) => {
+        const isProvider = isUuid(targetRecipitent);
+        let target:
+          | {
+              id: string;
+              type: "provider";
+            }
+          | {
+              id: string;
+              type: "user" | "admin";
+            };
+
+        if (isProvider) {
+          const [provider] = await tx
+            .select({
+              id: providers.id,
+            })
+            .from(providers)
+            .where(eq(providers.id, targetRecipitent))
+            .limit(1);
+
+          if (!provider) {
+            throw new Error("Provider not found");
+          }
+
+          target = {
+            id: provider.id,
+            type: "provider",
+          };
+        } else {
+          const [account] = await tx
+            .select({
+              id: user.id,
+              role: user.role,
+            })
+            .from(user)
+            .where(eq(user.id, targetRecipitent))
+            .limit(1);
+
+          if (!account) {
+            throw new Error("User not found");
+          }
+
+          target = {
+            id: account.id,
+            type: account.role === "user" ? "user" : "admin",
+          };
+        }
+
+        const [notification] = await tx
+          .insert(notifications)
+          .values({
+            title,
+            message,
+            type,
+            recipientId: target.id,
+            recipientType: target.type,
+          })
+          .returning();
+
+        return notification;
+      });
+
+      return {
+        success: true,
+        message: "Notification sent successfully",
+        data: notification,
+      };
+    }
+
+    if (!broadcastAll) {
+      return {
+        success: false,
+        error: "Target recipient is required",
+      };
+    }
+
+    const allowedBroadcastTypes = new Set([
+      "system_announcement",
+      "system_warning",
+      "promotion",
+      "general",
+    ]);
+
+    if (!allowedBroadcastTypes.has(type)) {
+      return {
+        success: false,
+        error: `${type} cannot be broadcast`,
+      };
+    }
+
+    await inngest.send({
+      name: "app/notification.send",
+      data: {
+        broadcastAll,
+        recipientType,
+        title,
+        message,
+        type,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Broadcast queued successfully",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to send notification",
+    };
   }
+}
 
-  const allUsers = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.role, scope));
-  if (allUsers.length === 0) return { success: true, count: 0 };
-
-  await db.insert(notifications).values(
-    allUsers.map((u) => ({
-      recipientId: u.id,
-      type: "system_announcement" as const,
-      title,
-      message,
-      recipientType: scope ?? "user",
-    })),
+function isUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    id,
   );
-
-  return { success: true, count: allUsers.length };
 }
