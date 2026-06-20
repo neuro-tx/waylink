@@ -8,6 +8,8 @@ import { NotificationType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
 import { and, count, desc, eq, SQL } from "drizzle-orm";
 import { adminAuth } from "@/lib/admin-auth";
+import { parseQuery } from "@/lib/query_parser/analyzer";
+import { buildWhereConditions } from "@/lib/query_parser/helpers";
 
 type GetNotificationsResult =
   | { success: true; data: Notification[]; unreadCount: number; total: number }
@@ -81,20 +83,54 @@ async function resolveRecipientId(
   };
 }
 
+function resolveFilter(
+  resolvedRecipientId: string,
+  recipientType: RecipientType | undefined,
+  ignoreRole: boolean,
+  filter?: NotificationsOpts["filter"],
+): SQL | undefined {
+  const params = new URLSearchParams();
+
+  if (filter?.isRead !== undefined) {
+    params.set("isRead", String(filter.isRead));
+  }
+  if (filter?.type) {
+    params.set("type", filter.type);
+  }
+  if (filter?.recipientType) {
+    params.set("recipientType", filter.recipientType);
+  }
+
+  const { query } = parseQuery(params);
+  const conditions: SQL[] = [];
+
+  if (!ignoreRole) {
+    conditions.push(
+      eq(notifications.recipientId, resolvedRecipientId),
+      eq(notifications.recipientType, recipientType ?? "user"),
+    );
+  }
+
+  const filterWhere = buildWhereConditions(query?.where || {}, notifications);
+
+  if (filterWhere) {
+    conditions.push(filterWhere);
+  }
+
+  return conditions.length ? and(...conditions) : undefined;
+}
+
 export async function getNotifications({
   recipientId,
   recipientType,
   pagination,
-  ignoreRole,
+  ignoreRole = false,
   filter,
 }: NotificationsOpts): Promise<GetNotificationsResult> {
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
 
   try {
-    let whereClause: SQL | undefined;
-    let unreadWhereClause: SQL | undefined;
-
     const resolved = await resolveRecipientId(
       recipientId,
       recipientType,
@@ -107,19 +143,18 @@ export async function getNotifications({
       };
     }
 
-    if (!ignoreRole) {
-      const targetRecipientId = resolved.recipientId;
+    const whereClause = resolveFilter(
+      resolved.recipientId,
+      recipientType,
+      ignoreRole,
+      filter,
+    );
 
-      whereClause = and(
-        eq(notifications.recipientId, targetRecipientId),
-        eq(notifications.recipientType, recipientType ?? "user"),
+    const unreadConditions: SQL[] = [eq(notifications.isRead, false)];
+    if (!ignoreRole) {
+      unreadConditions.push(
+        eq(notifications.recipientId, resolved.recipientId),
       );
-      unreadWhereClause = and(
-        eq(notifications.recipientId, targetRecipientId),
-        eq(notifications.isRead, false),
-      );
-    } else {
-      unreadWhereClause = eq(notifications.isRead, false);
     }
 
     const [rows, [{ value: unreadCount }], [{ value: total }]] =
@@ -135,7 +170,7 @@ export async function getNotifications({
         db
           .select({ value: count() })
           .from(notifications)
-          .where(unreadWhereClause),
+          .where(and(...unreadConditions)),
         db.select({ value: count() }).from(notifications).where(whereClause),
       ]);
 

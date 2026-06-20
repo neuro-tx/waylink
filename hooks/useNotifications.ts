@@ -38,7 +38,7 @@ export function useNotifications({
   recipientId,
   limit = 20,
   ignoreRole = false,
-  filter
+  filter,
 }: UseNotificationsProps) {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<State>({
@@ -63,7 +63,7 @@ export function useNotifications({
         recipientId: recipientId,
         pagination: { limit, offset: (p - 1) * limit },
         ignoreRole,
-        filter
+        filter,
       });
 
       if (result.success) {
@@ -79,12 +79,12 @@ export function useNotifications({
         setState((s) => ({ ...s, isLoading: false, error: result.error }));
       }
     },
-    [limit],
+    [limit, filter],
   );
 
   useEffect(() => {
     fetch(page);
-  }, [page, limit]);
+  }, [page, limit, fetch]);
 
   const goToPage = useCallback((p: number) => {
     setPage(p);
