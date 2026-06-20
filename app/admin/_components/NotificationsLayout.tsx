@@ -1,7 +1,23 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { AlertCircle, Send } from "lucide-react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
+import {
+  AlertCircle,
+  Circle,
+  Info,
+  Loader2,
+  MoreHorizontal,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,18 +52,21 @@ import {
 } from "@/components/ui/form";
 import { RecipientType } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import { fmtDateTime } from "@/lib/helpers";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { TableCell, TableRow } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-type SendDialogProps = {
-  open: boolean;
-  onClose: () => void;
-  onSend: (
-    payload: Omit<
-      Notification,
-      "id" | "createdAt" | "updatedAt" | "isRead" | "readAt"
-    >,
-  ) => void;
-  recipientId: string | null;
-};
+type FilterKey = "type" | "recipient" | "read";
 
 const RECIPIENT_META: Record<
   RecipientType,
@@ -75,8 +94,12 @@ const RECIPIENT_META: Record<
 export function SendNotificationDialog({
   open,
   onClose,
-  onSend,
-}: SendDialogProps) {
+  recipientId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  recipientId: string | null;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const form = useForm({
@@ -305,12 +328,10 @@ export function SendNotificationDialog({
 }
 
 export function DeleteDialog({
-  count,
   open,
   onClose,
   onConfirm,
 }: {
-  count: number;
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -319,13 +340,11 @@ export function DeleteDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>
-            Delete {count} notification{count !== 1 ? "s" : ""}?
-          </DialogTitle>
+          <DialogTitle>Delete notification</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          This action cannot be undone. The selected notification
-          {count !== 1 ? "s" : ""} will be permanently removed.
+          This action cannot be undone. The selected notification will be
+          permanently removed.
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
@@ -370,3 +389,248 @@ export function RecipientBadge({ type }: { type: RecipientType }) {
     </span>
   );
 }
+
+export function NotificationDetail({
+  notification,
+  onClose,
+  onDelete,
+}: {
+  notification: Notification | null;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+}) {
+  if (!notification) return null;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-start justify-between border-b p-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Notification Detail
+          </p>
+          <h3 className="font-semibold">{notification.title}</h3>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="rounded-full"
+          onClick={onClose}
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex-1 space-y-5 overflow-y-auto p-4">
+        <div className="flex flex-wrap gap-1">
+          <TypeBadge type={notification.type} />
+          <RecipientBadge type={notification.recipientType} />
+          {!notification.isRead && (
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary font-mono">
+              <Circle className="size-2 fill-current" />
+              Unread
+            </span>
+          )}
+        </div>
+
+        <div className="rounded-lg border bg-muted/40 p-3">
+          <p className="text-sm text-foreground leading-relaxed">
+            {notification.message}
+          </p>
+        </div>
+
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Recipient ID</span>
+            <span className="font-mono text-xs">
+              {notification.recipientId}
+            </span>
+          </div>
+          <Separator />
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Sent</span>
+            <span>{notification.createdAt.toLocaleString()}</span>
+          </div>
+          {notification.readAt && (
+            <>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Read at</span>
+                <span>{fmtDateTime(notification.readAt)}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2 border-t p-4">
+        {/* {!notification.isRead && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-2"
+            onClick={() => onMarkRead(notification.id)}
+          >
+            <CheckCheck className="size-4" />
+            Mark as read
+          </Button>
+        )} */}
+        <Button
+          variant="destructive"
+          size="sm"
+          className="gap-2"
+          onClick={() => {
+            onDelete(notification.id);
+            onClose();
+          }}
+        >
+          <Trash2 className="size-4" />
+          Delete
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function useUrlFilters() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const filters = useMemo(
+    () => ({
+      type: (searchParams.get("type") ?? "all") as NotificationType | "all",
+      recipient: (searchParams.get("recipient") ?? "all") as
+        | RecipientType
+        | "all",
+      read: (searchParams.get("read") ?? "all") as "all" | "read" | "unread",
+    }),
+    [searchParams],
+  );
+
+  const setFilter = useCallback(
+    (key: FilterKey, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === "all") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+
+      params.delete("page");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
+  const clearFilters = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+  }, [router, pathname]);
+
+  const activeCount = useMemo(
+    () =>
+      [
+        filters.type !== "all",
+        filters.recipient !== "all",
+        filters.read !== "all",
+      ].filter(Boolean).length,
+    [filters],
+  );
+
+  return { filters, setFilter, clearFilters, activeCount };
+}
+
+export const NotificationRow = memo(function NotificationRow({
+  notification: n,
+  isActive,
+  onRowClick,
+  onSend,
+  onDelete,
+  isActionPending,
+}: {
+  notification: Notification;
+  isActive: boolean;
+  onRowClick: (n: Notification) => void;
+  onSend: (recipientId: string) => void;
+  onDelete: (id: string) => void;
+  isActionPending: boolean;
+}) {
+  return (
+    <TableRow
+      className={cn(
+        "xl:cursor-pointer transition-colors",
+        !n.isRead &&
+          "bg-amber-500/3 dark:bg-amber-500/10 dark:hover:bg-amber-500/15! hover:bg-amber-500/7!",
+        isActive && "bg-accent",
+      )}
+      onClick={() => onRowClick(n)}
+    >
+      <TableCell className="max-w-0 px-3">
+        <p className={cn("truncate text-sm", !n.isRead && "font-semibold")}>
+          {n.title}
+        </p>
+        <p className="hidden truncate text-xs text-muted-foreground lg:block">
+          {n.message}
+        </p>
+      </TableCell>
+
+      <TableCell>
+        <TypeBadge type={n.type} />
+      </TableCell>
+
+      <TableCell>
+        <RecipientBadge type={n.recipientType} />
+      </TableCell>
+
+      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+        {fmtDateTime(n.createdAt)}
+      </TableCell>
+
+      <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
+        {n.readAt ? (
+          fmtDateTime(n.readAt)
+        ) : (
+          <span className="text-amber-500 rounded-md border px-2 py-0.5 text-xs font-medium font-mono border-amber-500/20">
+            Unread
+          </span>
+        )}
+      </TableCell>
+
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="link" size="icon-sm" className="cursor-pointer">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem onClick={() => onSend(n.recipientId)}>
+                <Send className="size-4 text-sky-500" />
+                Send Notification
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onRowClick(n)}>
+                <Info className="size-4 text-amber-500" />
+                View detail
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            {!n.isRead && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={isActionPending}
+                  className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
+                  onClick={() => onDelete(n.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+});

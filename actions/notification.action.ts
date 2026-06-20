@@ -23,6 +23,11 @@ interface NotificationsOpts {
     offset?: number;
   };
   ignoreRole?: boolean;
+  filter?: {
+    type: NotificationType | undefined;
+    recipientType: RecipientType | undefined;
+    isRead: boolean | undefined;
+  };
 }
 
 async function resolveRecipientId(
@@ -81,6 +86,7 @@ export async function getNotifications({
   recipientType,
   pagination,
   ignoreRole,
+  filter,
 }: NotificationsOpts): Promise<GetNotificationsResult> {
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
@@ -112,6 +118,8 @@ export async function getNotifications({
         eq(notifications.recipientId, targetRecipientId),
         eq(notifications.isRead, false),
       );
+    } else {
+      unreadWhereClause = eq(notifications.isRead, false);
     }
 
     const [rows, [{ value: unreadCount }], [{ value: total }]] =

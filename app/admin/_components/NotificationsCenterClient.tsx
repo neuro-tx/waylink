@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bell,
   BellOff,
-  CheckCheck,
   Megaphone,
   Plus,
-  Trash2,
   X,
   AlertTriangle,
   Info,
@@ -19,9 +17,10 @@ import {
   ShieldX,
   UserPlus,
   ShieldAlert,
-  Circle,
-  MoreHorizontal,
-  Send,
+  RefreshCw,
+  Loader,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,28 +39,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { fmtDateTime } from "@/lib/helpers";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { NotificationType } from "@/lib/all-types";
 import { Notification } from "@/db/schemas";
 import {
   DeleteDialog,
-  RecipientBadge,
+  NotificationDetail,
+  NotificationRow,
   SendNotificationDialog,
-  TypeBadge,
+  useUrlFilters,
 } from "./NotificationsLayout";
-import { RecipientType } from "@/hooks/useNotifications";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export const TYPE_META: Record<
   NotificationType,
@@ -136,223 +130,125 @@ export const TYPE_META: Record<
   },
 };
 
-function NotificationDetail({
-  notification,
-  onClose,
-  onMarkRead,
-  onDelete,
-}: {
-  notification: Notification | null;
-  onClose: () => void;
-  onMarkRead: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  if (!notification) return null;
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-start justify-between border-b p-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Notification Detail
-          </p>
-          <h3 className="font-semibold">{notification.title}</h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="rounded-full"
-          onClick={onClose}
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
-
-      <div className="flex-1 space-y-5 overflow-y-auto p-4">
-        <div className="flex flex-wrap gap-1">
-          <TypeBadge type={notification.type} />
-          <RecipientBadge type={notification.recipientType} />
-          {!notification.isRead && (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary font-mono">
-              <Circle className="size-2 fill-current" />
-              Unread
-            </span>
-          )}
-        </div>
-
-        <div className="rounded-lg border bg-muted/40 p-3">
-          <p className="text-sm text-foreground leading-relaxed">
-            {notification.message}
-          </p>
-        </div>
-
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Recipient ID</span>
-            <span className="font-mono text-xs">
-              {notification.recipientId}
-            </span>
-          </div>
-          <Separator />
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Sent</span>
-            <span>{notification.createdAt.toLocaleString()}</span>
-          </div>
-          {notification.readAt && (
-            <>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Read at</span>
-                <span>{fmtDateTime(notification.readAt)}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex gap-2 border-t p-4">
-        {!notification.isRead && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-2"
-            onClick={() => onMarkRead(notification.id)}
-          >
-            <CheckCheck className="size-4" />
-            Mark as read
-          </Button>
-        )}
-        <Button
-          variant="destructive"
-          size="sm"
-          className="gap-2"
-          onClick={() => {
-            onDelete(notification.id);
-            onClose();
-          }}
-        >
-          <Trash2 className="size-4" />
-          Delete
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function NotificationCenterPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<NotificationType | "all">("all");
-  const [filterRecipient, setFilterRecipient] = useState<RecipientType | "all">(
-    "all",
-  );
-  const [filterRead, setFilterRead] = useState<"all" | "read" | "unread">(
-    "all",
-  );
+  const { filters, setFilter, clearFilters, activeCount } = useUrlFilters();
   const [sendOpen, setSendOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [activeNotif, setActiveNotif] = useState<Notification | null>(null);
   const [recipientId, setRecipientId] = useState<string | null>(null);
 
-  const filtered = notifications.filter((n) => {
-    const matchType = filterType === "all" || n.type === filterType;
-    const matchRecipient =
-      filterRecipient === "all" || n.recipientType === filterRecipient;
-    const matchRead =
-      filterRead === "all" || (filterRead === "read" ? n.isRead : !n.isRead);
-    return matchType && matchRecipient && matchRead;
+  const filter = useMemo(
+    () => ({
+      type: filters.type !== "all" ? filters.type : undefined,
+      recipientType:
+        filters.recipient !== "all" ? filters.recipient : undefined,
+      isRead:
+        filters.read === "read"
+          ? true
+          : filters.read === "unread"
+            ? false
+            : undefined,
+    }),
+    [filters],
+  );
+
+  const {
+    notifications,
+    error,
+    page,
+    deleteNotification,
+    empty,
+    isLoading,
+    isActionPending,
+    refresh,
+    total,
+    nextPage,
+    prevPage,
+    totalPages,
+    unreadCount,
+    clearError,
+  } = useNotifications({
+    recipient: "admin",
+    ignoreRole: true,
+    filter
   });
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const activeFilters = [
-    filterType !== "all",
-    filterRecipient !== "all",
-    filterRead !== "all",
-  ].filter(Boolean).length;
+  const activeNotifFresh = useMemo(
+    () =>
+      activeNotif
+        ? (notifications.find((n) => n.id === activeNotif.id) ?? activeNotif)
+        : null,
+    [activeNotif, notifications],
+  );
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
+  const handleDelete = useCallback(
+    (id: string) => {
+      deleteNotification(id);
+      setDeleteTarget(null);
+      if (activeNotif?.id === id) setActiveNotif(null);
+    },
+    [deleteNotification, activeNotif],
+  );
 
-  function markOneRead(id: string) {
-    const now = new Date();
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.id === id ? { ...n, isRead: true, readAt: now, updatedAt: now } : n,
-      ),
-    );
-    setActiveNotif((prev) =>
-      prev?.id === id
-        ? { ...prev, isRead: true, readAt: now, updatedAt: now }
-        : prev,
-    );
-  }
+  const openDeleteDialog = useCallback((id: string) => {
+    setDeleteTarget(id);
+  }, []);
 
-  function deleteSelected() {
-    const ids = new Set(selected);
-    setNotifications((prev) => prev.filter((n) => !ids.has(n.id)));
-    setSelected(new Set());
-    setDeleteOpen(false);
-    if (activeNotif && ids.has(activeNotif.id)) setActiveNotif(null);
-  }
+  const openSendForRecipient = useCallback((rid: string) => {
+    setRecipientId(rid);
+    setSendOpen(true);
+  }, []);
 
-  function deleteOne(id: string) {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-
-  function handleSend(
-    payload: Omit<
-      Notification,
-      "id" | "createdAt" | "updatedAt" | "isRead" | "readAt"
-    >,
-  ) {
-    const now = new Date();
-    const newNotif: Notification = {
-      id: `n${Date.now()}`,
-      createdAt: now,
-      updatedAt: now,
-      isRead: false,
-      readAt: null,
-      ...payload,
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
-  }
-
-  function clearFilters() {
-    setFilterType("all");
-    setFilterRecipient("all");
-    setFilterRead("all");
-  }
+  const handleRowClick = useCallback((n: Notification) => {
+    setActiveNotif((prev) => (prev?.id === n.id ? null : n));
+  }, []);
 
   return (
     <TooltipProvider delayDuration={200}>
       <div className="space-y-5 overflow-auto px-4 md:px-6 py-6">
-        <div>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <Bell className="size-5 text-amber-500" />
-                <h1 className="text-xl font-semibold tracking-tight">
-                  Notification Center
-                </h1>
-                {unreadCount > 0 && (
-                  <span className="rounded-full bg-primary text-xs font-semibold text-primary-foreground size-5 grid place-items-center shrink-0">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Send, track, and manage all platform notifications
-              </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <Bell className="size-5 text-amber-500" />
+              <h1 className="text-xl font-semibold tracking-tight">
+                Notification Center
+              </h1>
+              {unreadCount > 0 && (
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                  {unreadCount}
+                </span>
+              )}
             </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Send, track, and manage all platform notifications
+            </p>
+          </div>
+
+          <div className="flex items-center ml-auto md:ml-0 gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  onClick={refresh}
+                  disabled={isLoading}
+                >
+                  <RefreshCw
+                    className={cn("size-4 shrink-0", isLoading && "animate-spin")}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
 
             <Button
               size="sm"
               className="gap-2"
-              onClick={() => setSendOpen(true)}
+              disabled={isLoading}
+              onClick={() => {
+                setRecipientId(null);
+                setSendOpen(true);
+              }}
             >
               <Plus className="size-4" />
               Send Notification
@@ -362,10 +258,38 @@ export default function NotificationCenterPage() {
 
         <Separator />
 
-        <div className="flex flex-wrap items-center gap-2 bg-background">
+        {error && (
+          <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            <span>{error}</span>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-destructive hover:text-destructive"
+              onClick={clearError}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        )}
+
+        {isActionPending && (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-amber-700 dark:text-amber-400">
+            <Loader className="size-4 animate-spin shrink-0" />
+
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">Action in progress</span>
+
+              <span className="text-xs opacity-80">
+                Deleting notification, please wait...
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
           <Select
-            value={filterType}
-            onValueChange={(v) => setFilterType(v as typeof filterType)}
+            value={filters.type}
+            onValueChange={(v) => setFilter("type", v)}
           >
             <SelectTrigger className="h-8 w-52 text-sm">
               <SelectValue placeholder="All types" />
@@ -374,13 +298,12 @@ export default function NotificationCenterPage() {
               <SelectItem value="all">All types</SelectItem>
               <Separator />
               {(Object.keys(TYPE_META) as NotificationType[]).map((t) => {
-                const meta = TYPE_META[t];
-                const Icon = meta.icon;
+                const { icon: Icon, label } = TYPE_META[t];
                 return (
                   <SelectItem key={t} value={t}>
                     <span className="flex items-center gap-2">
                       <Icon className="size-3.5 text-muted-foreground" />
-                      {meta.label}
+                      {label}
                     </span>
                   </SelectItem>
                 );
@@ -388,12 +311,9 @@ export default function NotificationCenterPage() {
             </SelectContent>
           </Select>
 
-          {/* Recipient filter */}
           <Select
-            value={filterRecipient}
-            onValueChange={(v) =>
-              setFilterRecipient(v as typeof filterRecipient)
-            }
+            value={filters.recipient}
+            onValueChange={(v) => setFilter("recipient", v)}
           >
             <SelectTrigger className="h-8 w-36 text-sm">
               <SelectValue placeholder="All audiences" />
@@ -406,10 +326,9 @@ export default function NotificationCenterPage() {
             </SelectContent>
           </Select>
 
-          {/* Read status */}
           <Select
-            value={filterRead}
-            onValueChange={(v) => setFilterRead(v as typeof filterRead)}
+            value={filters.read}
+            onValueChange={(v) => setFilter("read", v)}
           >
             <SelectTrigger className="h-8 w-32 text-sm">
               <SelectValue />
@@ -421,7 +340,7 @@ export default function NotificationCenterPage() {
             </SelectContent>
           </Select>
 
-          {activeFilters > 0 && (
+          {activeCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -429,44 +348,73 @@ export default function NotificationCenterPage() {
               onClick={clearFilters}
             >
               <X className="size-3.5" />
-              Clear ({activeFilters})
+              Clear ({activeCount})
             </Button>
           )}
 
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-            </span>
+          <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+            {isLoading ? (
+              <Loader className="size-4 animate-spin" />
+            ) : (
+              <span>
+                {total} notification{total !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
         </div>
 
         <div className="flex min-h-0 w-full">
           <div
             className={cn(
-              "min-w-0 flex-1 h-full",
-              activeNotif ? "rounded-r-none" : "rounded-t-md",
-              "transition-all border border-b-0",
+              "min-w-0 flex-1 overflow-x-hidden transition-all border border-b-0",
+              activeNotif ? "rounded-l-md rounded-r-none" : "rounded-md",
             )}
           >
-            <Table className="table-auto w-full">
+            <Table className="w-full table-fixed">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[40%] px-3">
+                  <TableHead className="w-80 px-3">
                     Title &amp; Message
                   </TableHead>
                   <TableHead className="w-48">Type</TableHead>
                   <TableHead className="w-28">Audience</TableHead>
-                  <TableHead className="w-36 hidden lg:table-cell">
+                  <TableHead className="hidden w-36 lg:table-cell">
                     Sent
                   </TableHead>
-                  <TableHead className="w-40 hidden lg:table-cell">
+                  <TableHead className="hidden w-40 lg:table-cell">
                     Read At
                   </TableHead>
-                  <TableHead className="w-20 text-left">Actions</TableHead>
+                  <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {filtered.length === 0 && (
+                {isLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={`skel-${i}`} className="animate-pulse">
+                      <TableCell className="px-3">
+                        <div className="h-3 w-48 rounded bg-muted" />
+                        <div className="mt-1.5 h-2.5 w-72 rounded bg-muted/60" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-5 w-28 rounded-md bg-muted" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-5 w-16 rounded-md bg-muted" />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="h-3 w-20 rounded bg-muted" />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="h-3 w-20 rounded bg-muted" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="size-7 rounded-md bg-muted" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                {!isLoading && empty && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -475,11 +423,11 @@ export default function NotificationCenterPage() {
                           No notifications found
                         </p>
                         <p className="text-xs">
-                          {activeFilters > 0
+                          {activeCount > 0
                             ? "Try adjusting your filters"
                             : "Send your first notification to get started"}
                         </p>
-                        {activeFilters > 0 && (
+                        {activeCount > 0 && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -493,133 +441,72 @@ export default function NotificationCenterPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {filtered.map((n) => (
-                  <TableRow
-                    key={n.id}
-                    className={cn(
-                      "transition-colors",
-                      !n.isRead && "bg-primary/3",
-                      activeNotif?.id === n.id && "bg-accent",
-                    )}
-                  >
-                    <TableCell className="w-[40%] px-3">
-                      <p
-                        className={cn("text-sm", !n.isRead && "font-semibold")}
-                      >
-                        {n.title}
-                      </p>
-                      <p className="text-xs hidden lg:inline-flex text-muted-foreground line-clamp-1 wrap-break-word">
-                        {n.message}
-                      </p>
-                    </TableCell>
 
-                    <TableCell>
-                      <TypeBadge type={n.type} />
-                    </TableCell>
-
-                    <TableCell>
-                      <RecipientBadge type={n.recipientType} />
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">
-                      {n.createdAt.toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                      <br />
-                      {n.createdAt.toLocaleTimeString(undefined, {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </TableCell>
-
-                    <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">
-                      {n.readAt ? (
-                        fmtDateTime(n.readAt)
-                      ) : (
-                        <span className="text-amber-500 font-mono">Unread</span>
-                      )}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="cursor-pointer"
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              onClick={() => setRecipientId(n.recipientId)}
-                            >
-                              <Send className="size-4 text-sky-500" />
-                              Send Notification
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setActiveNotif(n)}>
-                              <Info className="size-4 text-amber-500" />
-                              View detail
-                            </DropdownMenuItem>
-                            {!n.isRead && (
-                              <DropdownMenuItem
-                                onClick={() => markOneRead(n.id)}
-                              >
-                                <CheckCheck className="size-4 text-emerald-500" />
-                                Mark as read
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuGroup>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
-                            onClick={() => deleteOne(n.id)}
-                          >
-                            <Trash2 className="size-4 text-destructive" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {!isLoading &&
+                  notifications.map((n) => (
+                    <NotificationRow
+                      key={n.id}
+                      notification={n}
+                      isActive={activeNotif?.id === n.id}
+                      onRowClick={handleRowClick}
+                      onSend={openSendForRecipient}
+                      onDelete={openDeleteDialog}
+                      isActionPending={isActionPending}
+                    />
+                  ))}
               </TableBody>
             </Table>
           </div>
 
-          {activeNotif && (
-            <ScrollArea className="h-full border border-b-0 w-90 shrink-0 hidden lg:inline-flex transition-all">
+          {activeNotifFresh && (
+            <div className="sticky top-0 max-h-[calc(100svh-100px)] w-95 shrink-0 hidden xl:flex flex-col border border-b-0 rounded-r-md transition-all overflow-hidden">
               <NotificationDetail
-                notification={activeNotif}
+                notification={activeNotifFresh}
                 onClose={() => setActiveNotif(null)}
-                onMarkRead={markOneRead}
-                onDelete={(id) => {
-                  deleteOne(id);
-                  setActiveNotif(null);
-                }}
+                onDelete={openDeleteDialog}
               />
-            </ScrollArea>
+            </div>
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={prevPage}
+                disabled={page <= 1 || isLoading}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={nextPage}
+                disabled={page >= totalPages || isLoading}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── Dialogs ─── */}
       <SendNotificationDialog
         open={sendOpen}
         onClose={() => setSendOpen(false)}
-        onSend={handleSend}
         recipientId={recipientId}
       />
+
       <DeleteDialog
-        count={selected.size}
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={deleteSelected}
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
       />
     </TooltipProvider>
   );

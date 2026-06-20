@@ -6,6 +6,7 @@ import {
   markAsRead,
 } from "@/actions/notification.action";
 import { Notification } from "@/db/schemas";
+import { NotificationType } from "@/lib/all-types";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 export type RecipientType = "user" | "provider" | "admin";
@@ -25,6 +26,11 @@ type UseNotificationsProps = {
   recipientId?: string;
   limit?: number;
   ignoreRole?: boolean;
+  filter?: {
+    type: NotificationType | undefined;
+    recipientType: RecipientType | undefined;
+    isRead: boolean | undefined;
+  };
 };
 
 export function useNotifications({
@@ -32,6 +38,7 @@ export function useNotifications({
   recipientId,
   limit = 20,
   ignoreRole = false,
+  filter
 }: UseNotificationsProps) {
   const [page, setPage] = useState(1);
   const [state, setState] = useState<State>({
@@ -56,6 +63,7 @@ export function useNotifications({
         recipientId: recipientId,
         pagination: { limit, offset: (p - 1) * limit },
         ignoreRole,
+        filter
       });
 
       if (result.success) {
@@ -153,7 +161,7 @@ export function useNotifications({
       }));
 
       startTransition(async () => {
-        const result = await deleteNotification(id, recipientId ,ignoreRole);
+        const result = await deleteNotification(id, recipientId, ignoreRole);
         if (!result.success) {
           setState((s) => ({
             ...s,
