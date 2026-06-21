@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -65,6 +66,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { broadcastAnnouncement } from "@/actions/notification.action";
 
 type FilterKey = "type" | "recipient" | "read";
 
@@ -95,10 +97,12 @@ export function SendNotificationDialog({
   open,
   onClose,
   recipientId,
+  onComplete,
 }: {
   open: boolean;
   onClose: () => void;
   recipientId: string | null;
+  onComplete?: (item?: Notification) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -132,10 +136,19 @@ export function SendNotificationDialog({
   const handleSubmit = (values: SendNotificationValues) => {
     startTransition(async () => {
       try {
-        console.log(values);
+        const res = await broadcastAnnouncement(
+          values,
+          recipientId ?? undefined,
+        );
 
-        // form.reset();
-        // onClose();
+        if (!res.success) {
+          setError(res?.error || "Failed to send notification");
+          return;
+        }
+
+        onComplete?.(res?.data as Notification);
+        form.reset();
+        onClose();
       } catch (error) {}
     });
   };
@@ -153,6 +166,19 @@ export function SendNotificationDialog({
             <Send className="size-4 text-primary" />
             Send Notification
           </DialogTitle>
+          <DialogDescription>
+            {recipientId ? (
+              <span>
+                Send a notification directly to{" "}
+                <span className="text-fuchsia-500 inline text-xs">
+                  ${recipientId}
+                </span>
+                .
+              </span>
+            ) : (
+              "Create and send a notification to a selected audience or broadcast it to all recipients."
+            )}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -316,8 +342,17 @@ export function SendNotificationDialog({
               </Button>
 
               <Button type="submit" className="gap-2" disabled={isPending}>
-                <Send className="size-4" />
-                Send
+                {isPending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="size-4" />
+                    Send
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

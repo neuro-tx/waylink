@@ -167,10 +167,11 @@ export default function NotificationCenterPage() {
     totalPages,
     unreadCount,
     clearError,
+    addNewItem,
   } = useNotifications({
     recipient: "admin",
     ignoreRole: true,
-    filter
+    filter,
   });
 
   const activeNotifFresh = useMemo(
@@ -234,7 +235,10 @@ export default function NotificationCenterPage() {
                   disabled={isLoading}
                 >
                   <RefreshCw
-                    className={cn("size-4 shrink-0", isLoading && "animate-spin")}
+                    className={cn(
+                      "size-4 shrink-0",
+                      isLoading && "animate-spin",
+                    )}
                   />
                 </Button>
               </TooltipTrigger>
@@ -501,6 +505,7 @@ export default function NotificationCenterPage() {
         open={sendOpen}
         onClose={() => setSendOpen(false)}
         recipientId={recipientId}
+        onComplete={(item) => item && addNewItem(item)}
       />
 
       <DeleteDialog

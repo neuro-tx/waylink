@@ -12,6 +12,7 @@ import { parseQuery } from "@/lib/query_parser/analyzer";
 import { buildWhereConditions } from "@/lib/query_parser/helpers";
 import { sendNotificationSchema, SendNotificationValues } from "@/validations";
 import { inngest } from "@/inngest/client";
+import { _nullable } from "better-auth";
 
 type GetNotificationsResult =
   | { success: true; data: Notification[]; unreadCount: number; total: number }
@@ -420,7 +421,6 @@ export async function broadcastAnnouncement(
 
       return {
         success: true,
-        message: "Notification sent successfully",
         data: notification,
       };
     }
@@ -459,7 +459,7 @@ export async function broadcastAnnouncement(
 
     return {
       success: true,
-      message: "Broadcast queued successfully",
+      data: null,
     };
   } catch (error) {
     return {

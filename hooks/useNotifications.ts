@@ -206,6 +206,16 @@ export function useNotifications({
     setState((s) => ({ ...s, error: null }));
   }, []);
 
+  const addNewItem = useCallback((item: Notification) => {
+    setState((s) => ({
+      ...s,
+      unreadCount: s.unreadCount + 1,
+      notifications: [...s.notifications, item].sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+      ),
+    }));
+  }, []);
+
   return {
     // State
     notifications: state.notifications,
@@ -228,5 +238,6 @@ export function useNotifications({
     clearRead: handleClearRead,
     refresh: () => fetch(page),
     clearError,
+    addNewItem,
   };
 }

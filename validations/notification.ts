@@ -34,14 +34,6 @@ export const sendNotificationSchema = z
     broadcastAll: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    if (!data.broadcastAll && !data.recipientType) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["recipientType"],
-        message: "Please select a recipient type.",
-      });
-    }
-
     if (data.broadcastAll && data.recipientType !== null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
