@@ -425,13 +425,6 @@ export async function broadcastAnnouncement(
       };
     }
 
-    if (!broadcastAll) {
-      return {
-        success: false,
-        error: "Target recipient is required",
-      };
-    }
-
     const allowedBroadcastTypes = new Set([
       "system_announcement",
       "system_warning",
