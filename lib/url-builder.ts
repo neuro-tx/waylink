@@ -1,4 +1,4 @@
-import { DifficultyLevel, ExperienceType } from "./all-types";
+import { DifficultyLevel, ExperienceType, ProviderStatus, ServiceType } from "./all-types";
 
 interface SharedPrams {
   search: string;
@@ -25,8 +25,8 @@ interface ProviderURL {
   search?: string;
   verified?: boolean;
   business?: "all" | "individual" | "company" | "agency";
-  service?: "all" | "transport" | "experience";
-  status?: "pending" | "approved" | "inactive" | "suspended";
+  service?: "all" | ServiceType;
+  status?: "all" | ProviderStatus;
   sort?: "newest" | "oldest" | "name";
   page?: number;
   limit?: number;
@@ -145,15 +145,16 @@ export function experienceUrlBuilder(params: Partial<ExperienceURL>) {
   return url.toString();
 }
 
-export function providerUrl(params: ProviderURL = {}) {
+export function providerUrl(params: ProviderURL = {}, role?: "admin" | "user") {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const url = new URL("/api/provider", baseUrl);
 
   const { search, verified, business, service, status, sort, page, limit } =
     params;
 
-  url.searchParams.append("status", "approved");
+  if (!status) url.searchParams.append("status", "approved");
   url.searchParams.append("limit", "12");
+  url.searchParams.append("role", role ?? "user");
 
   if (search) {
     url.searchParams.append("search", search);
@@ -167,7 +168,7 @@ export function providerUrl(params: ProviderURL = {}) {
   if (service && service !== "all") {
     url.searchParams.append("serviceType", service);
   }
-  if (status) {
+  if (status && status !== "all") {
     url.searchParams.append("status", status);
   }
   if (sort) {
