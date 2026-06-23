@@ -4,6 +4,7 @@ import {
   products,
   productStats,
   providers,
+  providerStats,
   user,
 } from "@/db/schemas";
 import { parseQuery } from "@/lib/query_parser/analyzer";
@@ -41,26 +42,19 @@ const getProviders = async (url: string) => {
   const { ...provider } = getTableColumns(providers);
 
   const [countRes, list] = await Promise.all([
-    db
-      .select({ total: sql<number>`count(*)` })
-      .from(providers)
-      .innerJoin(products, eq(providers.id, products.providerId))
-      .leftJoin(productStats, eq(products.id, productStats.productId))
-      .where(final),
+    db.select({ total: count() }).from(providers).where(final),
     db
       .select({
         ...provider,
-        totalProducts: count(products.id),
-        totalBookings: sql<number>`COALESCE(SUM(${productStats.bookingsCount}), 0)`,
-        avgRating: sql<number>`COALESCE(ROUND(AVG(${productStats.averageRating})::numeric, 2), 0)`,
-        totalReviews: sql<number>`COALESCE(SUM(${productStats.reviewsCount}), 0)`,
+        totalProducts: providerStats.totalProducts,
+        totalBookings: providerStats.totalBookings,
+        avgRating: providerStats.avgRating,
+        totalReviews: providerStats.totalReviews,
       })
       .from(providers)
-      .leftJoin(products, eq(providers.id, products.providerId))
-      .leftJoin(productStats, eq(products.id, productStats.productId))
+      .leftJoin(providerStats, eq(provider.id, providerStats.providerId))
       .where(final)
-      .groupBy(providers.id)
-      .orderBy(sql`COALESCE(SUM(${productStats.bookingsCount}), 0) DESC`)
+      .orderBy(desc(providerStats.totalBookings))
       .limit(limit)
       .offset(offset),
   ]);
