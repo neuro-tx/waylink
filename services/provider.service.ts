@@ -2,7 +2,6 @@ import { db } from "@/db";
 import {
   productReviews,
   products,
-  productStats,
   providers,
   providerStats,
   user,
@@ -105,12 +104,9 @@ const providerReviewState = async (providerId: string) => {
 
     db
       .select({
-        totalReviews: sql<number>`count(${productReviews.id})`,
-        totalServices: sql<number>`count(distinct ${products.id})`,
-        avgRating: sql<string>`
-        coalesce(
-          to_char(round(avg(${productReviews.rating})::numeric, 1), 'FM999999990.0'),
-          '0.0')`,
+        totalReviews: providerStats.totalReviews,
+        totalServices: providerStats.totalProducts,
+        avgRating: providerStats.avgRating,
         fiveStar: sql<number>`count(*) filter (where ${productReviews.rating} = 5)`,
         fourStar: sql<number>`count(*) filter (where ${productReviews.rating} = 4)`,
         threeStar: sql<number>`count(*) filter (where ${productReviews.rating} = 3)`,
@@ -119,7 +115,16 @@ const providerReviewState = async (providerId: string) => {
       })
       .from(products)
       .leftJoin(productReviews, eq(productReviews.productId, products.id))
-      .where(eq(products.providerId, providerId)),
+      .leftJoin(
+        providerStats,
+        eq(products.providerId, providerStats.providerId),
+      )
+      .where(eq(products.providerId, providerId))
+      .groupBy(
+        providerStats.totalReviews,
+        providerStats.totalProducts,
+        providerStats.avgRating,
+      ),
   ]);
 
   return {

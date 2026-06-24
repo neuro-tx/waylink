@@ -14,7 +14,6 @@ import React, { useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
-  CalendarCheck,
   LucideIcon,
   Package,
   PieChart,
@@ -52,12 +51,6 @@ export const adminNav: AdminNavItem[] = [
     url: "/admin/products_moderation",
     icon: SlidersHorizontal,
     iconColor: "text-cyan-500",
-  },
-  {
-    title: "Bookings",
-    url: "/admin/bookings",
-    icon: CalendarCheck,
-    iconColor: "text-indigo-500",
   },
   {
     title: "Provider Management",
