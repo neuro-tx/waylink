@@ -116,7 +116,7 @@ const STATUS_META: Record<ProviderStatus, StatusMeta> = {
 };
 
 export const ACTION_META: Record<ActionType, ActionMeta> = {
-  approve: {
+  approved: {
     label: "Approve",
     confirmTitle: "Approve this provider?",
     confirmDesc: (n) =>
@@ -124,7 +124,7 @@ export const ACTION_META: Record<ActionType, ActionMeta> = {
     variant: "default",
     icon: <CheckCircle2 className="size-4 text-emerald-500" />,
   },
-  suspend: {
+  suspended: {
     label: "Suspend",
     confirmTitle: "Suspend this provider?",
     confirmDesc: (n) =>
@@ -133,7 +133,7 @@ export const ACTION_META: Record<ActionType, ActionMeta> = {
     icon: <ShieldAlert className="size-4 text-destructive" />,
     menuClassName: "text-destructive focus:text-destructive",
   },
-  reject: {
+  rejected: {
     label: "Reject application",
     confirmTitle: "Reject this application?",
     confirmDesc: (n) =>
@@ -141,22 +141,6 @@ export const ACTION_META: Record<ActionType, ActionMeta> = {
     variant: "destructive",
     icon: <XCircle className="size-4 text-rose-500" />,
     menuClassName: "text-destructive focus:text-destructive",
-  },
-  reactivate: {
-    label: "Reactivate",
-    confirmTitle: "Reactivate this provider?",
-    confirmDesc: (n) =>
-      `${n} will be reactivated and become visible to users again.`,
-    variant: "default",
-    icon: <CheckCircle2 className="size-4 text-fuchsia-500" />,
-  },
-  verify: {
-    label: "Mark as verified",
-    confirmTitle: "Mark as verified?",
-    confirmDesc: (n) =>
-      `${n} will receive a verified badge. Confirm that all documents have been reviewed before proceeding.`,
-    variant: "default",
-    icon: <ShieldCheck className="size-4 text-sky-500" />,
   },
   view: {
     label: "View details",
@@ -178,21 +162,30 @@ const BUSINESS_TYPE_ICON: Record<BusinessType, React.ReactNode> = {
   agency: <Compass className="h-3 w-3" />,
 };
 
-export type ActionType =
-  | "approve"
-  | "suspend"
-  | "reject"
-  | "reactivate"
-  | "verify"
-  | "view";
+export type ActionType = "view" | "approved" | "rejected" | "suspended";
 
-function getAvailableActions(p: Provider): ActionType[] {
+function getAvailableActions(provider: Provider): ActionType[] {
   const actions: ActionType[] = ["view"];
-  if (p.status === "pending") actions.push("approve", "reject");
-  if (p.status === "approved") actions.push("suspend");
-  if (p.status === "suspended" || p.status === "inactive")
-    actions.push("reactivate");
-  if (!p.isVerified && p.status === "approved") actions.push("verify");
+  switch (provider.status) {
+    case "pending":
+      actions.push("approved", "rejected");
+      break;
+
+    case "approved":
+      actions.push("suspended");
+      break;
+
+    case "suspended":
+      actions.push("approved");
+      break;
+
+    case "rejected":
+      break;
+
+    case "inactive":
+      break;
+  }
+
   return actions;
 }
 
@@ -507,6 +500,12 @@ export function ProviderTableRow({
       <TableCell>
         <p className="whitespace-nowrap text-xs text-muted-foreground">
           {fmtDate(provider.createdAt)}
+        </p>
+      </TableCell>
+
+      <TableCell>
+        <p className="whitespace-nowrap text-xs text-muted-foreground">
+          {fmtDate(provider.updatedAt)}
         </p>
       </TableCell>
 

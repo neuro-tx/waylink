@@ -277,6 +277,9 @@ export default function ProviderClient() {
                 <TableHead className="text-sm font-medium">
                   Registered
                 </TableHead>
+                <TableHead className="text-sm font-medium">
+                  Last Updated
+                </TableHead>
                 <TableHead className="w-10 px-3" />
               </TableRow>
             </TableHeader>

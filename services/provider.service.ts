@@ -1,11 +1,13 @@
 import { db } from "@/db";
 import {
+  notifications,
   productReviews,
   products,
   providers,
   providerStats,
   user,
 } from "@/db/schemas";
+import { NotificationType, ProviderStatus } from "@/lib/all-types";
 import { parseQuery } from "@/lib/query_parser/analyzer";
 import {
   buildSearchQuery,
@@ -213,11 +215,179 @@ const updateProvider = async (
   return updated[0];
 };
 
-const deleteProvider = async (providerId: string, ownerId: string) => {
-  await db
-    .delete(providers)
-    .where(and(eq(providers.id, providerId), eq(providers.ownerId, ownerId)));
+const deleteProvider = async (providerId: string) => {
+  const result = await db.transaction(async (tx) => {
+    const [provider] = await tx
+      .select()
+      .from(providers)
+      .where(eq(providers.id, providerId))
+      .limit(1);
+
+    if (!provider) {
+      throw new Error("Provider not found");
+    }
+
+    if (["inactive", "rejected", null].includes(provider.status)) {
+      throw new Error(
+        `Providers with status '${provider.status}' cannot be deleted`,
+      );
+    }
+    const [deleted] = await tx
+      .delete(providers)
+      .where(and(eq(providers.id, providerId)))
+      .returning();
+
+    await tx.insert(notifications).values({
+      recipientType: "user",
+      recipientId: provider.ownerId,
+      type: "general",
+      title: "🗑️ Provider Deleted",
+      message: `Your provider "${provider.name}" has been permanently removed from the platform.`,
+    });
+
+    return deleted;
+  });
+
+  return {
+    success: true,
+    provider: result,
+  };
 };
+
+type ProviderAction = "approved" | "rejected" | "suspended";
+const PROVIDER_TRANSITIONS: Record<ProviderStatus, ProviderAction[]> = {
+  pending: ["approved", "rejected"],
+  approved: ["suspended"],
+  inactive: [],
+  suspended: ["approved"],
+  rejected: [],
+};
+
+type NotificationConfig = {
+  title: string;
+  message: (providerName: string) => string;
+};
+
+const PROVIDER_ACTIONS: Record<
+  string,
+  {
+    targetStatus: ProviderStatus;
+    type: NotificationType;
+    providerNotification: NotificationConfig;
+    ownerNotification: NotificationConfig;
+  }
+> = {
+  approved: {
+    targetStatus: "approved",
+    type: "provider_approved",
+    providerNotification: {
+      title: "🎉 Provider Approved",
+      message: (providerName) =>
+        `Great news! "${providerName}" has been approved and is now visible to customers. You can start managing services, receiving bookings, and growing your business on the platform.`,
+    },
+    ownerNotification: {
+      title: "🎉 Your Provider Has Been Approved",
+      message: (providerName) =>
+        `Your provider "${providerName}" has been approved and is now live. Customers can now discover and book your services.`,
+    },
+  },
+  rejected: {
+    targetStatus: "rejected",
+    type: "provider_rejected",
+    providerNotification: {
+      title: "⚠️ Provider Rejected",
+      message: (providerName) =>
+        `Unfortunately, "${providerName}" could not be approved at this time. Please review the submitted information, make any necessary updates, and submit it again for review.`,
+    },
+    ownerNotification: {
+      title: "⚠️ Provider Application Rejected",
+      message: (providerName) =>
+        `Your provider "${providerName}" was not approved. Please review your provider information and resubmit it for another review.`,
+    },
+  },
+  suspended: {
+    targetStatus: "suspended",
+    type: "provider_suspended",
+    providerNotification: {
+      title: "🚫 Provider Suspended",
+      message: (providerName) =>
+        `"${providerName}" has been suspended and is currently unavailable to customers. If you believe this was a mistake, please contact the platform support team.`,
+    },
+    ownerNotification: {
+      title: "🚫 Provider Suspended",
+      message: (providerName) =>
+        `Your provider "${providerName}" has been suspended and is no longer visible to customers until further notice.`,
+    },
+  },
+} as const;
+
+async function changeProviderStatus(
+  providerId: string,
+  action: ProviderAction,
+) {
+  const [provider] = await db
+    .select()
+    .from(providers)
+    .where(eq(providers.id, providerId))
+    .limit(1);
+
+  if (!provider) {
+    throw new Error("Provider not found");
+  }
+
+  const allowedActions =
+    PROVIDER_TRANSITIONS[provider.status as ProviderStatus];
+
+  if (!allowedActions.includes(action)) {
+    throw new Error(
+      `Cannot perform '${action}' from status '${provider.status}'`,
+    );
+  }
+
+  const config = PROVIDER_ACTIONS[action];
+
+  const result = await db.transaction(async (tx) => {
+    const isVerified =
+      config.targetStatus === "approved"
+        ? true
+        : config.targetStatus === "rejected"
+          ? false
+          : provider.isVerified;
+
+    const [updated] = await tx
+      .update(providers)
+      .set({
+        status: config.targetStatus,
+        isVerified,
+      })
+      .where(eq(providers.id, provider.id))
+      .returning();
+
+    await tx.insert(notifications).values([
+      {
+        recipientType: "provider",
+        recipientId: provider.id,
+        type: config.type,
+        title: config.providerNotification.title,
+        message: config.providerNotification.message(provider.name),
+      },
+      {
+        recipientType: "user",
+        recipientId: provider.ownerId,
+        type: config.type,
+        title: config.ownerNotification.title,
+        message: config.ownerNotification.message(provider.name),
+      },
+    ]);
+
+    return updated;
+  });
+
+  return {
+    success: true,
+    provider: result,
+  };
+}
 
 export const providerService = {
   getProviders,
@@ -227,4 +397,5 @@ export const providerService = {
   createProvider,
   updateProvider,
   deleteProvider,
+  changeProviderStatus,
 };
