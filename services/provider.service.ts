@@ -227,11 +227,15 @@ const deleteProvider = async (providerId: string) => {
       throw new Error("Provider not found");
     }
 
-    if (["inactive", "rejected", null].includes(provider.status)) {
+    const canDelete =
+      provider.status === "inactive" || provider.status === "rejected";
+
+    if (!canDelete) {
       throw new Error(
         `Providers with status '${provider.status}' cannot be deleted`,
       );
     }
+
     const [deleted] = await tx
       .delete(providers)
       .where(and(eq(providers.id, providerId)))

@@ -30,9 +30,14 @@ import {
   SERVICE_TYPE_ICON,
   ProviderPagination,
   TableRowSkeleton,
+  ConfirmState,
 } from "./ProviderLayout";
 import { providerUrl } from "@/lib/url-builder";
 import { useDebounce } from "@/hooks/useDebounce";
+import {
+  changeProviderStatus,
+  deleteProvider,
+} from "@/actions/provider.action";
 
 const STATUS_TABS: { key: ProviderStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -42,11 +47,6 @@ const STATUS_TABS: { key: ProviderStatus | "all"; label: string }[] = [
   { key: "suspended", label: "Suspended" },
   { key: "rejected", label: "Rejected" },
 ];
-type ConfirmState = {
-  open: boolean;
-  provider: Provider | null;
-  action: Exclude<ActionType, "view"> | null;
-};
 
 export default function ProviderClient() {
   const [activeTab, setActiveTab] = useState<ProviderStatus | "all">("all");
@@ -106,7 +106,10 @@ export default function ProviderClient() {
         const res = await fetch(buildQuery(currentPage), {
           signal: controller.signal,
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          setState("error");
+          return;
+        }
         const json = await res.json();
         const payload = json.data ?? json;
         const items = payload.data ?? [];
@@ -145,14 +148,26 @@ export default function ProviderClient() {
   const handleConfirm = useCallback(async () => {
     if (!confirm.provider || !confirm.action) return;
     const { provider, action } = confirm;
+
     const key = `${provider.id}-${action}`;
     setLoadingAction(key);
     setError(null);
 
     try {
-      await new Promise<void>((res, rej) =>
-        setTimeout(() => (Math.random() > 0.12 ? res() : rej()), 1100),
+      const res =
+        action === "del"
+          ? await deleteProvider(provider.id)
+          : await changeProviderStatus(provider.id, action);
+
+      const updatedProvider = res.provider as Provider;
+      setProviders((prev) =>
+        action === "del"
+          ? prev.filter((p) => p.id !== updatedProvider.id)
+          : prev.map((p) =>
+              p.id === updatedProvider.id ? updatedProvider : p,
+            ),
       );
+
       setConfirm({ open: false, provider: null, action: null });
     } catch {
       setError(

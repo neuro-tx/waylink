@@ -30,7 +30,7 @@ import {
   MoreVertical,
   Search,
   ShieldAlert,
-  ShieldCheck,
+  Trash2,
   User,
   XCircle,
 } from "lucide-react";
@@ -131,7 +131,7 @@ export const ACTION_META: Record<ActionType, ActionMeta> = {
       `${n} will be suspended immediately. No new bookings can be made, but active ones won't be affected.`,
     variant: "destructive",
     icon: <ShieldAlert className="size-4 text-destructive" />,
-    menuClassName: "text-destructive focus:text-destructive",
+    menuClassName: "text-rose-500 focus:text-rose-500",
   },
   rejected: {
     label: "Reject application",
@@ -149,6 +149,15 @@ export const ACTION_META: Record<ActionType, ActionMeta> = {
     variant: "outline",
     icon: <ChevronRight className="size-4 text-amber-500" />,
   },
+  del: {
+    label: "Delete Provider",
+    confirmTitle: "Delete this provider permanently?",
+    confirmDesc: (n) =>
+      `"${n}" will be permanently deleted. This action cannot be undone and may remove access to provider-related data.`,
+    variant: "destructive",
+    icon: <Trash2 className="size-4 text-destructive" />,
+    menuClassName: "text-destructive focus:text-destructive",
+  },
 };
 
 export const SERVICE_TYPE_ICON: Record<ServiceType, React.ReactNode> = {
@@ -162,7 +171,7 @@ const BUSINESS_TYPE_ICON: Record<BusinessType, React.ReactNode> = {
   agency: <Compass className="h-3 w-3" />,
 };
 
-export type ActionType = "view" | "approved" | "rejected" | "suspended";
+export type ActionType = "view" | "approved" | "rejected" | "suspended" | "del";
 
 function getAvailableActions(provider: Provider): ActionType[] {
   const actions: ActionType[] = ["view"];
@@ -350,6 +359,9 @@ export function TableRowSkeleton() {
         <Skeleton className="h-3.5 w-20" />
       </TableCell>
       <TableCell>
+        <Skeleton className="h-3.5 w-20" />
+      </TableCell>
+      <TableCell>
         <Skeleton className="h-7 w-7 rounded-md" />
       </TableCell>
     </TableRow>
@@ -365,7 +377,7 @@ export function EmptyState({
 }) {
   return (
     <TableRow>
-      <TableCell colSpan={8} className="h-48 text-center">
+      <TableCell colSpan={9} className="h-48 text-center">
         <div className="flex flex-col items-center gap-3">
           <Search className="h-8 w-8 opacity-50" />
           <div className="space-y-1">
@@ -542,6 +554,20 @@ export function ProviderTableRow({
                 </DropdownMenuItem>
               );
             })}
+
+            {provider.status === "inactive" ||
+              (provider.status === "rejected" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
+                    onSelect={() => onAction(provider, "del")}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
