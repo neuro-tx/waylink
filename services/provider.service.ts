@@ -3,6 +3,8 @@ import {
   notifications,
   productReviews,
   products,
+  providerInvites,
+  providerMembers,
   providers,
   providerStats,
   user,
@@ -393,6 +395,39 @@ async function changeProviderStatus(
   };
 }
 
+async function getProviderData(providerId: string) {
+  const [[provider], members, invites, [status]] = await Promise.all([
+    db.select().from(providers).where(eq(providers.id, providerId)).limit(1),
+    db
+      .select({
+        providerId: providerMembers.providerId,
+        userId: user.id,
+        role: providerMembers.role,
+        name: user.name,
+        email: user.email,
+        avatar: user.image,
+        createdAt: providerMembers.createdAt,
+        updatedAt: providerMembers.updatedAt,
+      })
+      .from(providerMembers)
+      .innerJoin(user, eq(providerMembers.userId, user.id))
+      .where(eq(providers.id, providerId)),
+    db.select().from(providerInvites).where(eq(providers.id, providerId)),
+    db
+      .select()
+      .from(providerStats)
+      .where(eq(providers.id, providerId))
+      .limit(1),
+  ]);
+
+  return {
+    provider,
+    members,
+    invites,
+    status,
+  };
+}
+
 export const providerService = {
   getProviders,
   providerReviewState,
@@ -402,4 +437,5 @@ export const providerService = {
   updateProvider,
   deleteProvider,
   changeProviderStatus,
+  getProviderData,
 };

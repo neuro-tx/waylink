@@ -72,3 +72,31 @@ export type SubscriptionsData = {
   analytics: SubscriptionsAnalytics;
   activePlans: ActivePlans[];
 };
+
+export type MembersRoles = "owner" | "manager" | "staff";
+
+export type Invites = {
+  createdAt: Date;
+  updatedAt: Date;
+  id: string;
+  providerId: string;
+  message: string | null;
+  role: MembersRoles;
+  token: string;
+  status: "pending" | "cancelled" | "expired" | "accepted";
+  senderId: string;
+  receiverId: string;
+  acceptedAt: Date | null;
+  expiresAt: Date;
+};
+
+export type ProviderMemebers = {
+  providerId: string;
+  userId: string;
+  role: MembersRoles;
+  name: string;
+  email: string;
+  avatar: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
