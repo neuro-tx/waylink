@@ -411,12 +411,15 @@ async function getProviderData(providerId: string) {
       })
       .from(providerMembers)
       .innerJoin(user, eq(providerMembers.userId, user.id))
-      .where(eq(providers.id, providerId)),
-    db.select().from(providerInvites).where(eq(providers.id, providerId)),
+      .where(eq(providerMembers.providerId, providerId)),
+    db
+      .select()
+      .from(providerInvites)
+      .where(eq(providerInvites.providerId, providerId)),
     db
       .select()
       .from(providerStats)
-      .where(eq(providers.id, providerId))
+      .where(eq(providerStats.providerId, providerId))
       .limit(1),
   ]);
 

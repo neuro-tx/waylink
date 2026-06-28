@@ -13,7 +13,13 @@ import { ProviderStats } from "@/lib/panel-types";
 import { cn } from "@/lib/utils";
 import { fmtCurrency } from "@/lib/helpers";
 
-export function ProviderOverview({ stats }: { stats: ProviderStats | null }) {
+export function ProviderOverview({
+  stats,
+  showAlert = true,
+}: {
+  stats: ProviderStats | null;
+  showAlert?: boolean;
+}) {
   if (!stats) {
     return (
       <div className="rounded-xl border border-red-500/50 bg-red-500/10 p-4">
@@ -46,51 +52,53 @@ export function ProviderOverview({ stats }: { stats: ProviderStats | null }) {
 
   return (
     <div className="space-y-4">
-      <div
-        className={cn(
-          "flex items-start gap-3 rounded-xl border p-4 text-sm",
-          isLimitReached
-            ? "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/50 dark:border-red-800 dark:text-red-400"
-            : isNearLimit
-              ? "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-400"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-400",
-        )}
-      >
-        {isLimitReached ? (
-          <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-        ) : isNearLimit ? (
-          <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-        ) : (
-          <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" />
-        )}
-
-        <div className="space-y-1">
-          {isLimitReached ? (
-            <>
-              <p className="font-medium">Listing limit reached</p>
-              <p className="text-xs opacity-90">
-                You’ve reached your maximum listings. Upgrade your plan to add
-                more services.
-              </p>
-            </>
-          ) : isNearLimit ? (
-            <>
-              <p className="font-medium">Almost at your limit</p>
-              <p className="text-xs opacity-90">
-                You can create {remainingListings} more listing
-                {remainingListings === 1 ? "" : "s"}.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-medium">You can create listings</p>
-              <p className="text-xs opacity-90">
-                {remainingListings ?? "Unlimited"} listings remaining.
-              </p>
-            </>
+      {showAlert && (
+        <div
+          className={cn(
+            "flex items-start gap-3 rounded-xl border p-4 text-sm",
+            isLimitReached
+              ? "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/50 dark:border-red-800 dark:text-red-400"
+              : isNearLimit
+                ? "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-400"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-400",
           )}
+        >
+          {isLimitReached ? (
+            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+          ) : isNearLimit ? (
+            <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" />
+          )}
+
+          <div className="space-y-1">
+            {isLimitReached ? (
+              <>
+                <p className="font-medium">Listing limit reached</p>
+                <p className="text-xs opacity-90">
+                  You’ve reached your maximum listings. Upgrade your plan to add
+                  more services.
+                </p>
+              </>
+            ) : isNearLimit ? (
+              <>
+                <p className="font-medium">Almost at your limit</p>
+                <p className="text-xs opacity-90">
+                  You can create {remainingListings} more listing
+                  {remainingListings === 1 ? "" : "s"}.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">You can create listings</p>
+                <p className="text-xs opacity-90">
+                  {remainingListings ?? "Unlimited"} listings remaining.
+                </p>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
