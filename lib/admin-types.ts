@@ -74,6 +74,7 @@ export type SubscriptionsData = {
 };
 
 export type MembersRoles = "owner" | "manager" | "staff";
+export type InviteStatus = "pending" | "cancelled" | "expired" | "accepted";
 
 export type Invites = {
   createdAt: Date;
@@ -83,7 +84,7 @@ export type Invites = {
   message: string | null;
   role: MembersRoles;
   token: string;
-  status: "pending" | "cancelled" | "expired" | "accepted";
+  status: InviteStatus;
   senderId: string;
   receiverId: string;
   acceptedAt: Date | null;
