@@ -425,6 +425,8 @@ async function getProviderData(providerId: string) {
       .limit(1),
   ]);
 
+  if (!provider) throw new Error("provider not found");
+
   return {
     provider: provider as Provider,
     members: members as ProviderMemebers[],

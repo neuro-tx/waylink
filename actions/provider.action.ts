@@ -28,19 +28,28 @@ export const deleteProvider = async (providerId: string) => {
 };
 
 export const getProviderDetails = async (providerId: string) => {
-  if (!providerId) throw new Error("Missing provider id");
+  const { admin, status } = await adminAuth();
+  if (!admin || status !== "ok") throw new Error("Permission denied.");
 
-  const [data, bookingStatus, revenue, servicesStatus] = await Promise.all([
-    providerService.getProviderData(providerId),
-    providerDashboard.getBookingStatusBreakdown(providerId),
-    getRevenueOverTime(providerId, "1y"),
-    getServicesStatus(providerId),
-  ]);
+  if (!providerId) {
+    throw new Error("Missing provider id");
+  }
 
-  return {
-    data,
-    bookingStatus,
-    revenue,
-    servicesStatus,
-  };
+  try {
+    const [data, bookingStatus, revenue, servicesStatus] = await Promise.all([
+      providerService.getProviderData(providerId),
+      providerDashboard.getBookingStatusBreakdown(providerId),
+      getRevenueOverTime(providerId, "1y"),
+      getServicesStatus(providerId),
+    ]);
+
+    return {
+      data,
+      bookingStatus,
+      revenue,
+      servicesStatus,
+    };
+  } catch {
+    throw Error("Failed to get provider details");
+  }
 };
