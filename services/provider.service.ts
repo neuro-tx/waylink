@@ -9,7 +9,9 @@ import {
   providerStats,
   user,
 } from "@/db/schemas";
-import { NotificationType, ProviderStatus } from "@/lib/all-types";
+import { Invites, ProviderMemebers } from "@/lib/admin-types";
+import { NotificationType, Provider, ProviderStatus } from "@/lib/all-types";
+import { ProviderStats } from "@/lib/panel-types";
 import { parseQuery } from "@/lib/query_parser/analyzer";
 import {
   buildSearchQuery,
@@ -424,10 +426,10 @@ async function getProviderData(providerId: string) {
   ]);
 
   return {
-    provider,
-    members,
-    invites,
-    status,
+    provider: provider as Provider,
+    members: members as ProviderMemebers[],
+    invites: invites as Invites[],
+    status: status as ProviderStats,
   };
 }
 
