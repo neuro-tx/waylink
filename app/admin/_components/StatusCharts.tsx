@@ -210,22 +210,19 @@ function BarRow({
 
 export function ServiceStatusChart({ data }: { data: StatusItem[] }) {
   const [hovered, setHovered] = useState<StatusType | null>(null);
+  const hasData = data.length > 0;
 
   const sorted = ORDER.map((s) => data.find((d) => d.status === s)).filter(
     Boolean,
   ) as StatusItem[];
   const total = data.reduce((s, d) => +s + +d.count, 0);
 
-  function handleHover(status: StatusType, e: React.MouseEvent) {
+  function handleHover(status: StatusType) {
     setHovered(status);
-  }
-  function handleMove(e: React.MouseEvent) {}
-  function handleLeave() {
-    setHovered(null);
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden" onMouseMove={handleMove}>
+    <div className="rounded-lg bg-card border overflow-hidden">
       <div className="px-3 py-4 border-b">
         <h3 className="text-sm font-semibold">
           <div className="flex items-center gap-2">
@@ -240,45 +237,83 @@ export function ServiceStatusChart({ data }: { data: StatusItem[] }) {
         </p>
       </div>
 
-      <div className="p-5 space-y-5">
-        <div className="grid grid-cols-[1fr_180px] gap-6 items-center">
-          <div className="space-y-3.5">
-            {sorted.map((item) => (
-              <BarRow
-                key={item.status}
-                item={item}
-                hovered={hovered}
-                onHover={handleHover}
-                onLeave={handleLeave}
-              />
-            ))}
+      {hasData ? (
+        <div className="p-5 space-y-5">
+          <div className="grid grid-cols-[1fr_180px] gap-6 items-center">
+            <div className="space-y-3.5">
+              {sorted.map((item) => (
+                <BarRow
+                  key={item.status}
+                  item={item}
+                  hovered={hovered}
+                  onHover={handleHover}
+                  onLeave={() => setHovered(null)}
+                />
+              ))}
+            </div>
+
+            <DonutCanvas
+              data={sorted}
+              total={total}
+              hovered={hovered}
+              onHover={handleHover}
+              onLeave={() => setHovered(null)}
+            />
           </div>
 
-          <DonutCanvas
-            data={sorted}
-            total={total}
-            hovered={hovered}
-            onHover={handleHover}
-            onLeave={handleLeave}
-          />
+          <div className="flex items-center gap-4 flex-wrap pt-1 border-t">
+            {sorted.map((item) => {
+              const cfg = STATUS_CFG[item.status];
+              return (
+                <div
+                  key={item.status}
+                  className="flex items-center gap-1.5 text-[11px] cursor-default"
+                >
+                  <span
+                    className="h-2 w-2 rounded-sm shrink-0"
+                    style={{ background: cfg.color }}
+                  />
+                  {cfg.label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <EmptyData />
+      )}
+    </div>
+  );
+}
+
+function EmptyData() {
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <div className="border-b px-3 py-4">
+        <h3 className="text-sm font-semibold">
+          <div className="flex items-center gap-2">
+            <div className="grid size-7 place-items-center rounded-md bg-emerald-500/10">
+              <ChartPie className="size-4 text-emerald-500" />
+            </div>
+            Service status
+          </div>
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Distribution across provider listings
+        </p>
+      </div>
+
+      <div className="flex h-70 flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="grid size-14 place-items-center rounded-full bg-muted">
+          <ChartPie className="size-6 text-muted-foreground" />
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap pt-1 border-t">
-          {sorted.map((item) => {
-            const cfg = STATUS_CFG[item.status];
-            return (
-              <div
-                key={item.status}
-                className="flex items-center gap-1.5 text-[11px] cursor-default"
-              >
-                <span
-                  className="h-2 w-2 rounded-sm shrink-0"
-                  style={{ background: cfg.color }}
-                />
-                {cfg.label}
-              </div>
-            );
-          })}
+        <div>
+          <h4 className="font-medium">No service data yet</h4>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            This provider doesn't have any services yet, so there's no status
+            distribution to display.
+          </p>
         </div>
       </div>
     </div>
