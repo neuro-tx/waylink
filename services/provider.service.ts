@@ -9,7 +9,7 @@ import {
   providerStats,
   user,
 } from "@/db/schemas";
-import { Invites, ProviderMemebers } from "@/lib/admin-types";
+import { Invites, MembersRoles, ProviderMemebers } from "@/lib/admin-types";
 import { NotificationType, Provider, ProviderStatus } from "@/lib/all-types";
 import { ProviderStats } from "@/lib/panel-types";
 import { parseQuery } from "@/lib/query_parser/analyzer";
@@ -435,6 +435,97 @@ async function getProviderData(providerId: string) {
   };
 }
 
+const ROLE_NOTIFICATION: Record<
+  MembersRoles,
+  { title: string; description: (name: string) => string }
+> = {
+  owner: {
+    title: "👑 Ownership transferred",
+    description: (name) =>
+      `${name} is now the owner of this provider. All admin privileges have been granted.`,
+  },
+  manager: {
+    title: "🛡️ Role updated to Manager",
+    description: (name) =>
+      `${name} has been promoted to manager and can now manage listings, bookings, and team members.`,
+  },
+  staff: {
+    title: "👤 Role updated to Staff",
+    description: (name) =>
+      `${name} has been set to staff. They can view and manage assigned tasks only.`,
+  },
+};
+
+const ROLE_PERMISSIONS: Record<MembersRoles, MembersRoles[]> = {
+  owner: ["manager", "staff"],
+  manager: ["staff"],
+  staff: [],
+};
+
+async function changeMemberRole(
+  providerId: string,
+  targetMemberId: string,
+  newRole: MembersRoles,
+  actorRole: MembersRoles,
+) {
+  return await db.transaction(async (tx) => {
+    const target = await tx.query.providerMembers.findFirst({
+      where: (t, { and, eq: e }) =>
+        and(e(t.userId, targetMemberId), e(t.providerId, providerId)),
+      with: { user: { columns: { id: true, name: true, role: true } } },
+    });
+
+    if (!target) throw new Error("Member not found in this provider.");
+    if (target.user.role !== "provider")
+      throw new Error("Only provider accounts can have their role changed.");
+
+    const targetRole = target.role ?? "staff";
+
+    if (targetRole === "owner")
+      throw new Error(
+        "Owner's role cannot be changed here. Use the ownership transfer action.",
+      );
+
+    if (!ROLE_PERMISSIONS[actorRole].includes(targetRole))
+      throw new Error(
+        `As a ${actorRole}, you don't have permission to update a ${targetRole}.`,
+      );
+
+    if (targetRole === newRole) {
+      return {
+        success: true,
+        noOp: true,
+        message: `${target.user.name} is already assigned the ${newRole} role.`,
+      };
+    }
+
+    await tx
+      .update(providerMembers)
+      .set({ role: newRole })
+      .where(
+        and(
+          eq(providerMembers.userId, targetMemberId),
+          eq(providerMembers.providerId, providerId),
+        ),
+      );
+
+    const notif = ROLE_NOTIFICATION[newRole];
+    await tx.insert(notifications).values({
+      recipientType: "user",
+      recipientId: targetMemberId,
+      type: "general",
+      title: notif.title,
+      message: notif.description(target.user.name),
+    });
+
+    return {
+      success: true,
+      noOp: false,
+      message: `${target.user.name} is now assigned the ${newRole} role.`,
+    };
+  });
+}
+
 export const providerService = {
   getProviders,
   providerReviewState,
@@ -445,4 +536,5 @@ export const providerService = {
   deleteProvider,
   changeProviderStatus,
   getProviderData,
+  changeMemberRole,
 };
