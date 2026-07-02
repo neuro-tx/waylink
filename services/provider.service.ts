@@ -465,17 +465,22 @@ const ROLE_PERMISSIONS: Record<MembersRoles, MembersRoles[]> = {
 async function changeMemberRole(
   providerId: string,
   targetMemberId: string,
-  newRole: MembersRoles,
+  newRole: Exclude<MembersRoles, "owner">,
   actorRole: MembersRoles,
 ) {
   return await db.transaction(async (tx) => {
     const target = await tx.query.providerMembers.findFirst({
       where: (t, { and, eq: e }) =>
         and(e(t.userId, targetMemberId), e(t.providerId, providerId)),
-      with: { user: { columns: { id: true, name: true, role: true } } },
+      with: {
+        user: { columns: { id: true, name: true, role: true } },
+        provider: { columns: { id: true, name: true } },
+      },
     });
 
-    if (!target) throw new Error("Member not found in this provider.");
+    if (!target) throw new Error("Member not found.");
+    // block the operation , may be a malicious attempt to change role of a member from another provider
+    if (providerId !== target.providerId) throw new Error("Access denied.");
     if (target.user.role !== "provider")
       throw new Error("Only provider accounts can have their role changed.");
 
@@ -526,6 +531,54 @@ async function changeMemberRole(
   });
 }
 
+async function removeMember(providerId: string, targetMemberId: string) {
+  return await db.transaction(async (tx) => {
+    const target = await tx.query.providerMembers.findFirst({
+      where: (t, { and, eq: e }) =>
+        and(e(t.userId, targetMemberId), e(t.providerId, providerId)),
+      with: {
+        user: { columns: { id: true, name: true, role: true } },
+        provider: { columns: { id: true, name: true } },
+      },
+    });
+
+    if (!target) throw new Error("Member not found.");
+    // block the operation , may be a malicious attempt to change role of a member from another provider
+    if (providerId !== target.providerId) throw new Error("Access denied.");
+    if (target.user.role !== "provider")
+      throw new Error("Only provider accounts can be removed from a provider.");
+    if (target.role === "owner")
+      throw new Error("Owner cannot be removed from the provider.");
+
+    await tx
+      .delete(providerMembers)
+      .where(
+        and(
+          eq(providerMembers.userId, targetMemberId),
+          eq(providerMembers.providerId, providerId),
+        ),
+      );
+
+    await tx
+      .update(user)
+      .set({ role: "user" })
+      .where(eq(user.id, targetMemberId));
+
+    await tx.insert(notifications).values({
+      recipientType: "user",
+      recipientId: targetMemberId,
+      type: "general",
+      title: "👋 Removed from Provider",
+      message: `You have been removed from the provider "${target.provider.name}". You no longer have access to manage or view this provider's resources.`,
+    });
+
+    return {
+      success: true,
+      message: `${target.user.name} has been removed from the provider.`,
+    };
+  });
+}
+
 export const providerService = {
   getProviders,
   providerReviewState,
@@ -537,4 +590,5 @@ export const providerService = {
   changeProviderStatus,
   getProviderData,
   changeMemberRole,
+  removeMember,
 };

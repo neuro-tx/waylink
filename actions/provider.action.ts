@@ -58,7 +58,7 @@ export const getProviderDetails = async (providerId: string) => {
 
 export async function changeMemberRoleAction(params: {
   targetMemberId: string;
-  newRole: MembersRoles;
+  newRole: Exclude<MembersRoles, "owner">;
 }) {
   const { provider, status, role, user } = await getCurrentProvider();
   if (!provider || status !== "ok") throw new Error("Permission denied.");
@@ -73,6 +73,22 @@ export async function changeMemberRoleAction(params: {
     params.targetMemberId,
     params.newRole,
     role ?? "staff",
+  );
+
+  return result;
+}
+
+export async function removeMemberAction(targetMemberId: string) {
+  const { provider, status, role, user } = await getCurrentProvider();
+  if (!provider || status !== "ok") throw new Error("Permission denied.");
+
+  if (role === "staff") throw new Error("Staff members cannot remove members.");
+  if (user.id === targetMemberId)
+    throw new Error("You cannot remove yourself.");
+
+  const result = await providerService.removeMember(
+    provider.id,
+    targetMemberId,
   );
 
   return result;

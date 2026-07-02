@@ -36,7 +36,10 @@ import {
 import { MembersRoles, ProviderMemebers } from "@/lib/admin-types";
 import { initials } from "@/lib/helpers";
 import { fmtDate } from "@/lib/utils";
-import { changeMemberRoleAction } from "@/actions/provider.action";
+import {
+  changeMemberRoleAction,
+  removeMemberAction,
+} from "@/actions/provider.action";
 import { toast } from "sonner";
 
 const ROLE_CFG: Record<
@@ -71,7 +74,7 @@ const ROLE_CFG: Record<
   },
 };
 
-const ROLES: MembersRoles[] = ["owner", "manager", "staff"];
+const ROLES: MembersRoles[] = ["manager", "staff"];
 const FILTER_TABS: { key: MembersRoles | "all"; label: string }[] = [
   { key: "all", label: "All" },
   { key: "owner", label: "Owner" },
@@ -394,7 +397,13 @@ export function ProviderMembers({
     if (!removeTarget) return;
     stratTransition(async () => {
       try {
-        await new Promise<void>((r) => setTimeout(r, 800));
+        const res = await removeMemberAction(removeTarget.userId);
+        if (!res.success) {
+          toast.error(res.message);
+          return;
+        }
+
+        toast.success(res.message);
         setMembers((prev) =>
           prev.filter((m) => m.userId !== removeTarget.userId),
         );
@@ -415,9 +424,13 @@ export function ProviderMembers({
     const { member, newRole } = rolePayload;
     stratTransition(async () => {
       try {
+        const role = newRole === "owner";
+        if (role)
+          throw new Error("You cannot change a member's role to owner.");
+
         const res = await changeMemberRoleAction({
           targetMemberId: member.userId,
-          newRole: newRole === "owner" ? "manager" : newRole,
+          newRole: newRole,
         });
 
         if (!res.success) {

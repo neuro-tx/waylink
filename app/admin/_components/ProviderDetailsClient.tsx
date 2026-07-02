@@ -76,7 +76,7 @@ const ProviderDetailsClient = ({ providerId }: { providerId: string }) => {
         <TopHeader provider={provider} stats={providerStatus ?? null} />
         <RevenueAnalytics data={revenue} />
         <ProviderInvites hideAction invites={invites} />
-        <ProviderMembers members={members} />
+        <ProviderMembers members={members} hideActions />
         <ServiceStatusChart data={servicesStatus} />
         <StatusPieChart data={bookingStatus} />
       </div>
