@@ -397,9 +397,8 @@ async function changeProviderStatus(
   };
 }
 
-async function getProviderData(providerId: string) {
-  const [[provider], members, invites, [status]] = await Promise.all([
-    db.select().from(providers).where(eq(providers.id, providerId)).limit(1),
+async function providerInvitesMembers(providerId: string) {
+  const [members, invites] = await Promise.all([
     db
       .select({
         providerId: providerMembers.providerId,
@@ -418,6 +417,31 @@ async function getProviderData(providerId: string) {
       .select()
       .from(providerInvites)
       .where(eq(providerInvites.providerId, providerId)),
+  ]);
+
+  return {
+    members,
+    invites,
+  };
+}
+
+async function getProviderData(providerId: string) {
+  const [[provider], members, [status]] = await Promise.all([
+    db.select().from(providers).where(eq(providers.id, providerId)).limit(1),
+    db
+      .select({
+        providerId: providerMembers.providerId,
+        userId: user.id,
+        role: providerMembers.role,
+        name: user.name,
+        email: user.email,
+        avatar: user.image,
+        createdAt: providerMembers.createdAt,
+        updatedAt: providerMembers.updatedAt,
+      })
+      .from(providerMembers)
+      .innerJoin(user, eq(providerMembers.userId, user.id))
+      .where(eq(providerMembers.providerId, providerId)),
     db
       .select()
       .from(providerStats)
@@ -430,7 +454,6 @@ async function getProviderData(providerId: string) {
   return {
     provider: provider as Provider,
     members: members as ProviderMemebers[],
-    invites: invites as Invites[],
     status: status as ProviderStats,
   };
 }
@@ -591,4 +614,5 @@ export const providerService = {
   getProviderData,
   changeMemberRole,
   removeMember,
+  providerInvitesMembers,
 };

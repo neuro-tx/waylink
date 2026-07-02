@@ -3,7 +3,6 @@ import { getProviderDetails } from "@/actions/provider.action";
 import { useState, useEffect } from "react";
 import { TopHeader } from "./TopHeader";
 import { RevenueAnalytics } from "./charts/Revenueanalytics";
-import { ProviderInvites } from "@/components/ProviderInvites";
 import { ProviderMembers } from "@/components/Providermembers";
 import { ServiceStatusChart } from "./StatusCharts";
 import { StatusPieChart } from "@/app/provider/_components/charts/StatusPieChart";
@@ -68,14 +67,13 @@ const ProviderDetailsClient = ({ providerId }: { providerId: string }) => {
   if (!details) return null;
 
   const { bookingStatus, data, revenue, servicesStatus } = details;
-  const { provider, members, invites, status: providerStatus } = data;
+  const { provider, members, status: providerStatus } = data;
 
   return (
     <div className="w-full overflow-x-hidden px-3 py-6 md:px-6">
       <div className="space-y-5">
         <TopHeader provider={provider} stats={providerStatus ?? null} />
         <RevenueAnalytics data={revenue} />
-        <ProviderInvites hideAction invites={invites} />
         <ProviderMembers members={members} hideActions />
         <ServiceStatusChart data={servicesStatus} />
         <StatusPieChart data={bookingStatus} />
