@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,8 @@ import {
 import { MembersRoles, ProviderMemebers } from "@/lib/admin-types";
 import { initials } from "@/lib/helpers";
 import { fmtDate } from "@/lib/utils";
+import { changeMemberRoleAction } from "@/actions/provider.action";
+import { toast } from "sonner";
 
 const ROLE_CFG: Record<
   MembersRoles,
@@ -230,7 +232,7 @@ function RoleDialog({
               Cancel
             </Button>
             <Button onClick={onConfirm} disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {loading ? "Updating…" : "Confirm"}
             </Button>
           </DialogFooter>
@@ -244,22 +246,22 @@ const MemberRow = ({
   member,
   onRemove,
   onRoleChange,
-  loadingId,
+  isLoading,
+  hideActions,
 }: {
   member: ProviderMemebers;
   onRemove: (m: ProviderMemebers) => void;
   onRoleChange: (m: ProviderMemebers, r: MembersRoles) => void;
-  loadingId: string | null;
+  isLoading: boolean;
+  hideActions?: boolean;
 }) => {
   const cfg = ROLE_CFG[member.role];
   const isOwner = member.role === "owner";
-  const isLoading = loadingId === member.userId;
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-lg border p-3 transition-colors ${
-        isLoading ? "opacity-50 pointer-events-none" : "hover:bg-muted/20"
-      } ${cfg.row}`}
+      className={`group flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-muted/20 
+       ${cfg.row}`}
     >
       <Avatar name={member.name} src={member.avatar} />
 
@@ -303,67 +305,65 @@ const MemberRow = ({
         {isLoading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-45">
-              <div className="p-1">
-                <p className="text-sm tracking-wider text-muted-foreground font-medium mb-1">
-                  Change Role
-                </p>
-                {ROLES.filter((r) => r !== member.role).map((r) => {
-                  const rc = ROLE_CFG[r];
-                  return (
-                    <DropdownMenuItem
-                      key={r}
-                      onSelect={() => onRoleChange(member, r)}
-                      className="text-xs gap-2 rounded-sm"
-                    >
-                      {rc.icon}
-                      {rc.label}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
+          !hideActions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-45">
+                <div className="p-1">
+                  <p className="text-sm tracking-wider text-muted-foreground font-medium mb-1">
+                    Change Role
+                  </p>
+                  {ROLES.filter((r) => r !== member.role).map((r) => {
+                    const rc = ROLE_CFG[r];
+                    return (
+                      <DropdownMenuItem
+                        key={r}
+                        onSelect={() => onRoleChange(member, r)}
+                        className="text-xs gap-2 rounded-sm"
+                      >
+                        {rc.icon}
+                        {rc.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </div>
 
-              {!isOwner && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => onRemove(member)}
-                    className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
-                  >
-                    <UserMinus className="h-3.5 w-3.5 text-destructive" />
-                    Remove member
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {!isOwner && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => onRemove(member)}
+                      className="text-destructive focus:text-destructive bg-destructive/5 focus:bg-destructive/10 dark:bg-destructive/10 dark:focus:bg-destructive/20"
+                    >
+                      <UserMinus className="h-3.5 w-3.5 text-destructive" />
+                      Remove member
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )
         )}
       </div>
     </div>
   );
 };
 
-interface Props {
-  members: ProviderMemebers[];
-  onRemoveMember?: (userId: string) => Promise<void>;
-  onChangeRole?: (userId: string, role: MembersRoles) => Promise<void>;
-}
-
 export function ProviderMembers({
   members: initial,
-  onRemoveMember,
-  onChangeRole,
-}: Props) {
+  hideActions = false,
+}: {
+  members: ProviderMemebers[];
+  hideActions?: boolean;
+}) {
   const [members, setMembers] = useState<ProviderMemebers[]>(initial);
   const [activeTab, setActiveTab] = useState<MembersRoles | "all">("all");
   const [removeTarget, setRemoveTarget] = useState<ProviderMemebers | null>(
@@ -373,7 +373,7 @@ export function ProviderMembers({
     member: ProviderMemebers;
     newRole: MembersRoles;
   } | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isPending, stratTransition] = useTransition();
 
   // Counts
   const counts = useMemo(() => {
@@ -390,44 +390,65 @@ export function ProviderMembers({
     [members, activeTab],
   );
 
-  // Remove
-  const handleRemove = useCallback(async () => {
+  const handleRemove = useCallback(() => {
     if (!removeTarget) return;
-    setLoadingId(removeTarget.userId);
-    try {
-      await (onRemoveMember
-        ? onRemoveMember(removeTarget.userId)
-        : new Promise<void>((r) => setTimeout(r, 800)));
-      setMembers((prev) =>
-        prev.filter((m) => m.userId !== removeTarget.userId),
-      );
-      setRemoveTarget(null);
-    } finally {
-      setLoadingId(null);
-    }
-  }, [removeTarget, onRemoveMember]);
+    stratTransition(async () => {
+      try {
+        await new Promise<void>((r) => setTimeout(r, 800));
+        setMembers((prev) =>
+          prev.filter((m) => m.userId !== removeTarget.userId),
+        );
+        setRemoveTarget(null);
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to remove the member. Please try again.",
+        );
+      }
+    });
+  }, [removeTarget]);
 
-  // Role change
-  const handleRoleChange = useCallback(async () => {
+  const handleRoleChange = useCallback(() => {
     if (!rolePayload) return;
     const { member, newRole } = rolePayload;
-    setLoadingId(member.userId);
-    try {
-      await (onChangeRole
-        ? onChangeRole(member.userId, newRole)
-        : new Promise<void>((r) => setTimeout(r, 800)));
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.userId === member.userId
-            ? { ...m, role: newRole, updatedAt: new Date() }
-            : m,
-        ),
-      );
-      setRolePayload(null);
-    } finally {
-      setLoadingId(null);
-    }
-  }, [rolePayload, onChangeRole]);
+    stratTransition(async () => {
+      try {
+        const res = await changeMemberRoleAction({
+          targetMemberId: member.userId,
+          newRole: newRole === "owner" ? "manager" : newRole,
+        });
+
+        if (!res.success) {
+          toast.error(res.message);
+          return;
+        }
+
+        if (res.noOp) {
+          toast.info(res.message);
+          return;
+        }
+
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.userId === member.userId
+              ? { ...m, role: newRole, updatedAt: new Date() }
+              : m,
+          ),
+        );
+        setRolePayload(null);
+        toast.success(res.message);
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update the member role. Please try again.",
+        );
+      }
+    });
+  }, [rolePayload]);
 
   return (
     <div className="rounded-md border bg-card overflow-hidden">
@@ -513,7 +534,8 @@ export function ProviderMembers({
               onRoleChange={(member, newRole) =>
                 setRolePayload({ member, newRole })
               }
-              loadingId={loadingId}
+              isLoading={isPending}
+              hideActions={hideActions}
             />
           ))
         )}
@@ -521,13 +543,13 @@ export function ProviderMembers({
 
       <RemoveDialog
         member={removeTarget}
-        loading={loadingId === removeTarget?.userId}
+        loading={isPending}
         onConfirm={handleRemove}
         onCancel={() => setRemoveTarget(null)}
       />
       <RoleDialog
         payload={rolePayload}
-        loading={loadingId === rolePayload?.member.userId}
+        loading={isPending}
         onConfirm={handleRoleChange}
         onCancel={() => setRolePayload(null)}
       />

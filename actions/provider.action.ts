@@ -56,19 +56,10 @@ export const getProviderDetails = async (providerId: string) => {
   }
 };
 
-type ActorType = "admin" | "provider";
-type BaseParams = {
+export async function changeMemberRoleAction(params: {
   targetMemberId: string;
-  newRole: Exclude<MembersRoles, "owner">;
-  actor: ActorType;
-};
-
-type AdminParams = BaseParams & { actor: "admin"; providerId: string };
-type ProviderParams = BaseParams & { actor: "provider"; providerId?: never };
-
-type Params = AdminParams | ProviderParams;
-
-export async function changeMemberRoleAction(params: Params) {
+  newRole: MembersRoles;
+}) {
   const { provider, status, role, user } = await getCurrentProvider();
   if (!provider || status !== "ok") throw new Error("Permission denied.");
 
