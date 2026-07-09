@@ -7,7 +7,6 @@ import {
   useTransition,
   useEffect,
 } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,50 +16,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   AlertCircle,
   AlertTriangle,
-  Archive,
-  BadgeCheck,
-  BarChart2,
   Car,
   CheckCircle2,
   Compass,
-  FileText,
   Loader2,
-  MoreVertical,
-  Pause,
-  Play,
   Search,
   X,
 } from "lucide-react";
-import Image from "next/image";
 import { Provider, ServiceType } from "@/lib/all-types";
 import { StatusType } from "@/lib/panel-types";
-import { cn } from "@/lib/utils";
-import { fmtCurrency } from "@/lib/helpers";
+import { ProductsSummary } from "@/lib/admin-types";
+import { ProductsOverview } from "../_components/ProductsOverview";
+import {
+  ProductsTable,
+  ProductStatusBadge,
+  STATUS_META,
+} from "../_components/ProductsTable";
+import ThumbnailImage from "@/components/ThumbnailImage";
 
-type Product = {
+export type Product = {
   id: string;
   title: string;
   slug: string;
@@ -75,83 +56,11 @@ type Product = {
   updatedAt: Date | string;
 };
 
-type StatusMeta = { label: string; icon: React.ReactNode; badge: string };
-
-const STATUS_META: Record<StatusType, StatusMeta> = {
-  active: {
-    label: "Active",
-    icon: <Play className="h-3 w-3" />,
-    badge:
-      "border-emerald-500/30 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/8",
-  },
-  paused: {
-    label: "Paused",
-    icon: <Pause className="h-3 w-3" />,
-    badge:
-      "border-amber-500/30  bg-amber-500/8  text-amber-400  hover:bg-amber-500/8",
-  },
-  draft: {
-    label: "Draft",
-    icon: <FileText className="h-3 w-3" />,
-    badge:
-      "border-blue-500/30   bg-blue-500/8   text-blue-400   hover:bg-blue-500/8",
-  },
-  archived: {
-    label: "Archived",
-    icon: <Archive className="h-3 w-3" />,
-    badge:
-      "border-zinc-500/30   bg-zinc-500/8   text-zinc-400   hover:bg-zinc-500/8",
-  },
-};
-
 type Transition = {
   to: StatusType;
   label: string;
   icon: React.ReactNode;
   destructive?: boolean;
-};
-
-const TRANSITIONS: Record<StatusType, Transition[]> = {
-  active: [
-    {
-      to: "paused",
-      label: "Pause",
-      icon: <Pause className="size-4 text-amber-500" />,
-    },
-    {
-      to: "archived",
-      label: "Archive",
-      icon: <Archive className="size-4 text-destructive" />,
-      destructive: true,
-    },
-  ],
-  paused: [
-    {
-      to: "active",
-      label: "Activate",
-      icon: <Play className="size-4 text-emerald-500" />,
-    },
-    {
-      to: "archived",
-      label: "Archive",
-      icon: <Archive className="size-4 text-destructive" />,
-      destructive: true,
-    },
-  ],
-  draft: [
-    {
-      to: "active",
-      label: "Publish",
-      icon: <Play className="size-4 text-emerald-500" />,
-    },
-    {
-      to: "archived",
-      label: "Archive",
-      icon: <Archive className="size-4 text-destructive" />,
-      destructive: true,
-    },
-  ],
-  archived: [],
 };
 
 const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
@@ -161,73 +70,6 @@ const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
   { key: "draft", label: "Draft" },
   { key: "archived", label: "Archived" },
 ];
-
-const SERVICE_TYPE_CONFIG = {
-  transport: {
-    label: "Transport",
-    icon: Car,
-    className:
-      "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20",
-  },
-  experience: {
-    label: "Experience",
-    icon: Compass,
-    className:
-      "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
-  },
-} as const;
-
-function ThumbnailImage({
-  alternative,
-  src,
-  className,
-}: {
-  alternative: string;
-  src: string | null;
-  className?: string;
-}) {
-  const hue =
-    (alternative.charCodeAt(0) * 41 + (alternative.charCodeAt(1) ?? 0) * 17) %
-    360;
-  if (src)
-    return (
-      <Image
-        src={src}
-        alt={alternative}
-        className={cn("h-9 w-9 rounded-lg object-cover shrink-0", className)}
-        width={40}
-        height={40}
-      />
-    );
-
-  return (
-    <div
-      className={cn(
-        "h-9 w-9 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 select-none",
-        className,
-      )}
-      style={{
-        background: `oklch(28% 0.07 ${hue})`,
-        color: `oklch(82% 0.14 ${hue})`,
-      }}
-    >
-      {alternative.slice(0, 2).toUpperCase()}
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: StatusType }) {
-  const m = STATUS_META[status];
-  return (
-    <Badge
-      variant="outline"
-      className={`gap-1.5 text-[11px] font-medium ${m.badge}`}
-    >
-      {m.icon}
-      {m.label}
-    </Badge>
-  );
-}
 
 type ConfirmPayload = { product: Product; transition: Transition };
 
@@ -248,23 +90,22 @@ function ConfirmDialog({
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
       <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden">
-        <div
-          className={`h-0.5 w-full ${transition.destructive ? "bg-destructive" : "bg-emerald-500"}`}
-        />
-        <div className="p-6 space-y-4">
+        <div className="px-4 py-5 space-y-4">
           <DialogHeader className="space-y-2">
-            <div
-              className={`w-9 h-9 rounded-lg flex items-center justify-center ${transition.destructive ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-500"}`}
-            >
-              {transition.destructive ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
+            <div className="flex items-center gap-3">
+              <div
+                className={`size-8 rounded-md flex items-center justify-center ${transition.destructive ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-500"}`}
+              >
+                {transition.destructive ? (
+                  <AlertTriangle className="size-4.5" />
+                ) : (
+                  <CheckCircle2 className="size-4.5" />
+                )}
+              </div>
+              <DialogTitle className="text-base">
+                {transition.label} this product?
+              </DialogTitle>
             </div>
-            <DialogTitle className="text-base">
-              {transition.label} this product?
-            </DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
               {transition.to === "archived"
                 ? `"${product.title}" will be archived and hidden from all users. You can restore it to draft later.`
@@ -273,14 +114,14 @@ function ConfirmDialog({
           </DialogHeader>
 
           <div className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3 py-2.5">
-            <ThumbnailImage alternative={product.title} src={null} />
+            <ThumbnailImage alternative={product.title} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{product.title}</p>
               <p className="text-xs text-muted-foreground">
                 {product.provider.name}
               </p>
             </div>
-            <StatusBadge status={product.status} />
+            <ProductStatusBadge status={product.status} />
           </div>
 
           <DialogFooter className="gap-2">
@@ -302,79 +143,6 @@ function ConfirmDialog({
   );
 }
 
-function TableRowSkeleton() {
-  return (
-    <TableRow>
-      <TableCell>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
-          <div className="space-y-1.5">
-            <Skeleton className="h-3.5 w-32" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
-          <Skeleton className="h-4.5 w-32" />
-        </div>
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-5 w-16 rounded-full" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-12" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-4 w-16" />
-      </TableCell>
-      <TableCell>
-        <Skeleton className="h-7 w-7 rounded-md" />
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function EmptyState({
-  query,
-  onClear,
-}: {
-  query: string;
-  onClear: () => void;
-}) {
-  return (
-    <TableRow>
-      <TableCell colSpan={8} className="h-48 text-center">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Search className="h-8 w-8 opacity-20" />
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              {query ? `No results for "${query}"` : "No products found"}
-            </p>
-            <p className="text-xs opacity-60">
-              {query
-                ? "Try a different search or clear filters"
-                : "Products will appear here once created"}
-            </p>
-          </div>
-          {query && (
-            <Button variant="ghost" size="sm" onClick={onClear}>
-              Clear search
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
 export default function ProductsModerationPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [activeTab, setActiveTab] = useState<StatusType | "all">("all");
@@ -388,22 +156,7 @@ export default function ProductsModerationPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [, startTransition] = useTransition();
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return products.filter((p) => {
-      if (activeTab !== "all" && p.status !== activeTab) return false;
-      if (serviceFilter !== "all" && p.serviceType !== serviceFilter)
-        return false;
-      if (q)
-        return (
-          p.title.toLowerCase().includes(q) ||
-          p.provider.name.toLowerCase().includes(q) ||
-          p.slug.toLowerCase().includes(q)
-        );
-      return true;
-    });
-  }, [products, activeTab, serviceFilter, search]);
+  const [summary, setSummary] = useState<ProductsSummary | null>(null);
 
   const applyTransition = useCallback(
     (productId: string, newStatus: StatusType) => {
@@ -422,16 +175,7 @@ export default function ProductsModerationPage() {
 
   const handleTransition = useCallback(
     (product: Product, transition: Transition) => {
-      if (transition.destructive) {
-        setConfirm({ product, transition });
-      } else {
-        setLoadingId(product.id);
-        setTimeout(() => {
-          // replace with: await updateProductStatus(product.id, transition.to)
-          applyTransition(product.id, transition.to);
-          setLoadingId(null);
-        }, 1000);
-      }
+      setConfirm({ product, transition });
     },
     [applyTransition],
   );
@@ -506,6 +250,8 @@ export default function ProductsModerationPage() {
           </Alert>
         )}
 
+        {summary && <ProductsOverview summary={summary} />}
+
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <Tabs
             value={activeTab}
@@ -543,199 +289,14 @@ export default function ProductsModerationPage() {
           </div>
         </div>
 
-        <div className="rounded-md border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Service
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Provider
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Type
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Status
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Price
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Currency
-                  </TableHead>
-
-                  <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                    Created
-                  </TableHead>
-
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRowSkeleton key={i} />
-                  ))
-                ) : filtered.length === 0 ? (
-                  <EmptyState query={search} onClear={() => setSearch("")} />
-                ) : (
-                  filtered.map((product) => {
-                    const transitions = TRANSITIONS[product.status] ?? [];
-                    const rowLoading = loadingId === product.id;
-
-                    return (
-                      <TableRow
-                        key={product.id}
-                        className={cn(
-                          rowLoading && "opacity-50 pointer-events-none",
-                        )}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <ThumbnailImage
-                              alternative={product.title}
-                              src={null}
-                            />
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="truncate max-w-48 text-sm font-medium">
-                                  {product.title}
-                                </span>
-
-                                {rowLoading && (
-                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />
-                                )}
-                              </div>
-
-                              <p className="text-xs text-muted-foreground truncate">
-                                {product.slug}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex items-center gap-2.5">
-                            <ThumbnailImage
-                              src={product.provider.logo}
-                              alternative={product.provider.name}
-                              className="rounded-full"
-                            />
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1">
-                                <span className="truncate max-w-40 text-sm font-medium">
-                                  {product.provider.name}
-                                </span>
-
-                                {product.provider.isVerified && (
-                                  <BadgeCheck className="size-3.5 text-sky-500 shrink-0" />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          {(() => {
-                            const config =
-                              SERVICE_TYPE_CONFIG[product.serviceType];
-                            const Icon = config.icon;
-
-                            return (
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "gap-1.5 rounded-full px-2.5 py-0.5 font-medium",
-                                  config.className,
-                                )}
-                              >
-                                <Icon className="size-3.5" />
-                                {config.label}
-                              </Badge>
-                            );
-                          })()}
-                        </TableCell>
-
-                        <TableCell>
-                          <StatusBadge status={product.status} />
-                        </TableCell>
-
-                        <TableCell>
-                          <span className="text-sm tabular-nums text-green-600 dark:text-green-400 font-medium">
-                            {fmtCurrency(product.basePrice)}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground font-medium">
-                            {product.currency}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(product.createdAt).toLocaleDateString()}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                              >
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem className="text-xs gap-2">
-                                <BarChart2 className="h-3.5 w-3.5" />
-                                View details
-                              </DropdownMenuItem>
-
-                              {transitions.length > 0 && (
-                                <DropdownMenuSeparator />
-                              )}
-
-                              {transitions.map((t) => (
-                                <DropdownMenuItem
-                                  key={t.to}
-                                  onSelect={() => handleTransition(product, t)}
-                                  className={`text-xs gap-2 ${
-                                    t.destructive
-                                      ? "text-destructive focus:text-destructive"
-                                      : ""
-                                  }`}
-                                >
-                                  {t.icon}
-                                  {t.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+        <ProductsTable
+          products={products}
+          isLoading={isLoading}
+          loadingId={loadingId}
+          search={search}
+          onClearSearch={() => setSearch("")}
+          onTransition={handleTransition}
+        />
       </div>
 
       <ConfirmDialog

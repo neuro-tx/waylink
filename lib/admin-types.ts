@@ -101,3 +101,13 @@ export type ProviderMemebers = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type ProductsSummary = {
+  totalProducts: number;
+  activeCount: number;
+  draftCount: number;
+  pausedCount: number;
+  archivedCount: number;
+  transportCount: number;
+  experienceCount: number;
+};
