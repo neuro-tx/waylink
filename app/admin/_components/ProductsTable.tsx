@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Product } from "../products_moderation/page";
 import { Button } from "@/components/ui/button";
 import {
   Archive,
@@ -30,7 +29,11 @@ import {
   Pause,
   Play,
   Search,
-  X,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 import { StatusType } from "@/lib/panel-types";
 import { cn } from "@/lib/utils";
@@ -38,6 +41,8 @@ import ThumbnailImage from "@/components/ThumbnailImage";
 import { Badge } from "@/components/ui/badge";
 import { fmtCurrency } from "@/lib/helpers";
 import Link from "next/link";
+import { Pagination } from "@/lib/all-types";
+import { AdminProductsTableData as Product } from "@/lib/admin-types";
 
 type ProductsTableProps = {
   products: Product[];
@@ -55,6 +60,12 @@ type Transition = {
   destructive?: boolean;
 };
 type StatusMeta = { label: string; icon: React.ReactNode; badge: string };
+
+interface DataPaginationProps {
+  pagination: Pagination;
+  onPageChange: (page: number) => void;
+  className?: string;
+}
 
 const TRANSITIONS: Record<StatusType, Transition[]> = {
   active: [
@@ -110,7 +121,7 @@ const SERVICE_TYPE_CONFIG = {
     label: "Experience",
     icon: Compass,
     className:
-      "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
+      "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20",
   },
 } as const;
 
@@ -141,6 +152,20 @@ export const STATUS_META: Record<StatusType, StatusMeta> = {
   },
 };
 
+export function Stars({ rating, count }: { rating: number; count: number }) {
+  if (!count)
+    return <span className="text-xs text-muted-foreground/40">No reviews</span>;
+  return (
+    <div className="flex items-center gap-1">
+      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+      <span className="text-xs font-medium tabular-nums">
+        {rating.toFixed(1)}
+      </span>
+      <span className="text-[11px] text-muted-foreground">({count})</span>
+    </div>
+  );
+}
+
 function TableRowSkeleton() {
   return (
     <TableRow>
@@ -156,7 +181,10 @@ function TableRowSkeleton() {
       <TableCell>
         <div className="flex items-center gap-2.5">
           <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
-          <Skeleton className="h-4.5 w-32" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
         </div>
       </TableCell>
       <TableCell>
@@ -167,6 +195,9 @@ function TableRowSkeleton() {
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-12" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-16" />
@@ -203,7 +234,7 @@ function EmptyState({
 }) {
   return (
     <TableRow>
-      <TableCell colSpan={8} className="h-48 text-center">
+      <TableCell colSpan={10} className="h-48 text-center">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <Search className="h-8 w-8 opacity-20" />
           <div className="space-y-1">
@@ -262,7 +293,13 @@ export function ProductsTable({
               </TableHead>
 
               <TableHead className="text-[11px] uppercase tracking-wider font-medium">
-                Currency
+                Rating
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-medium">
+                Bookings
+              </TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-medium">
+                Revenue
               </TableHead>
 
               <TableHead className="text-[11px] uppercase tracking-wider font-medium">
@@ -287,6 +324,7 @@ export function ProductsTable({
 
                 const service = SERVICE_TYPE_CONFIG[product.serviceType];
                 const ServiceIcon = service.icon;
+                const provider = product.provider;
 
                 return (
                   <TableRow
@@ -321,14 +359,19 @@ export function ProductsTable({
                           className="rounded-full"
                         />
 
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="truncate max-w-40 text-sm font-medium">
-                            {product.provider.name}
-                          </span>
+                        <div>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="truncate max-w-40 text-sm font-medium">
+                              {provider.name}
+                            </span>
 
-                          {product.provider.isVerified && (
-                            <BadgeCheck className="size-3.5 shrink-0 text-sky-500" />
-                          )}
+                            {provider.isVerified && (
+                              <BadgeCheck className="size-3.5 shrink-0 text-sky-500" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {provider.slug}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
@@ -352,13 +395,29 @@ export function ProductsTable({
 
                     <TableCell>
                       <span className="font-medium tabular-nums text-green-600 dark:text-green-400">
-                        {fmtCurrency(product.basePrice)}
+                        {fmtCurrency(product.basePrice)}-{product.currency}
                       </span>
                     </TableCell>
 
                     <TableCell>
-                      <span className="text-muted-foreground">
-                        {product.currency}
+                      <Stars
+                        rating={Number(product.avgRate) ?? 0}
+                        count={product.reviews}
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="text-xs tabular-nums font-medium">
+                        {product.bookings}
+                      </span>
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="text-xs tabular-nums font-medium text-emerald-500">
+                        {fmtCurrency(
+                          Number(product.totalRevenue),
+                          product.currency,
+                        )}
                       </span>
                     </TableCell>
 
@@ -420,4 +479,101 @@ export function ProductsTable({
       </div>
     </div>
   );
+}
+
+export function DataPagination({
+  pagination,
+  onPageChange,
+  className,
+}: DataPaginationProps) {
+  const { page, totalPages, total, hasNextPage, hasPrevPage } = pagination;
+
+  const pages = getVisiblePages(page, totalPages);
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between",
+        className,
+      )}
+    >
+      <p className="text-sm text-muted-foreground">
+        {total.toLocaleString()} result{total !== 1 && "s"}
+      </p>
+
+      <div className="flex items-center gap-1">
+        <Button
+          size="icon-sm"
+          variant="outline"
+          disabled={!hasPrevPage}
+          onClick={() => onPageChange(1)}
+        >
+          <ChevronsLeft className="size-4" />
+        </Button>
+
+        <Button
+          size="icon-sm"
+          variant="outline"
+          disabled={!hasPrevPage}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+
+        {pages.map((item, index) =>
+          item === "..." ? (
+            <span
+              key={`${item}-${index}`}
+              className="flex size-8 items-center justify-center text-sm text-muted-foreground"
+            >
+              ...
+            </span>
+          ) : (
+            <Button
+              key={item}
+              size="icon-sm"
+              variant={item === page ? "default" : "outline"}
+              onClick={() => onPageChange(item)}
+            >
+              {item}
+            </Button>
+          ),
+        )}
+
+        <Button
+          size="icon-sm"
+          variant="outline"
+          disabled={!hasNextPage}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+
+        <Button
+          size="icon-sm"
+          variant="outline"
+          disabled={!hasNextPage}
+          onClick={() => onPageChange(totalPages)}
+        >
+          <ChevronsRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function getVisiblePages(current: number, total: number): (number | "...")[] {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "...", total];
+  }
+
+  if (current >= total - 3) {
+    return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+  }
+
+  return [1, "...", current - 1, current, current + 1, "...", total];
 }

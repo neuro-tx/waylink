@@ -1,10 +1,12 @@
 import {
   BusinessType,
   PlanTier,
+  Provider,
   ProviderStatus,
   ServiceType,
   SubscriptionStatus,
 } from "./all-types";
+import { StatusType } from "./panel-types";
 
 export interface SubscriptionRow {
   id: string;
@@ -110,4 +112,23 @@ export type ProductsSummary = {
   archivedCount: number;
   transportCount: number;
   experienceCount: number;
+};
+
+export type AdminProductsTableData = {
+  id: string;
+  title: string;
+  slug: string;
+  providerId: string;
+  shortDescription: string;
+  serviceType: ServiceType;
+  status: StatusType;
+  currency: string;
+  basePrice: number;
+  provider: Pick<Provider, "id" | "name" | "logo" | "isVerified" | "slug">;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  reviews: number;
+  bookings: number;
+  avgRate: string | null;
+  totalRevenue: string;
 };

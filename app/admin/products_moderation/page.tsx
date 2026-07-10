@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useMemo,
-  useCallback,
-  useTransition,
-  useEffect,
-} from "react";
+import { useState, useCallback, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,31 +24,20 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Provider, ServiceType } from "@/lib/all-types";
+import { Pagination, ServiceType } from "@/lib/all-types";
 import { StatusType } from "@/lib/panel-types";
-import { ProductsSummary } from "@/lib/admin-types";
+import { AdminProductsTableData, ProductsSummary } from "@/lib/admin-types";
 import { ProductsOverview } from "../_components/ProductsOverview";
 import {
+  DataPagination,
   ProductsTable,
   ProductStatusBadge,
   STATUS_META,
 } from "../_components/ProductsTable";
 import ThumbnailImage from "@/components/ThumbnailImage";
-
-export type Product = {
-  id: string;
-  title: string;
-  slug: string;
-  providerId: string;
-  shortDescription: string;
-  serviceType: ServiceType;
-  status: StatusType;
-  currency: string;
-  basePrice: number;
-  provider: Pick<Provider, "id" | "name" | "logo" | "isVerified">;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-};
+import { serviceUrl } from "@/lib/url-builder";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DropdownList } from "@/app/provider/_components/ProductLayout";
 
 type Transition = {
   to: StatusType;
@@ -62,6 +45,14 @@ type Transition = {
   icon: React.ReactNode;
   destructive?: boolean;
 };
+
+type SortKey =
+  | "all"
+  | "-basePrice"
+  | "basePrice"
+  | "-bookingsCount"
+  | "-reviewsCount"
+  | "-averageRating";
 
 const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -71,7 +62,19 @@ const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
   { key: "archived", label: "Archived" },
 ];
 
-type ConfirmPayload = { product: Product; transition: Transition };
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "all", label: "View All" },
+  { value: "-basePrice", label: "Price: High → Low" },
+  { value: "basePrice", label: "Price: Low → High" },
+  { value: "-bookingsCount", label: "Most Booked" },
+  { value: "-reviewsCount", label: "Most Reviews" },
+  { value: "-averageRating", label: "Most Rated" },
+];
+
+type ConfirmPayload = {
+  product: AdminProductsTableData;
+  transition: Transition;
+};
 
 function ConfirmDialog({
   payload,
@@ -144,7 +147,7 @@ function ConfirmDialog({
 }
 
 export default function ProductsModerationPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<AdminProductsTableData[]>([]);
   const [activeTab, setActiveTab] = useState<StatusType | "all">("all");
   const [search, setSearch] = useState("");
   const [serviceFilter, setServiceFilter] = useState<ServiceType | "all">(
@@ -157,6 +160,28 @@ export default function ProductsModerationPage() {
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [, startTransition] = useTransition();
   const [summary, setSummary] = useState<ProductsSummary | null>(null);
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    limit: 0,
+    offset: 0,
+    page: 1,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+  const [sort, setSort] = useState<SortKey>("all");
+  const debouncedSearch = useDebounce(search);
+
+  const buildUrl = useCallback(
+    (page: number) =>
+      serviceUrl({
+        search: debouncedSearch,
+        status: activeTab,
+        sort: serviceFilter,
+        page,
+      }),
+    [debouncedSearch, activeTab, serviceFilter],
+  );
 
   const applyTransition = useCallback(
     (productId: string, newStatus: StatusType) => {
@@ -174,7 +199,7 @@ export default function ProductsModerationPage() {
   );
 
   const handleTransition = useCallback(
-    (product: Product, transition: Transition) => {
+    (product: AdminProductsTableData, transition: Transition) => {
       setConfirm({ product, transition });
     },
     [applyTransition],
@@ -252,31 +277,14 @@ export default function ProductsModerationPage() {
 
         {summary && <ProductsOverview summary={summary} />}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as StatusType | "all")}
-          >
-            <TabsList className="h-auto p-1 flex-wrap gap-0.5">
-              {STATUS_TABS.map(({ key, label }) => (
-                <TabsTrigger
-                  key={key}
-                  value={key}
-                  className="text-sm h-7 cursor-pointer"
-                >
-                  {label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-
-          <div className="relative sm:ml-auto">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search products or providers…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 w-full sm:w-80 text-sm"
+              className="pl-9 w-full md:w-80 text-sm"
             />
             {search && (
               <button
@@ -287,6 +295,31 @@ export default function ProductsModerationPage() {
               </button>
             )}
           </div>
+
+          <div className="flex items-center gap-2 md:ml-auto">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as StatusType | "all")}
+            >
+              <TabsList className="h-auto p-1 flex-nowrap gap-0.5">
+                {STATUS_TABS.map(({ key, label }) => (
+                  <TabsTrigger
+                    key={key}
+                    value={key}
+                    className="text-sm h-7 cursor-pointer"
+                  >
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            <DropdownList
+              value={sort}
+              onChange={(v) => setSort(v)}
+              options={SORT_OPTIONS}
+            />
+          </div>
         </div>
 
         <ProductsTable
@@ -296,6 +329,11 @@ export default function ProductsModerationPage() {
           search={search}
           onClearSearch={() => setSearch("")}
           onTransition={handleTransition}
+        />
+
+        <DataPagination
+          pagination={pagination}
+          onPageChange={(page) => buildUrl(page)}
         />
       </div>
 
