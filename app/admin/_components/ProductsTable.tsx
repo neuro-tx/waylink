@@ -43,6 +43,7 @@ import { fmtCurrency } from "@/lib/helpers";
 import Link from "next/link";
 import { Pagination } from "@/lib/all-types";
 import { AdminProductsTableData as Product } from "@/lib/admin-types";
+import { useMemo } from "react";
 
 type ProductsTableProps = {
   products: Product[];
@@ -65,6 +66,7 @@ interface DataPaginationProps {
   pagination: Pagination;
   onPageChange: (page: number) => void;
   className?: string;
+  isLoading?: boolean;
 }
 
 const TRANSITIONS: Record<StatusType, Transition[]> = {
@@ -398,7 +400,10 @@ export function ProductsTable({
 
                     <TableCell>
                       <span className="font-medium tabular-nums text-green-600 dark:text-green-400">
-                        {fmtCurrency(product.basePrice)} - <span className="text-rose-500">{product.currency}</span>
+                        {fmtCurrency(product.basePrice)} -{" "}
+                        <span className="text-rose-500">
+                          {product.currency}
+                        </span>
                       </span>
                     </TableCell>
 
@@ -488,10 +493,21 @@ export function DataPagination({
   pagination,
   onPageChange,
   className,
+  isLoading = false,
 }: DataPaginationProps) {
   const { page, totalPages, total, hasNextPage, hasPrevPage } = pagination;
 
-  const pages = getVisiblePages(page, totalPages);
+  const pages = useMemo(
+    () => getVisiblePages(page, totalPages),
+    [page, totalPages],
+  );
+
+  const goTo = (target: number) => {
+    if (isLoading || target === page || target < 1 || target > totalPages) {
+      return;
+    }
+    onPageChange(target);
+  };
 
   return (
     <div
@@ -500,67 +516,77 @@ export function DataPagination({
         className,
       )}
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
         {total.toLocaleString()} result{total !== 1 && "s"}
+        {isLoading && <Loader2 className="size-3.5 animate-spin" />}
       </p>
 
-      <div className="flex items-center gap-1">
-        <Button
-          size="icon-sm"
-          variant="outline"
-          disabled={!hasPrevPage}
-          onClick={() => onPageChange(1)}
-        >
-          <ChevronsLeft className="size-4" />
-        </Button>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon-sm"
+            variant="outline"
+            aria-label="First page"
+            disabled={!hasPrevPage || isLoading}
+            onClick={() => goTo(1)}
+          >
+            <ChevronsLeft className="size-4" />
+          </Button>
 
-        <Button
-          size="icon-sm"
-          variant="outline"
-          disabled={!hasPrevPage}
-          onClick={() => onPageChange(page - 1)}
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            aria-label="Previous page"
+            disabled={!hasPrevPage || isLoading}
+            onClick={() => goTo(page - 1)}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
 
-        {pages.map((item, index) =>
-          item === "..." ? (
-            <span
-              key={`${item}-${index}`}
-              className="flex size-8 items-center justify-center text-sm text-muted-foreground"
-            >
-              ...
-            </span>
-          ) : (
-            <Button
-              key={item}
-              size="icon-sm"
-              variant={item === page ? "default" : "outline"}
-              onClick={() => onPageChange(item)}
-            >
-              {item}
-            </Button>
-          ),
-        )}
+          {pages.map((item, index) =>
+            item === "..." ? (
+              <span
+                key={`ellipsis-${index}`}
+                className="flex size-8 items-center justify-center text-sm text-muted-foreground"
+              >
+                …
+              </span>
+            ) : (
+              <Button
+                key={item}
+                size="icon-sm"
+                variant={item === page ? "default" : "outline"}
+                aria-label={`Page ${item}`}
+                aria-current={item === page ? "page" : undefined}
+                disabled={isLoading}
+                onClick={() => goTo(item)}
+              >
+                {item}
+              </Button>
+            ),
+          )}
 
-        <Button
-          size="icon-sm"
-          variant="outline"
-          disabled={!hasNextPage}
-          onClick={() => onPageChange(page + 1)}
-        >
-          <ChevronRight className="size-4" />
-        </Button>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            aria-label="Next page"
+            disabled={!hasNextPage || isLoading}
+            onClick={() => goTo(page + 1)}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
 
-        <Button
-          size="icon-sm"
-          variant="outline"
-          disabled={!hasNextPage}
-          onClick={() => onPageChange(totalPages)}
-        >
-          <ChevronsRight className="size-4" />
-        </Button>
-      </div>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            aria-label="Last page"
+            disabled={!hasNextPage || isLoading}
+            onClick={() => goTo(totalPages)}
+          >
+            <ChevronsRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
