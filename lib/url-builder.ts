@@ -45,6 +45,7 @@ interface ServiceURL {
   sort?: string;
   page?: number;
   limit?: number;
+  service?: "all" | "transport" | "experience";
 }
 
 export default function transportUrlBuilder(params: Partial<TransportURL>) {
@@ -210,12 +211,13 @@ export function serviceUrl(params: Partial<ServiceURL>) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const url = new URL("/api/provider/panel/services", baseUrl);
 
-  const { search, sort, status, page } = params || {};
+  const { search, sort, status, page ,service } = params || {};
 
   if (search) url.searchParams.set("search", search);
   if (status && status !== "all") url.searchParams.set("status", status);
   if (sort && sort !== "all") url.searchParams.set("sort", sort);
   if (page) url.searchParams.set("page", String(page));
+  if (service && service !== "all") url.searchParams.set("type", service);
 
   return url.toString();
 }

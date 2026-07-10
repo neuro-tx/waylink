@@ -36,7 +36,7 @@ import {
   ChevronsRight,
 } from "lucide-react";
 import { StatusType } from "@/lib/panel-types";
-import { cn } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import ThumbnailImage from "@/components/ThumbnailImage";
 import { Badge } from "@/components/ui/badge";
 import { fmtCurrency } from "@/lib/helpers";
@@ -195,6 +195,9 @@ function TableRowSkeleton() {
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-12" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-16" />
       </TableCell>
       <TableCell>
         <Skeleton className="h-4 w-16" />
@@ -395,7 +398,7 @@ export function ProductsTable({
 
                     <TableCell>
                       <span className="font-medium tabular-nums text-green-600 dark:text-green-400">
-                        {fmtCurrency(product.basePrice)}-{product.currency}
+                        {fmtCurrency(product.basePrice)} - <span className="text-rose-500">{product.currency}</span>
                       </span>
                     </TableCell>
 
@@ -423,7 +426,7 @@ export function ProductsTable({
 
                     <TableCell>
                       <span className="text-muted-foreground">
-                        {new Date(product.createdAt).toLocaleDateString()}
+                        {timeAgo(product.createdAt)}
                       </span>
                     </TableCell>
 

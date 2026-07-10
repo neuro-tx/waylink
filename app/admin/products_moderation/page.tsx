@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition, useEffect } from "react";
+import { useState, useCallback, useTransition, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertCircle,
   AlertTriangle,
@@ -38,6 +39,7 @@ import ThumbnailImage from "@/components/ThumbnailImage";
 import { serviceUrl } from "@/lib/url-builder";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DropdownList } from "@/app/provider/_components/ProductLayout";
+import { getAdminProducts, getProductsSummary } from "@/actions/service.action";
 
 type Transition = {
   to: StatusType;
@@ -53,6 +55,15 @@ type SortKey =
   | "-bookingsCount"
   | "-reviewsCount"
   | "-averageRating";
+
+type ActionResult<T> =
+  | { success: true; error?: undefined; data: T }
+  | { success: false; error: string; data?: undefined };
+
+type AdminProductsResponse = {
+  result: AdminProductsTableData[];
+  pagination: Pagination;
+};
 
 const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -70,6 +81,8 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "-reviewsCount", label: "Most Reviews" },
   { value: "-averageRating", label: "Most Rated" },
 ];
+
+const SERVICE_TYPES = ["all", "transport", "experience"] as const;
 
 type ConfirmPayload = {
   product: AdminProductsTableData;
@@ -146,6 +159,26 @@ function ConfirmDialog({
   );
 }
 
+function SummarySkeleton() {
+  return (
+    <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-md border bg-card p-3 flex items-start gap-3"
+        >
+          <Skeleton className="size-8 rounded-full shrink-0" />
+
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function ProductsModerationPage() {
   const [products, setProducts] = useState<AdminProductsTableData[]>([]);
   const [activeTab, setActiveTab] = useState<StatusType | "all">("all");
@@ -153,13 +186,16 @@ export default function ProductsModerationPage() {
   const [serviceFilter, setServiceFilter] = useState<ServiceType | "all">(
     "all",
   );
+  const [sort, setSort] = useState<SortKey>("all");
 
-  const [isLoading] = useState(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmPayload | null>(null);
   const [, startTransition] = useTransition();
   const [summary, setSummary] = useState<ProductsSummary | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     limit: 0,
@@ -169,18 +205,95 @@ export default function ProductsModerationPage() {
     hasNextPage: false,
     hasPrevPage: false,
   });
-  const [sort, setSort] = useState<SortKey>("all");
+
   const debouncedSearch = useDebounce(search);
+  const firstRender = useRef(true);
+  const tableAbortRef = useRef<AbortController | null>(null);
+  const summaryAbortRef = useRef<AbortController | null>(null);
 
   const buildUrl = useCallback(
     (page: number) =>
       serviceUrl({
         search: debouncedSearch,
         status: activeTab,
-        sort: serviceFilter,
+        service: serviceFilter,
+        sort,
         page,
       }),
-    [debouncedSearch, activeTab, serviceFilter],
+    [debouncedSearch, activeTab, serviceFilter, sort],
+  );
+
+  const fetchTable = useCallback(async (url: string, page: number) => {
+    tableAbortRef.current?.abort();
+    const controller = new AbortController();
+    tableAbortRef.current = controller;
+
+    setIsTableLoading(true);
+    setError(null);
+
+    try {
+      const res = (await getAdminProducts(
+        url,
+      )) as ActionResult<AdminProductsResponse>;
+      if (controller.signal.aborted) return;
+
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+
+      setProducts(res.data.result);
+      setPagination(res.data.pagination);
+      setCurrentPage(page);
+    } finally {
+      if (!controller.signal.aborted) setIsTableLoading(false);
+    }
+  }, []);
+
+  const fetchSummary = useCallback(async () => {
+    summaryAbortRef.current?.abort();
+    const controller = new AbortController();
+    summaryAbortRef.current = controller;
+
+    setIsSummaryLoading(true);
+
+    try {
+      const res = (await getProductsSummary()) as ActionResult<ProductsSummary>;
+      if (controller.signal.aborted) return;
+
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+
+      setSummary(res.data);
+    } finally {
+      if (!controller.signal.aborted) setIsSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    firstRender.current = false;
+    fetchTable(buildUrl(1), 1);
+    fetchSummary();
+
+    return () => {
+      tableAbortRef.current?.abort();
+      summaryAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (firstRender.current) return;
+    fetchTable(buildUrl(1), 1);
+  }, [buildUrl]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      if (page === currentPage || isTableLoading) return;
+      fetchTable(buildUrl(page), page);
+    },
+    [buildUrl, currentPage, isTableLoading, fetchTable],
   );
 
   const applyTransition = useCallback(
@@ -202,7 +315,7 @@ export default function ProductsModerationPage() {
     (product: AdminProductsTableData, transition: Transition) => {
       setConfirm({ product, transition });
     },
-    [applyTransition],
+    [],
   );
 
   const handleConfirm = useCallback(async () => {
@@ -240,7 +353,7 @@ export default function ProductsModerationPage() {
           </div>
 
           <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1 shrink-0">
-            {(["all", "transport", "experience"] as const).map((s) => (
+            {SERVICE_TYPES.map((s) => (
               <Button
                 key={s}
                 variant={serviceFilter === s ? "secondary" : "ghost"}
@@ -275,7 +388,11 @@ export default function ProductsModerationPage() {
           </Alert>
         )}
 
-        {summary && <ProductsOverview summary={summary} />}
+        {isSummaryLoading ? (
+          <SummarySkeleton />
+        ) : summary ? (
+          <ProductsOverview summary={summary} />
+        ) : null}
 
         <div className="flex flex-col md:flex-row md:items-center gap-3">
           <div className="relative">
@@ -324,7 +441,7 @@ export default function ProductsModerationPage() {
 
         <ProductsTable
           products={products}
-          isLoading={isLoading}
+          isLoading={isTableLoading}
           loadingId={loadingId}
           search={search}
           onClearSearch={() => setSearch("")}
@@ -333,7 +450,7 @@ export default function ProductsModerationPage() {
 
         <DataPagination
           pagination={pagination}
-          onPageChange={(page) => buildUrl(page)}
+          onPageChange={handlePageChange}
         />
       </div>
 
