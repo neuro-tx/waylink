@@ -24,6 +24,7 @@ import {
 import {
   and,
   count,
+  countDistinct,
   desc,
   eq,
   getTableColumns,
@@ -572,6 +573,94 @@ const getServiceAnalytics = async (providerId: string, id: string) => {
   };
 };
 
+const adminTableProducts = async (url: string) => {
+  const { query } = parseQuery(url);
+  const limit = Math.min(Number(query?.limit ?? 10), 50);
+  const offset = Number(query?.offset ?? 0);
+
+  const whereSQl = buildWhereConditions(query?.where ?? {}, products);
+  const productSearchSQl = buildSearchQuery(
+    products.searchVector,
+    query?.search?.term,
+    "fts",
+  );
+
+  const productOrder = buildOrderBy(query?.orderBy ?? [], products);
+  const statsOrder = buildOrderBy(query?.orderBy ?? [], productStats);
+
+  const orderBy = [...productOrder, ...statsOrder];
+  const final = mergeWhere(whereSQl, productSearchSQl);
+
+  const [result, totalResult] = await Promise.all([
+    db
+      .select({
+        id: products.id,
+        title: products.title,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        serviceType: products.type,
+        status: products.status,
+        currency: products.currency,
+        basePrice: products.basePrice,
+        reviews: productStats.reviewsCount,
+        bookings: productStats.bookingsCount,
+        avgRate: productStats.averageRating,
+        totalRevenue: productStats.totalRevenue,
+        provider: {
+          id: providers.id,
+          name: providers.name,
+          logo: providers.logo,
+          isVerified: providers.isVerified,
+          slug: providers.slug,
+        },
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+      })
+      .from(products)
+      .innerJoin(providers, eq(products.providerId, providers.id))
+      .innerJoin(productStats, eq(products.id, productStats.productId))
+      .where(final)
+      .orderBy(...orderBy)
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({
+        total: countDistinct(products.id),
+      })
+      .from(products),
+  ]);
+
+  const total = Number(totalResult[0]?.total ?? 0);
+  const pagination = {
+    total,
+    limit,
+    offset,
+    page: Math.floor(offset / limit) + 1,
+    totalPages: Math.ceil(total / limit),
+    hasNextPage: offset + limit < total,
+    hasPrevPage: offset > 0,
+  };
+
+  return { result, pagination };
+};
+
+const productsSummary = async (productId?: string) => {
+  const [res] = await db
+    .select({
+      totalProducts: sql<number>`count(*)::int`,
+      activeCount: sql<number>`count(*) filter (where ${products.status} = 'active')::int`,
+      draftCount: sql<number>`count(*) filter (where ${products.status} = 'draft')::int`,
+      pausedCount: sql<number>`count(*) filter (where ${products.status} = 'paused')::int`,
+      archivedCount: sql<number>`count(*) filter (where ${products.status} = 'archived')::int`,
+      transportCount: sql<number>`count(*) filter (where ${products.type} = 'transport')::int`,
+      experienceCount: sql<number>`count(*) filter (where ${products.type} = 'experience')::int`,
+    })
+    .from(products)
+    .where(productId ? eq(products.id, productId) : undefined);
+
+  return res;
+};
+
 export const productSerices = {
   getProducts,
   getProductById,
@@ -579,4 +668,6 @@ export const productSerices = {
   mostRatedProducts,
   getProductsSearch,
   getServiceAnalytics,
+  adminTableProducts,
+  productsSummary,
 };

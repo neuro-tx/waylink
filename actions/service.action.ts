@@ -49,6 +49,8 @@ import {
 import { PreviewService, VariantWithSchedules } from "@/lib/panel-types";
 import { inngest } from "@/inngest/client";
 import { getPlanById } from "./plans.action";
+import { productSerices } from "@/services/product.service";
+import { adminAuth } from "@/lib/admin-auth";
 
 type LocationInsert = InferInsertModel<typeof location>;
 type ActionResponse =
@@ -1060,6 +1062,61 @@ export async function updateServicesStatus(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Failed to update services.",
+    };
+  }
+}
+
+export async function getAdminProducts(url: string) {
+  if (!url) {
+    return {
+      success: false,
+      error: "URL is required to fetch products.",
+    };
+  }
+
+  try {
+    const { status } = await adminAuth();
+    if (status !== "ok") {
+      return {
+        success: false,
+        error: "You are not authorized to view products.",
+      };
+    }
+
+    const result = await productSerices.adminTableProducts(url);
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "Failed to load products.",
+    };
+  }
+}
+
+export async function getProductsSummary() {
+  try {
+    const { status } = await adminAuth();
+    if (status !== "ok") {
+      return {
+        success: false,
+        error: "You are not authorized to view products.",
+      };
+    }
+
+    const result = await productSerices.productsSummary();
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: "Failed to load product summary.",
     };
   }
 }
