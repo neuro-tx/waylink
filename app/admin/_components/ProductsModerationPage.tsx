@@ -39,7 +39,12 @@ import ThumbnailImage from "@/components/ThumbnailImage";
 import { serviceUrl } from "@/lib/url-builder";
 import { useDebounce } from "@/hooks/useDebounce";
 import { DropdownList } from "@/app/provider/_components/ProductLayout";
-import { getAdminProducts, getProductsSummary } from "@/actions/service.action";
+import {
+  getAdminProducts,
+  getProductsSummary,
+  updateServicesStatus,
+} from "@/actions/service.action";
+import { ResultDialog } from "@/app/provider/_components/ServiceActions";
 
 type Transition = {
   to: StatusType;
@@ -64,6 +69,19 @@ type AdminProductsResponse = {
   result: AdminProductsTableData[];
   pagination: Pagination;
 };
+
+type FailedServiceDetail = {
+  title: string;
+  error: string;
+};
+
+type StatusActionResult =
+  | { success: true; updated: number }
+  | {
+      success: false;
+      error: string;
+      details?: Record<string, FailedServiceDetail>;
+    };
 
 const STATUS_TABS: { key: StatusType | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -105,7 +123,7 @@ function ConfirmDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden">
+      <DialogContent className="gap-0 p-0 overflow-hidden">
         <div className="px-4 py-5 space-y-4">
           <DialogHeader className="space-y-2">
             <div className="flex items-center gap-3">
@@ -129,13 +147,17 @@ function ConfirmDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-center gap-2.5 rounded-lg border bg-muted/40 px-3 py-2.5">
-            <ThumbnailImage alternative={product.title} />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{product.title}</p>
-              <p className="text-xs text-muted-foreground">
-                {product.provider.name}
-              </p>
+          <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/25 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <ThumbnailImage alternative={product.title} />
+              <div>
+                <p className="text-sm font-semibold whitespace-pre-wrap line-clamp-1">
+                  {product.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {product.provider.name}
+                </p>
+              </div>
             </div>
             <ProductStatusBadge status={product.status} />
           </div>
@@ -205,6 +227,10 @@ export default function ProductsModerationPage() {
     hasNextPage: false,
     hasPrevPage: false,
   });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogResult, setDialogResult] = useState<StatusActionResult | null>(
+    null,
+  );
 
   const debouncedSearch = useDebounce(search);
   const firstRender = useRef(true);
@@ -323,11 +349,16 @@ export default function ProductsModerationPage() {
     setLoadingId(confirm.product.id);
     setError(null);
     try {
-      await new Promise<void>((res, rej) =>
-        setTimeout(() => (Math.random() > 0.1 ? res() : rej()), 900),
-      );
-      applyTransition(confirm.product.id, confirm.transition.to);
-      setConfirm(null);
+      const res = await updateServicesStatus("admin", {
+        id: confirm.product.id,
+        status: confirm.transition.to,
+      });
+      setDialogResult(res as StatusActionResult);
+      setDialogOpen(true);
+      if (res.success) {
+        applyTransition(confirm.product.id, confirm.transition.to);
+        setConfirm(null);
+      }
     } catch {
       setError(
         `Failed to ${confirm.transition.label.toLowerCase()} "${confirm.product.title}".`,
@@ -460,6 +491,14 @@ export default function ProductsModerationPage() {
         loading={!!loadingId && confirm?.product.id === loadingId}
         onConfirm={handleConfirm}
         onCancel={() => setConfirm(null)}
+      />
+
+      <ResultDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        result={dialogResult}
+        targetStatus={confirm?.transition.to as any}
+        totalRequested={1}
       />
     </TooltipProvider>
   );

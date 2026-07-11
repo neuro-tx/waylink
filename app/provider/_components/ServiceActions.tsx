@@ -84,7 +84,7 @@ type ResultDialogProps = {
   totalRequested: number;
 };
 
-function ResultDialog({
+export function ResultDialog({
   open,
   onClose,
   result,
@@ -114,7 +114,7 @@ function ResultDialog({
   const statusLabel = targetStatus
     ? (statusActions[targetStatus]?.label ?? targetStatus)
     : "";
-    
+
   return (
     <AlertDialog open={open} onOpenChange={(v) => !v && onClose()}>
       <AlertDialogContent className="max-w-md gap-0 p-0 overflow-hidden">
@@ -240,7 +240,6 @@ function ResultDialog({
           <AlertDialogAction
             onClick={onClose}
             className={cn(
-              "w-full",
               isFullSuccess
                 ? "bg-emerald-600! hover:bg-emerald-700!"
                 : isPartial
