@@ -36,10 +36,12 @@ import { getCurrentProvider } from "@/lib/provider-auth";
 import {
   DifficultyLevel,
   ExperienceType,
+  Provider,
   SeatType,
   SetupProgress,
   TransportClass,
   TransportType,
+  User,
 } from "@/lib/all-types";
 import {
   actionTransitions,
@@ -81,10 +83,33 @@ type ListingLimitResult = {
 };
 
 type Status = "draft" | "active" | "paused" | "archived";
-type BulkUpdatePayload = {
+type UpdatePayload = {
   id: string;
   status: Status;
-}[];
+};
+
+type Guard =
+  | { actorType: "admin"; actor: User }
+  | { actorType: "provider"; actor: Provider };
+export async function authGuard(type: "admin" | "provider"): Promise<Guard> {
+  if (type === "provider") {
+    const actor = await requireProvider();
+    return {
+      actor,
+      actorType: "provider",
+    };
+  }
+
+  const { admin, status } = await adminAuth();
+  if (!admin || status !== "ok") {
+    throw new Error("Access denied.");
+  }
+
+  return {
+    actor: admin,
+    actorType: "admin",
+  };
+}
 
 async function requireProvider(secure?: boolean) {
   const { provider, role, status } = await getCurrentProvider();
@@ -927,17 +952,15 @@ async function checkLimit(planId: string): Promise<ListingLimitResult> {
 }
 
 export async function updateServicesStatus(
-  providerId: string,
-  payload: BulkUpdatePayload,
+  roleType: "admin" | "provider",
+  payload: UpdatePayload | UpdatePayload[],
 ) {
+  payload = Array.isArray(payload) ? payload : [payload];
   if (!payload?.length) {
     return { success: false, error: "No services provided." };
   }
 
   const targetStatus = payload[0].status;
-  if (targetStatus === "draft") {
-    return { success: false, error: "Cannot set services back to draft." };
-  }
 
   if (payload.some((p) => p.status !== targetStatus)) {
     return {
@@ -947,12 +970,7 @@ export async function updateServicesStatus(
   }
 
   try {
-    const p = await requireProvider();
-    if (p.id !== providerId)
-      return {
-        success: false,
-        error: "You do not have permission to execute this action.",
-      };
+    const { actor, actorType } = await authGuard(roleType);
 
     const ids = payload.map((p) => p.id);
 
@@ -976,14 +994,16 @@ export async function updateServicesStatus(
       };
     }
 
-    const unauthorized = existingServices.filter(
-      (s) => s.providerId !== providerId,
-    );
-    if (unauthorized.length) {
-      return {
-        success: false,
-        error: "One or more services do not belong to your account.",
-      };
+    if (actorType === "provider") {
+      const unauthorized = existingServices.filter(
+        (s) => s.providerId !== actor.id,
+      );
+      if (unauthorized.length) {
+        return {
+          success: false,
+          error: "One or more services do not belong to your account.",
+        };
+      }
     }
 
     const transitionErrors: Record<
@@ -1061,7 +1081,8 @@ export async function updateServicesStatus(
     console.error("Bulk update error:", err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Failed to update services.",
+      error:
+        err instanceof Error ? err.message : "Failed to update service(s).",
     };
   }
 }

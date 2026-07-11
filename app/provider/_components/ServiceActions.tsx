@@ -264,9 +264,8 @@ const ServiceActions = ({
   clearSelection,
   onSuccess,
 }: ServiceActionsProps) => {
-  const { config, provider } = useProviderContext();
+  const { config } = useProviderContext();
   const [isPending, startTransition] = useTransition();
-  const providerId = provider?.id;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogResult, setDialogResult] = useState<ActionResult | null>(null);
@@ -289,7 +288,7 @@ const ServiceActions = ({
         (item) => ({ id: item.id, status: targetStatus }),
       );
 
-      const result = await updateServicesStatus(providerId, payload);
+      const result = await updateServicesStatus("provider", payload);
       setDialogTargetStatus(targetStatus);
       setDialogResult(result as ActionResult);
       setDialogOpen(true);
