@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { updateServicesStatus } from "@/actions/service.action";
 import { actionTransitions } from "@/lib/helpers";
+import { StatusType } from "@/lib/panel-types";
 
-type Status = "draft" | "active" | "paused" | "archived";
+type Status = StatusType;
 export type SelectedItem = {
   id: string;
   status: Status;
@@ -58,7 +59,7 @@ type ActionResult =
     };
 
 const statusActions: Record<
-  Exclude<Status, "draft">,
+  Status,
   { label: string; className: string }
 > = {
   active: {
@@ -74,13 +75,17 @@ const statusActions: Record<
     label: "Archive",
     className: "text-destructive border-destructive/30 hover:bg-destructive/10",
   },
+  draft: {
+    label: "Draft",
+    className: "text-muted-foreground border-border hover:bg-muted",
+  }
 };
 
 type ResultDialogProps = {
   open: boolean;
   onClose: () => void;
   result: ActionResult | null;
-  targetStatus: Exclude<Status, "draft"> | null;
+  targetStatus: Status | null;
   totalRequested: number;
 };
 

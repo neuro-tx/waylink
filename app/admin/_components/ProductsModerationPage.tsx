@@ -497,7 +497,7 @@ export default function ProductsModerationPage() {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         result={dialogResult}
-        targetStatus={confirm?.transition.to as any}
+        targetStatus={confirm?.transition.to ?? null}
         totalRequested={1}
       />
     </TooltipProvider>

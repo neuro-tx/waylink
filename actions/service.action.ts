@@ -5,6 +5,7 @@ import {
   experiences,
   itineraries,
   location,
+  notifications,
   productMedia,
   products,
   productVariants,
@@ -1074,6 +1075,18 @@ export async function updateServicesStatus(
         .update(products)
         .set({ status: targetStatus })
         .where(inArray(products.id, ids));
+
+      if (actorType === "admin") {
+        const [service] = existingServices;
+
+        await tx.insert(notifications).values({
+          type: "system_warning",
+          title: "📢 Service status updated",
+          recipientType: "provider",
+          recipientId: service.providerId,
+          message: `An administrator changed the status of your service "${service.title}" to "${targetStatus}". Please review your dashboard for the latest details.`,
+        });
+      }
     });
 
     return { success: true, updated: ids.length };
