@@ -453,7 +453,9 @@ export function ProductsTable({
 
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem className="gap-2 text-xs" asChild>
-                            <Link href={`/admin/products/${product.id}`}>
+                            <Link
+                              href={`/admin/products_moderation/${product.id}`}
+                            >
                               <BarChart2 className="size-3.5" />
                               View details
                             </Link>
