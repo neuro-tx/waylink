@@ -1,3 +1,5 @@
+import { UserRole } from "./admin-types";
+
 export interface Product {
   id: string;
   providerId: string;
@@ -219,7 +221,7 @@ export interface User {
   emailVerified: boolean;
   image?: string | null | undefined;
   banned: boolean | null | undefined;
-  role?: string | null | undefined;
+  role: UserRole;
   banReason?: string | null | undefined;
   banExpires?: Date | null | undefined;
   createdAt: Date;

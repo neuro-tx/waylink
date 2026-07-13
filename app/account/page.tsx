@@ -8,10 +8,11 @@ import { ProfileSessions } from "@/components/profile/ProfileSession";
 import { ProfileIdentityCard } from "@/components/profile/ProfileIdentityCard";
 import { redirect } from "next/navigation";
 import { ProviderRequest } from "@/components/provider/ProviderRequest";
+import { User } from "@/lib/all-types";
 
 const Page = async () => {
   const session = await getAuthSession();
-  const user = session?.user;
+  const user = session?.user as User;
 
   if (!user) {
     redirect("/unauthorized");

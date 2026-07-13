@@ -132,3 +132,53 @@ export type AdminProductsTableData = {
   avgRate: string | null;
   totalRevenue: string;
 };
+
+export type UserRole = "admin" | "provider" | "user";
+
+export type ActionResult =
+  | { success: true; message: string }
+  | { success: false; message: string };
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  admin: "Admin",
+  provider: "Provider",
+  user: "Normal User",
+};
+
+export const ROLE_OPTIONS: {
+  value: UserRole;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "admin",
+    label: "Admin",
+    description: "Full access to every admin tool, plan, and setting.",
+  },
+  {
+    value: "provider",
+    label: "Provider",
+    description: "Manages their organization's staff, listings, and bookings.",
+  },
+  {
+    value: "user",
+    label: "Normal User",
+    description: "Standard customer-facing account with no admin access.",
+  },
+];
+
+export const BAN_REASONS = [
+  "Policy violation",
+  "Fraudulent activity",
+  "Spam or abusive behavior",
+  "Multiple user complaints",
+  "Suspicious payment activity",
+  "Other",
+] as const;
+
+export const BAN_DURATIONS = [
+  { value: "3", label: "3 days" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+  { value: "permanent", label: "Permanent" },
+] as const;
