@@ -162,26 +162,10 @@ export const ROLE_OPTIONS: {
   },
   {
     value: "user",
-    label: "Normal User",
+    label: "User",
     description: "Standard customer-facing account with no admin access.",
   },
 ];
-
-export const BAN_REASONS = [
-  "Policy violation",
-  "Fraudulent activity",
-  "Spam or abusive behavior",
-  "Multiple user complaints",
-  "Suspicious payment activity",
-  "Other",
-] as const;
-
-export const BAN_DURATIONS = [
-  { value: "3", label: "3 days" },
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-  { value: "permanent", label: "Permanent" },
-] as const;
 
 export interface UserStatsData {
   total: number;

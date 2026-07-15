@@ -159,3 +159,11 @@ export const actionTransitions: Record<Status, Exclude<Status, "draft">[]> = {
   paused: ["active", "archived"],
   archived: ["active"],
 };
+
+export function formatBanExpiry(duration: string, sec: number) {
+  const n = Number(duration);
+  if (!n || n <= 0) return null;
+
+  const expiresAt = new Date(Date.now() + n * sec * 1000);
+  return fmtDateTime(expiresAt);
+}

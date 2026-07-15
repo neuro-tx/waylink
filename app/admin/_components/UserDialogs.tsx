@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Loader2, ShieldBan, ShieldCheck } from "lucide-react";
-
+import { useMemo, useState, useTransition } from "react";
+import {
+  Clock3,
+  InfinityIcon,
+  Loader2,
+  ShieldBan,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,13 +37,24 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  ROLE_OPTIONS,
-  UserRole,
-  BAN_DURATIONS,
-  BAN_REASONS,
-} from "@/lib/admin-types";
+import { ROLE_OPTIONS, UserRole } from "@/lib/admin-types";
 import { User } from "@/lib/all-types";
+import { banUser } from "@/actions/user.actions";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { useForm } from "react-hook-form";
+import { banSchema, BanSchema } from "@/validations";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatBanExpiry } from "@/lib/helpers";
 
 interface ChangeRoleDialogProps {
   user: User | null;
@@ -59,6 +75,34 @@ interface BanUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBanned: (userId: string) => void;
+}
+
+const BAN_REASONS = [
+  "Spam",
+  "Abusive behavior",
+  "Fraudulent activity",
+  "Policy violation",
+  "Other",
+] as const;
+
+const UNIT_LABEL: Record<NonNullable<BanSchema["unit"]>, [string, string]> = {
+  m: ["Minute", "Minutes"],
+  h: ["Hour", "Hours"],
+  d: ["Day", "Days"],
+  w: ["Week", "Weeks"],
+  mo: ["Month", "Months"],
+};
+
+const UNIT_SECONDS: Record<NonNullable<BanSchema["unit"]>, number> = {
+  m: 60,
+  h: 3600,
+  d: 86400,
+  w: 604800,
+  mo: 2592000,
+};
+
+function pluralize(n: number, [singular, plural]: [string, string]) {
+  return n === 1 ? singular : plural;
 }
 
 export function ChangeRoleDialog({
@@ -207,32 +251,110 @@ export function BanUserDialog({
   onOpenChange,
   onBanned,
 }: BanUserDialogProps) {
-  const [reason, setReason] = useState<string>("");
-  const [detail, setDetail] = useState("");
-  const [duration, setDuration] = useState<string>("7");
   const [isPending, startTransition] = useTransition();
+  const [permanent, setPermanent] = useState(false);
 
+  const form = useForm({
+    resolver: zodResolver(banSchema),
+    defaultValues: {
+      reason: "",
+      duration: "7",
+      unit: "d",
+      detail: "",
+    },
+  });
+
+  const { control, watch, setValue, setError, handleSubmit, reset, formState } =
+    form;
+
+  const reason = watch("reason");
+  const duration = watch("duration");
+  const unit = watch("unit");
   const needsDetail = reason === "Other";
-  const canSubmit = reason !== "" && (!needsDetail || detail.trim().length > 0);
 
-  function reset() {
-    setReason("");
-    setDetail("");
-    setDuration("7");
+  function togglePermanent(checked: boolean) {
+    setPermanent(checked);
+    if (checked) {
+      setValue("duration", undefined, { shouldValidate: true });
+      setValue("unit", undefined, { shouldValidate: true });
+    } else {
+      setValue("unit", "d", { shouldValidate: true });
+      setValue("duration", "7", { shouldValidate: true });
+    }
   }
 
-  function handleSubmit() {
-    if (!user || !canSubmit) return;
+  const summary = useMemo(() => {
+    if (permanent) {
+      return {
+        tone: "severe" as const,
+        title: `${user?.name ?? "This user"} will be banned permanently`,
+        detail:
+          "No automatic expiry — an admin has to manually unban this account.",
+      };
+    }
 
+    if (
+      !duration ||
+      !unit ||
+      !/^\d+$/.test(duration) ||
+      Number(duration) <= 0
+    ) {
+      return null;
+    }
+
+    const n = Number(duration);
+    const label = pluralize(n, UNIT_LABEL[unit]).toLowerCase();
+    const expiry = formatBanExpiry(duration, UNIT_SECONDS[unit]);
+
+    return {
+      tone: "temporary" as const,
+      title: `${user?.name ?? "This user"} will be banned for ${n} ${label}`,
+      detail: expiry
+        ? `Access is automatically restored around ${expiry}.`
+        : undefined,
+    };
+  }, [permanent, duration, unit, user?.name]);
+
+  function onSubmit(values: BanSchema) {
+    if (!user) return;
+
+    if (needsDetail && !values.detail?.trim()) {
+      setError("detail", {
+        type: "manual",
+        message: "Please describe why this user is being banned.",
+      });
+      return;
+    }
+
+    const trimmedDetail = values.detail?.trim();
     const finalReason = needsDetail
-      ? detail.trim()
-      : detail.trim()
-        ? `${reason} — ${detail.trim()}`
-        : reason;
-    const durationDays = duration === "permanent" ? null : Number(duration);
+      ? (trimmedDetail as string)
+      : trimmedDetail
+        ? `${values.reason} — ${trimmedDetail}`
+        : values.reason;
+
+    const ban =
+      !permanent && values.duration && values.unit
+        ? { duration: values.duration, unit: values.unit }
+        : undefined;
 
     startTransition(async () => {
-      console.log(finalReason, durationDays);
+      const result = await banUser(user.id, finalReason, ban);
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      onBanned(user.id);
+      toast.success(
+        permanent
+          ? "The user has been permanently banned."
+          : "The user has been banned successfully.",
+      );
+      onOpenChange(false);
+      form.reset();
+      setPermanent(false);
     });
   }
 
@@ -242,11 +364,14 @@ export function BanUserDialog({
       onOpenChange={(next) => {
         if (!isPending) {
           onOpenChange(next);
-          if (!next) reset();
+          if (!next) {
+            reset();
+            setPermanent(false);
+          }
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="flex size-9 items-center justify-center shrink-0 rounded-full bg-destructive/20">
@@ -260,76 +385,189 @@ export function BanUserDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="flex items-start gap-2">
-            <div className="space-y-2 w-full">
-              <Label htmlFor="ban-reason">Reason</Label>
-              <Select value={reason} onValueChange={setReason}>
-                <SelectTrigger id="ban-reason" className="w-full">
-                  <SelectValue placeholder="Select a reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BAN_REASONS.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 w-full">
-              <Label htmlFor="ban-duration">Duration</Label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger id="ban-duration" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BAN_DURATIONS.map((d) => (
-                    <SelectItem key={d.value} value={d.value}>
-                      {d.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="ban-detail">
-              {needsDetail ? "Details" : "Additional details (optional)"}
-            </Label>
-            <Textarea
-              id="ban-detail"
-              placeholder={
-                needsDetail
-                  ? "Describe why this user is being banned…"
-                  : "Add any extra context for the audit log…"
-              }
-              value={detail}
-              onChange={(e) => setDetail(e.target.value)}
-              rows={3}
+        <Form {...form}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 py-2">
+            <FormField
+              control={control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reason</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {BAN_REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleSubmit}
-            disabled={!canSubmit || isPending}
-          >
-            {isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-            Ban user
-          </Button>
-        </DialogFooter>
+            <div className="space-y-3 rounded-md border p-3 border-dashed">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Duration</Label>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="permanent-ban"
+                    checked={permanent}
+                    onCheckedChange={(checked) =>
+                      togglePermanent(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="permanent-ban"
+                    className="text-xs font-normal text-muted-foreground cursor-pointer"
+                  >
+                    Permanent ban
+                  </Label>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <FormField
+                  control={control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder={
+                            permanent
+                              ? "Permanent ban"
+                              : "Enter a positive number (e.g. 7)"
+                          }
+                          disabled={permanent}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) =>
+                          field.onChange(value as BanSchema["unit"])
+                        }
+                        disabled={permanent}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-30">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="m">Minutes</SelectItem>
+                          <SelectItem value="h">Hours</SelectItem>
+                          <SelectItem value="d">Days</SelectItem>
+                          <SelectItem value="w">Weeks</SelectItem>
+                          <SelectItem value="mo">Months</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <FormField
+              control={control}
+              name="detail"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {needsDetail ? "Details" : "Additional details (optional)"}
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder={
+                        needsDetail
+                          ? "Describe why this user is being banned…"
+                          : "Add any extra context for the audit log…"
+                      }
+                      rows={3}
+                      {...field}
+                      className="text-muted-foreground"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {summary && (
+              <div className="overflow-hidden">
+                <div
+                  className={
+                    "flex items-start gap-2.5 rounded-md border px-3.5 py-3 " +
+                    (summary.tone === "severe"
+                      ? "border-rose-500/25 bg-rose-500/10"
+                      : "border-amber-500/25 bg-amber-500/10")
+                  }
+                >
+                  {summary.tone === "severe" ? (
+                    <InfinityIcon className="mt-0.75 size-4 shrink-0 text-rose-500" />
+                  ) : (
+                    <Clock3 className="mt-0.75 size-4 shrink-0 text-amber-500" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p
+                      className={
+                        "text-sm font-medium " +
+                        (summary.tone === "severe"
+                          ? "text-rose-500"
+                          : "text-amber-500")
+                      }
+                    >
+                      {summary.title}
+                    </p>
+                    {summary.detail && (
+                      <p className="text-xs">{summary.detail}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isPending || !formState.isValid}
+              >
+                {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Ban user
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
