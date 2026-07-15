@@ -219,11 +219,11 @@ export interface User {
   name: string;
   email: string;
   emailVerified: boolean;
-  image?: string | null | undefined;
-  banned: boolean | null | undefined;
+  image?: string | null;
+  banned: boolean | null;
   role: UserRole;
-  banReason?: string | null | undefined;
-  banExpires?: Date | null | undefined;
+  banReason?: string | null;
+  banExpires?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

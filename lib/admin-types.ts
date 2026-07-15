@@ -182,3 +182,13 @@ export const BAN_DURATIONS = [
   { value: "30", label: "30 days" },
   { value: "permanent", label: "Permanent" },
 ] as const;
+
+export interface UserStatsData {
+  total: number;
+  activeCount: number;
+  bannedCount: number;
+  admins: number;
+  providers: number;
+  permanentBans: number;
+  temporaryBans: number;
+}

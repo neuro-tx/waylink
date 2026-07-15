@@ -3,6 +3,9 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { APIError } from "better-auth/api";
+import { db } from "@/db";
+import { user } from "@/db/schemas";
+import { ilike, or, sql } from "drizzle-orm";
 
 type TimeUnit = "h" | "m" | "d" | "mo" | "w";
 const timeMap: Record<TimeUnit, number> = {
@@ -56,25 +59,71 @@ type ActionResult =
   | { success: true; error: null }
   | { success: false; error: string };
 
-export async function getAllUsers(search?: string) {
+export async function getAllUsers(search?: string, page = 1) {
   try {
-    const result = await auth.api.listUsers({
-      query: {
-        searchField: search?.includes("@") ? "email" : "name",
-        searchOperator: "contains",
-        searchValue: search,
-        limit: 50,
-      },
-      headers: await headers(),
-    });
+    const limit = 20;
+    const offset = (page - 1) * limit;
 
-    return { success: true, data: result.users, error: null };
+    const [count, users] = await Promise.all([
+      db.select({ total: sql<number>`count(*)` }).from(user),
+      db
+        .select()
+        .from(user)
+        .where(
+          search
+            ? or(
+                ilike(user.name, `%${search}%`),
+                ilike(user.email, `%${search}%`),
+              )
+            : undefined,
+        )
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = Number(count[0]?.total ?? 0);
+    const pagination = {
+      total,
+      limit,
+      offset,
+      page: Math.floor(offset / limit) + 1,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: offset + limit < total,
+      hasPrevPage: offset > 0,
+    };
+
+    return { success: true, data: { users, pagination }, error: null };
   } catch (error) {
     console.error("getUsers failed:", error);
     return {
       success: false,
       data: null,
       error: "Couldn't load users. Please try again.",
+    };
+  }
+}
+
+export async function userAnalysis() {
+  try {
+    const [result] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        activeCount: sql<number>`count(*) filter (where ${user.banned} = false)::int`,
+        bannedCount: sql<number>`count(*) filter (where ${user.banned} = true)::int`,
+        admins: sql<number>`count(*) filter (where ${user.role} = 'admin')::int`,
+        providers: sql<number>`count(*) filter (where ${user.role} = 'provider')::int`,
+        permanentBans: sql<number>`filter (where ${user.banned} = true and ${user.banExpires} is null)`,
+        temporaryBans: sql<number>`filter (where ${user.banned} = true and ${user.banExpires} is not null)`,
+      })
+      .from(user);
+
+    return { success: true, data: result, error: null };
+  } catch (error) {
+    console.error("userAnalysis failed:", error);
+    return {
+      success: false,
+      data: null,
+      error: "Couldn't load user stats. Please try again.",
     };
   }
 }
