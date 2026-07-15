@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins";
+import { admin as adminPlugin } from "better-auth/plugins";
+import { ac, admin, user, provider } from "./permissions";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -28,7 +29,16 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
-  plugins: [admin()],
+  plugins: [
+    adminPlugin({
+      ac,
+      roles: {
+        admin,
+        user,
+        provider,
+      },
+    }),
+  ],
   user: {
     deleteUser: {
       enabled: true,
