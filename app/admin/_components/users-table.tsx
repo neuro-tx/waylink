@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ROLE_LABELS, type UserRole } from "@/lib/admin-types";
+import { ROLE_LABELS, UserStatsData, type UserRole } from "@/lib/admin-types";
 import ThumbnailImage from "@/components/ThumbnailImage";
 import {
   BanUserDialog,
@@ -44,6 +44,8 @@ import {
 } from "./UserDialogs";
 import { Button } from "@/components/ui/button";
 import { User } from "@/lib/all-types";
+import { unbanUser } from "@/actions/user.actions";
+import { toast } from "sonner";
 
 interface UserRowActionsProps {
   user: User;
@@ -134,22 +136,14 @@ function UsersTableView({
   );
 }
 
-export function UsersTable({ initialUsers }: { initialUsers: User[] }) {
-  const [users, setUsers] = useState(initialUsers);
+export function UsersTable() {
+  const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [banTarget, setBanTarget] = useState<User | null>(null);
   const [roleTarget, setRoleTarget] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
-
-  const stats = useMemo(
-    () => ({
-      total: users.length,
-      active: users.filter((u) => !u.banned).length,
-      banned: users.filter((u) => u.banned).length,
-      admins: users.filter((u) => u.role === "admin").length,
-    }),
-    [users],
-  );
+  const [isPending, startTransition] = useTransition();
+  const [stats, setstats] = useState<UserStatsData | null>(null);
 
   function handleBanned(userId: string) {
     setUsers((prev) =>
@@ -160,14 +154,24 @@ export function UsersTable({ initialUsers }: { initialUsers: User[] }) {
   }
 
   function handleUnbanned(userId: string) {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, banned: false, banReason: null, banExpires: null }
-          : u,
-      ),
-    );
+    startTransition(async () => {
+      const res = await unbanUser(userId);
+      if (!res.success) {
+        toast.error(res.error);
+        return;
+      }
+
+      toast.success("User unbaned successfully");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, banned: false, banReason: null, banExpires: null }
+            : u,
+        ),
+      );
+    });
   }
+
   function handleRoleChanged(userId: string, role: UserRole) {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
   }
@@ -178,32 +182,34 @@ export function UsersTable({ initialUsers }: { initialUsers: User[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="Total users"
-          value={stats.total}
-          icon={UsersIcon}
-          className="text-violet-600 dark:text-violet-400"
-        />
-        <StatCard
-          label="Active"
-          value={stats.active}
-          icon={UserCheck}
-          className="text-emerald-600 dark:text-emerald-400"
-        />
-        <StatCard
-          label="Banned"
-          value={stats.banned}
-          icon={Ban}
-          className="text-rose-600 dark:text-rose-400"
-        />
-        <StatCard
-          label="Admins"
-          value={stats.admins}
-          icon={Crown}
-          className="text-amber-600 dark:text-amber-400"
-        />
-      </div>
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard
+            label="Total users"
+            value={stats?.total}
+            icon={UsersIcon}
+            className="text-violet-600 dark:text-violet-400"
+          />
+          <StatCard
+            label="Active"
+            value={stats?.activeCount}
+            icon={UserCheck}
+            className="text-emerald-600 dark:text-emerald-400"
+          />
+          <StatCard
+            label="Banned"
+            value={stats?.bannedCount}
+            icon={Ban}
+            className="text-rose-600 dark:text-rose-400"
+          />
+          <StatCard
+            label="Admins"
+            value={stats?.admins}
+            icon={Crown}
+            className="text-amber-600 dark:text-amber-400"
+          />
+        </div>
+      )}
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -211,17 +217,37 @@ export function UsersTable({ initialUsers }: { initialUsers: User[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or email…"
-          className="pl-9 w-full md:w-lg"
+          className="pl-9 w-full md:max-w-lg"
         />
       </div>
 
-      <UsersTableView
-        users={[]}
-        onChangeRole={setRoleTarget}
-        onBan={setBanTarget}
-        onUnbanned={handleUnbanned}
-        onDelete={setDeleteTarget}
-      />
+      {isPending && (
+        <div className="py-3 px-4 rounded-lg border border-amber-500/50 bg-amber-500/10">
+          <div className="flex items-center gap-3 justify-between">
+            <div className="">
+              <p className="text-base text-amber-500 font-medium font-mono">
+                Unban Process
+              </p>
+              <p className="mt-1 text-muted-foreground text-xs">
+                Restore this user access to the platform ,the user will be able
+                to sign in and use all permitted features again.
+              </p>
+            </div>
+
+            <Loader2 className="size-4.5 animate-spin text-amber-500" />
+          </div>
+        </div>
+      )}
+
+      <div className={cn(isPending && "opacity-50 pointer-events-none")}>
+        <UsersTableView
+          users={users}
+          onChangeRole={setRoleTarget}
+          onBan={setBanTarget}
+          onUnbanned={handleUnbanned}
+          onDelete={setDeleteTarget}
+        />
+      </div>
 
       <BanUserDialog
         user={banTarget}

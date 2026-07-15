@@ -39,7 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ROLE_OPTIONS, UserRole } from "@/lib/admin-types";
 import { User } from "@/lib/all-types";
-import { banUser } from "@/actions/user.actions";
+import { banUser, changeUserRole, deleteUser } from "@/actions/user.actions";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatBanExpiry } from "@/lib/helpers";
+import { useRouter } from "next/navigation";
 
 interface ChangeRoleDialogProps {
   user: User | null;
@@ -113,6 +114,7 @@ export function ChangeRoleDialog({
 }: ChangeRoleDialogProps) {
   const [selected, setSelected] = useState<UserRole | null>(user?.role ?? null);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   if (user && selected === null) setSelected(user.role);
 
@@ -125,8 +127,21 @@ export function ChangeRoleDialog({
   function handleSubmit() {
     if (!user || !selected || selected === user.role) return;
 
+    if (selected === "provider") {
+      router.push(`/admin/users/${user.id}`);
+      return;
+    }
+
     startTransition(async () => {
-      console.log(selected);
+      const result = await changeUserRole(user.id, selected);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(`User role changed to ${selected}.`);
+      onRoleChanged(user.id, selected);
+      handleOpenChange(false);
     });
   }
 
@@ -156,21 +171,39 @@ export function ChangeRoleDialog({
                 type="button"
                 onClick={() => setSelected(option.value)}
                 className={cn(
-                  "w-full rounded-lg border p-3 text-left transition-colors",
+                  "w-full rounded-md border p-3 text-left transition-colors",
                   isSelected
-                    ? "border-violet-500 bg-violet-500/5"
+                    ? cn(
+                        option.value === "provider"
+                          ? "border-rose-500 bg-rose-500/10"
+                          : "border-cyan-500 bg-cyan-500/10",
+                      )
                     : "border-border hover:bg-muted/50",
                 )}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold">{option.label}</span>
                   {isSelected && (
-                    <ShieldCheck className="h-4 w-4 text-violet-500" />
+                    <ShieldCheck
+                      className={cn(
+                        "size-4.5",
+                        option.value === "provider"
+                          ? "text-rose-500"
+                          : "text-cyan-500",
+                      )}
+                    />
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {option.description}
-                </p>
+                {option.value === "provider" ? (
+                  <p className="mt-0.5 text-xs text-rose-500">
+                    This operation can't be done here ,you need to handle it
+                    manully
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {option.description}
+                  </p>
+                )}
               </button>
             );
           })}
@@ -188,8 +221,8 @@ export function ChangeRoleDialog({
             onClick={handleSubmit}
             disabled={!selected || selected === user?.role || isPending}
           >
-            {isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-            Save role
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            {selected === "provider" ? "Handle role" : "Save role"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -209,7 +242,15 @@ export function DeleteUserDialog({
     if (!user) return;
 
     startTransition(async () => {
-      console.log(user);
+      const result = await deleteUser(user.id);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("User deleted successfully.");
+      onDeleted(user.id);
+      onOpenChange(false);
     });
   }
 
