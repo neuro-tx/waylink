@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { ROLE_OPTIONS, UserRole } from "@/lib/admin-types";
+import { UserRole } from "@/lib/admin-types";
 import { User } from "@/lib/all-types";
 import { banUser, changeUserRole, deleteUser } from "@/actions/user.actions";
 import { toast } from "sonner";
@@ -56,6 +56,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatBanExpiry } from "@/lib/helpers";
 import { useRouter } from "next/navigation";
+import { ROLE_OPTIONS } from "./user-layout";
 
 interface ChangeRoleDialogProps {
   user: User | null;

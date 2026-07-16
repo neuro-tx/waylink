@@ -139,34 +139,6 @@ export type ActionResult =
   | { success: true; message: string }
   | { success: false; message: string };
 
-export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Admin",
-  provider: "Provider",
-  user: "Normal User",
-};
-
-export const ROLE_OPTIONS: {
-  value: UserRole;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: "admin",
-    label: "Admin",
-    description: "Full access to every admin tool, plan, and setting.",
-  },
-  {
-    value: "provider",
-    label: "Provider",
-    description: "Manages their organization's staff, listings, and bookings.",
-  },
-  {
-    value: "user",
-    label: "User",
-    description: "Standard customer-facing account with no admin access.",
-  },
-];
-
 export interface UserStatsData {
   total: number;
   activeCount: number;

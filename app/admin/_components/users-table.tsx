@@ -1,140 +1,35 @@
 "use client";
 
-import { memo, useMemo, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   Ban,
   Crown,
   Search,
-  Shield,
   Users as UsersIcon,
   UserCheck,
   Loader2,
-  MoreVertical,
-  ShieldCheck,
-  ShieldBan,
-  Trash2,
-  BadgeCheck,
-  AlertCircle,
-  Users,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { cn, timeAgo } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ROLE_LABELS, UserStatsData, type UserRole } from "@/lib/admin-types";
-import ThumbnailImage from "@/components/ThumbnailImage";
+import { cn } from "@/lib/utils";
+import { UserStatsData, type UserRole } from "@/lib/admin-types";
 import {
   BanUserDialog,
   ChangeRoleDialog,
   DeleteUserDialog,
 } from "./UserDialogs";
-import { Button } from "@/components/ui/button";
-import { User } from "@/lib/all-types";
-import { unbanUser } from "@/actions/user.actions";
+import { Pagination, User } from "@/lib/all-types";
+import { getAllUsers, unbanUser, userAnalysis } from "@/actions/user.actions";
 import { toast } from "sonner";
-
-interface UserRowActionsProps {
-  user: User;
-  onChangeRole: (user: User) => void;
-  onBan: (user: User) => void;
-  onUnbanned: (userId: string) => void;
-  onDelete: (user: User) => void;
-  pending?: boolean;
-}
-
-const ROLE_BADGE: Record<UserRole, { icon: typeof Crown; className: string }> =
-  {
-    admin: {
-      icon: Crown,
-      className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
-    },
-    provider: {
-      icon: Shield,
-      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    },
-    user: { icon: UsersIcon, className: "bg-muted text-muted-foreground" },
-  };
-
-interface UsersTableProps {
-  users: User[];
-  onChangeRole: (user: User) => void;
-  onBan: (user: User) => void;
-  onUnbanned: (userId: string) => void;
-  onDelete: (user: User) => void;
-}
-
-function UsersTableView({
-  users,
-  onChangeRole,
-  onBan,
-  onUnbanned,
-  onDelete,
-}: UsersTableProps) {
-  return (
-    <div className="overflow-hidden rounded-lg border bg-background">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-87">User</TableHead>
-            <TableHead>Email verified</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Joined</TableHead>
-            <TableHead>Last update</TableHead>
-            <TableHead className="w-13" />
-          </TableRow>
-        </TableHeader>
-
-        <TableBody>
-          {users.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="h-64">
-                <div className="flex flex-col items-center justify-center gap-3 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                    <Users className="h-6 w-6 text-muted-foreground" />
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">No users found</p>
-                    <p className="text-sm text-muted-foreground">
-                      There are no users to display. Try adjusting your search
-                      or try again later.
-                    </p>
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            users.map((user) => (
-              <UserRow
-                key={user.id}
-                user={user}
-                onChangeRole={onChangeRole}
-                onBan={onBan}
-                onUnbanned={onUnbanned}
-                onDelete={onDelete}
-              />
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
+import { useDebounce } from "@/hooks/useDebounce";
+import { ErrorState } from "./ErrorState";
+import {
+  PageStatus,
+  TableStatus,
+  UsersDataPagination,
+  UsersPageSkeleton,
+  UsersTableView,
+  UserStatCard,
+} from "./user-layout";
 
 export function UsersTable() {
   const [users, setUsers] = useState<User[]>([]);
@@ -143,7 +38,71 @@ export function UsersTable() {
   const [roleTarget, setRoleTarget] = useState<User | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [stats, setstats] = useState<UserStatsData | null>(null);
+  const [stats, setStats] = useState<UserStatsData | null>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
+  const [usersTable, setUsersTable] = useState<TableStatus>("loading");
+  const firstRender = useRef<boolean>(true);
+  const debouncedSearch = useDebounce(search);
+  const [retryKey, setRetryKey] = useState(0);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      setPageStatus("loading");
+      const [userRes, statsRes] = await Promise.all([
+        getAllUsers(),
+        userAnalysis(),
+      ]);
+
+      if (!userRes.success || !statsRes.success) {
+        setPageStatus("error");
+        return;
+      }
+
+      const mainUsers = userRes.data?.users as User[];
+      const mainPagination = userRes.data?.pagination ?? null;
+      const mainStats = statsRes?.data;
+
+      setStats(mainStats);
+      setUsers(mainUsers);
+      setPagination(mainPagination);
+      setUsersTable(mainUsers.length ? "success" : "empty");
+
+      setPageStatus("success");
+      firstRender.current = false;
+    }
+
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [retryKey]);
+
+  useEffect(() => {
+    if (firstRender.current) return;
+
+    async function search() {
+      setUsersTable("loading");
+      const result = await getAllUsers(debouncedSearch, page);
+      if (!result.success) {
+        setUsersTable("error");
+        return;
+      }
+
+      const mainUsers = result.data?.users as User[];
+      const mainPagination = result.data?.pagination ?? null;
+
+      setUsers(mainUsers);
+      setPagination(mainPagination);
+      setUsersTable(!mainUsers.length ? "empty" : "success");
+    }
+
+    search();
+  }, [debouncedSearch, page]);
 
   function handleBanned(userId: string) {
     setUsers((prev) =>
@@ -180,29 +139,41 @@ export function UsersTable() {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
   }
 
+  if (pageStatus === "loading") return <UsersPageSkeleton />;
+
+  if (pageStatus === "error")
+    return <ErrorState onRetry={() => setRetryKey((k) => k + 1)} />;
+
   return (
     <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage accounts, roles, and access across Way Link.
+        </p>
+      </div>
+
       {stats && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard
+          <UserStatCard
             label="Total users"
             value={stats?.total}
             icon={UsersIcon}
             className="text-violet-600 dark:text-violet-400"
           />
-          <StatCard
+          <UserStatCard
             label="Active"
             value={stats?.activeCount}
             icon={UserCheck}
             className="text-emerald-600 dark:text-emerald-400"
           />
-          <StatCard
+          <UserStatCard
             label="Banned"
             value={stats?.bannedCount}
             icon={Ban}
             className="text-rose-600 dark:text-rose-400"
           />
-          <StatCard
+          <UserStatCard
             label="Admins"
             value={stats?.admins}
             icon={Crown}
@@ -239,13 +210,25 @@ export function UsersTable() {
         </div>
       )}
 
-      <div className={cn(isPending && "opacity-50 pointer-events-none")}>
+      <div
+        className={cn(
+          "space-y-5",
+          isPending && "opacity-50 pointer-events-none",
+        )}
+      >
         <UsersTableView
           users={users}
           onChangeRole={setRoleTarget}
           onBan={setBanTarget}
           onUnbanned={handleUnbanned}
           onDelete={setDeleteTarget}
+          status={usersTable}
+        />
+
+        <UsersDataPagination
+          pagination={pagination}
+          onPageChange={setPage}
+          isLoading={usersTable === "loading"}
         />
       </div>
 
@@ -268,188 +251,5 @@ export function UsersTable() {
         onDeleted={handleDeleted}
       />
     </div>
-  );
-}
-
-const UserRow = memo(function UserRow({
-  user,
-  onChangeRole,
-  onBan,
-  onUnbanned,
-  onDelete,
-}: {
-  user: User;
-  onChangeRole: (user: User) => void;
-  onBan: (user: User) => void;
-  onUnbanned: (userId: string) => void;
-  onDelete: (user: User) => void;
-}) {
-  const roleBadge = ROLE_BADGE[user.role];
-  const RoleIcon = roleBadge.icon;
-
-  return (
-    <TableRow className="hover:bg-muted/40">
-      <TableCell>
-        <div className="flex items-center gap-3">
-          <ThumbnailImage
-            alternative={user.name}
-            src={user.image}
-            className="rounded-full"
-          />
-
-          <div className="min-w-0">
-            <p className="truncate font-medium">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
-        </div>
-      </TableCell>
-
-      <TableCell>
-        {user.emailVerified ? (
-          <Badge className="gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-            <BadgeCheck className="size-3" />
-            Verified
-          </Badge>
-        ) : (
-          <Badge className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">
-            <AlertCircle className="size-3" />
-            Unverified
-          </Badge>
-        )}
-      </TableCell>
-
-      <TableCell>
-        <Badge
-          variant="secondary"
-          className={cn("gap-1 font-medium", roleBadge.className)}
-        >
-          <RoleIcon className="size-3" />
-          {ROLE_LABELS[user.role]}
-        </Badge>
-      </TableCell>
-
-      <TableCell>
-        {user.banned ? (
-          <Badge
-            variant="secondary"
-            className="gap-1 bg-rose-500/10 font-medium text-rose-600 dark:text-rose-400"
-          >
-            <Ban className="size-3" />
-            Banned
-          </Badge>
-        ) : (
-          <Badge
-            variant="secondary"
-            className="gap-1 bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
-          >
-            <UserCheck className="size-3" />
-            Active
-          </Badge>
-        )}
-      </TableCell>
-
-      <TableCell className="text-muted-foreground">
-        {timeAgo(user.createdAt)}
-      </TableCell>
-
-      <TableCell className="text-muted-foreground">
-        {timeAgo(user.updatedAt)}
-      </TableCell>
-
-      <TableCell className="text-right">
-        <UserRowActions
-          user={user}
-          onChangeRole={onChangeRole}
-          onBan={onBan}
-          onUnbanned={onUnbanned}
-          onDelete={onDelete}
-        />
-      </TableCell>
-    </TableRow>
-  );
-});
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  className,
-}: {
-  label: string;
-  value: number;
-  icon: typeof UsersIcon;
-  className?: string;
-}) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          {label}
-        </span>
-        <Icon className={cn("h-4 w-4", className)} />
-      </div>
-      <div className="mt-2 text-2xl font-bold tracking-tight">{value}</div>
-    </div>
-  );
-}
-
-function UserRowActions({
-  user,
-  onChangeRole,
-  onBan,
-  onUnbanned,
-  onDelete,
-  pending,
-}: UserRowActionsProps) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          disabled={pending}
-        >
-          {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <MoreVertical className="h-4 w-4" />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem onClick={() => onChangeRole(user)}>
-          <ShieldCheck className="h-4 w-4" />
-          Change role
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {user.banned ? (
-          <DropdownMenuItem
-            onClick={() => onUnbanned(user.id)}
-            className="text-emerald-500"
-          >
-            <UserCheck className="h-4 w-4 text-emerald-600" />
-            Remove ban
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            onClick={() => onBan(user)}
-            className="text-rose-500"
-          >
-            <ShieldBan className="h-4 w-4 text-rose-500" />
-            Ban user
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          onClick={() => onDelete(user)}
-          className="text-rose-500"
-        >
-          <Trash2 className="h-4 w-4 text-rose-500" />
-          Delete user
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

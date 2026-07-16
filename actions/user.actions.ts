@@ -6,6 +6,7 @@ import { APIError } from "better-auth/api";
 import { db } from "@/db";
 import { user } from "@/db/schemas";
 import { ilike, or, sql } from "drizzle-orm";
+import { Pagination, User } from "@/lib/all-types";
 
 type TimeUnit = "h" | "m" | "d" | "mo" | "w";
 const timeMap: Record<TimeUnit, number> = {
@@ -82,7 +83,7 @@ export async function getAllUsers(search?: string, page = 1) {
     ]);
 
     const total = Number(count[0]?.total ?? 0);
-    const pagination = {
+    const pagination:Pagination= {
       total,
       limit,
       offset,
@@ -92,7 +93,7 @@ export async function getAllUsers(search?: string, page = 1) {
       hasPrevPage: offset > 0,
     };
 
-    return { success: true, data: { users, pagination }, error: null };
+    return { success: true, data: { users: users as User[], pagination }, error: null };
   } catch (error) {
     console.error("getUsers failed:", error);
     return {
@@ -112,8 +113,8 @@ export async function userAnalysis() {
         bannedCount: sql<number>`count(*) filter (where ${user.banned} = true)::int`,
         admins: sql<number>`count(*) filter (where ${user.role} = 'admin')::int`,
         providers: sql<number>`count(*) filter (where ${user.role} = 'provider')::int`,
-        permanentBans: sql<number>`filter (where ${user.banned} = true and ${user.banExpires} is null)`,
-        temporaryBans: sql<number>`filter (where ${user.banned} = true and ${user.banExpires} is not null)`,
+        permanentBans: sql<number>`count(*) filter (where ${user.banned} = true and ${user.banExpires} is null)`,
+        temporaryBans: sql<number>`count(*) filter (where ${user.banned} = true and ${user.banExpires} is not null)`,
       })
       .from(user);
 
