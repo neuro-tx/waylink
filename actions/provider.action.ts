@@ -1,8 +1,11 @@
 "use server";
 
+import { db } from "@/db";
+import { providers } from "@/db/schemas";
 import { adminAuth } from "@/lib/admin-auth";
 import { MembersRoles } from "@/lib/admin-types";
 import { getCurrentProvider } from "@/lib/provider-auth";
+import { buildSearchQuery } from "@/lib/query_parser/helpers";
 import {
   getRevenueOverTime,
   getServicesStatus,
@@ -92,4 +95,58 @@ export async function removeMemberAction(targetMemberId: string) {
   );
 
   return result;
+}
+
+export async function getProvidersBySearch(search: string) {
+  try {
+    const whereSearch = buildSearchQuery(providers.name, search, "ilike");
+    const data = await db.select().from(providers).where(whereSearch);
+
+    return {
+      success: true,
+      data,
+      error: null,
+    };
+  } catch (error) {
+    console.error("getProvidersBySearch failed:", error);
+
+    return {
+      success: false,
+      data: [],
+      error: "Failed to fetch providers. Please try again.",
+    };
+  }
+}
+
+export async function setUserProvider(
+  actor: "admin" | "provider",
+  data: {
+    userId: string;
+    providerId: string;
+    role: Exclude<MembersRoles, "owner">;
+  },
+) {
+  if (actor === "admin") {
+    const { admin, status } = await adminAuth();
+    if (!admin || status !== "ok")
+      return {
+        success: true,
+        error: "Permission denied.",
+      };
+  } else {
+    const { provider, status } = await getCurrentProvider();
+    if (!provider || status !== "ok")
+      return {
+        success: true,
+        error: "Permission denied.",
+      };
+  }
+
+  const res = await providerService.setProviderMember(
+    data.userId,
+    data.providerId,
+    data.role,
+  );
+  
+  return res;
 }

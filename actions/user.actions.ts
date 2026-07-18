@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { APIError } from "better-auth/api";
 import { db } from "@/db";
 import { user } from "@/db/schemas";
-import { ilike, or, sql } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 import { Pagination, User } from "@/lib/all-types";
 
 type TimeUnit = "h" | "m" | "d" | "mo" | "w";
@@ -83,7 +83,7 @@ export async function getAllUsers(search?: string, page = 1) {
     ]);
 
     const total = Number(count[0]?.total ?? 0);
-    const pagination:Pagination= {
+    const pagination: Pagination = {
       total,
       limit,
       offset,
@@ -93,7 +93,11 @@ export async function getAllUsers(search?: string, page = 1) {
       hasPrevPage: offset > 0,
     };
 
-    return { success: true, data: { users: users as User[], pagination }, error: null };
+    return {
+      success: true,
+      data: { users: users as User[], pagination },
+      error: null,
+    };
   } catch (error) {
     console.error("getUsers failed:", error);
     return {
@@ -241,5 +245,37 @@ export async function deleteUser(userId: string): Promise<ActionResult> {
 
     console.error("deleteUser failed:", error);
     return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+export async function getUserById(userId: string) {
+  try {
+    const [targetUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    if (!targetUser) {
+      return {
+        success: false,
+        data: null,
+        error: "User not found.",
+      };
+    }
+
+    return {
+      success: true,
+      data: targetUser,
+      error: null,
+    };
+  } catch (error) {
+    console.error("getUserById failed:", error);
+
+    return {
+      success: false,
+      data: null,
+      error: "Failed to fetch user. Please try again.",
+    };
   }
 }

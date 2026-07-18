@@ -602,6 +602,88 @@ async function removeMember(providerId: string, targetMemberId: string) {
   });
 }
 
+export async function setProviderMember(
+  userId: string,
+  providerId: string,
+  role: Exclude<MembersRoles, "owner">,
+) {
+  try {
+    await db.transaction(async (tx) => {
+      const [[targetUser], [provider], [existingMember]] = await Promise.all([
+        tx
+          .select({
+            id: user.id,
+            name: user.name,
+            role: user.role,
+          })
+          .from(user)
+          .where(eq(user.id, userId)),
+
+        tx
+          .select({
+            id: providers.id,
+            name: providers.name,
+          })
+          .from(providers)
+          .where(eq(providers.id, providerId)),
+
+        tx
+          .select()
+          .from(providerMembers)
+          .where(
+            and(
+              eq(providerMembers.userId, userId),
+              eq(providerMembers.providerId, providerId),
+            ),
+          ),
+      ]);
+
+      if (!targetUser) throw new Error("User not found.");
+      if (!provider) throw new Error("Provider not found.");
+      if (existingMember)
+        throw new Error("This user is already a member of the provider.");
+      if (targetUser.role !== "user")
+        throw new Error(
+          "Only users with the 'user' role can be assigned as provider members.",
+        );
+
+      await tx.insert(providerMembers).values({
+        providerId,
+        userId,
+        role,
+      });
+
+      await tx
+        .update(user)
+        .set({ role: "provider" })
+        .where(eq(user.id, userId));
+
+      await tx.insert(notifications).values({
+        recipientId: userId,
+        recipientType: "user",
+        type: "general",
+        title: `🎉 Welcome to ${provider.name}!`,
+        message: `You have been added as a ${role} to ${provider.name}. You can now access the provider dashboard and start managing your assigned responsibilities.`,
+      });
+    });
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (error) {
+    console.error("setProviderMember failed:", error);
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+    };
+  }
+}
+
 export const providerService = {
   getProviders,
   providerReviewState,
@@ -615,4 +697,5 @@ export const providerService = {
   changeMemberRole,
   removeMember,
   providerInvitesMembers,
+  setProviderMember
 };
