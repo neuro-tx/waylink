@@ -100,7 +100,7 @@ export async function removeMemberAction(targetMemberId: string) {
 export async function getProvidersBySearch(search: string) {
   try {
     const whereSearch = buildSearchQuery(providers.name, search, "ilike");
-    const data = await db.select().from(providers).where(whereSearch);
+    const data = await db.select().from(providers).where(whereSearch).limit(5);
 
     return {
       success: true,
@@ -147,6 +147,6 @@ export async function setUserProvider(
     data.providerId,
     data.role,
   );
-  
+
   return res;
 }
