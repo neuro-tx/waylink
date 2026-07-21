@@ -148,3 +148,16 @@ export interface UserStatsData {
   permanentBans: number;
   temporaryBans: number;
 }
+
+export type DashboardKpis = {
+  totalRevenue: number;
+  revenueTrendPct: number;
+  activeSubscriptions: number;
+  mrr: number;
+  totalBookings: number;
+  bookingsTrendPct: number;
+  activeProviders: number;
+  pendingProviderApprovals: number;
+  productsLive: number;
+  productsPendingModeration: number;
+};
