@@ -161,3 +161,60 @@ export type DashboardKpis = {
   productsLive: number;
   productsPendingModeration: number;
 };
+
+export interface TopProvider {
+  id: string;
+  name: string;
+  slug: string;
+  logo: string | null;
+  serviceType: ServiceType;
+  businessType: "individual" | "company" | "agency";
+  isVerified: boolean;
+  totalRevenue: number;
+  totalBookings: number;
+  totalProducts: number;
+  totalReviews: number;
+  avgRating: number;
+  joinedAt: Date | string;
+}
+
+interface RevenueByPlan {
+  plan: string;
+  mrr: number;
+  subscriptions: number;
+}
+
+interface TrialConversion {
+  totalTrials: number;
+  convertedTrials: number;
+  conversionRate: number;
+}
+
+interface ListingsUsage {
+  used: number;
+  capacity: number;
+  unlimitedProviders: number;
+}
+
+export interface SubscriptionAnalytics {
+  revenueByPlan: RevenueByPlan[];
+  statusBreakdown: {
+    status: SubscriptionStatus;
+    count: number;
+  }[];
+  billingSplit: {
+    monthly: number;
+    yearly: number;
+  };
+  trialConversion: TrialConversion;
+  listingsUsage: ListingsUsage;
+  totalSubscriptions: number;
+}
+
+export interface SubscriptionOverview {
+  totalSubs: number;
+  tierDistribution: {
+    tier: PlanTier;
+    value: number;
+  }[];
+}
