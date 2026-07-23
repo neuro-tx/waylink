@@ -9,7 +9,7 @@ import {
   productVariants,
   setupProgress,
 } from "./product";
-import { bookingItems, bookings } from "./booking";
+import { bookingItems, bookings, bookingsFinancial } from "./booking";
 import {
   providerInvites,
   providerMembers,
@@ -39,6 +39,7 @@ export const userRelations = relations(user, ({ one, many }) => ({
     references: [providers.ownerId],
   }),
   wishlists: many(wishlists),
+  financials: many(bookingsFinancial),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -72,6 +73,7 @@ export const providerRelations = relations(providers, ({ one, many }) => ({
     fields: [providers.id],
     references: [providerStats.providerId],
   }),
+  financials: many(bookingsFinancial),
 }));
 
 export const providerMemberRelations = relations(
@@ -120,6 +122,7 @@ export const providerStatsRelations = relations(providerStats, ({ one }) => ({
 // ============================================
 export const planRelations = relations(plans, ({ many }) => ({
   subscriptions: many(subscriptions),
+  bookingsFinancial: many(bookingsFinancial),
 }));
 
 export const subscriptionRelations = relations(subscriptions, ({ one }) => ({
@@ -152,6 +155,7 @@ export const productRelations = relations(products, ({ one, many }) => ({
   wishlistItems: many(wishlistItems),
   bookings: many(bookings),
   setup: one(setupProgress),
+  financials: many(bookingsFinancial),
 }));
 
 export const setupProgressRelations = relations(setupProgress, ({ one }) => ({
@@ -264,6 +268,10 @@ export const bookingRelations = relations(bookings, ({ one, many }) => ({
     fields: [bookings.productId],
     references: [providers.id],
   }),
+  financial: one(bookingsFinancial, {
+    fields: [bookings.id],
+    references: [bookingsFinancial.bookingId],
+  }),
 }));
 
 export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
@@ -304,3 +312,32 @@ export const locationRelations = relations(location, ({ one }) => ({
     references: [products.id],
   }),
 }));
+
+// ============================================
+// BOOKINS FINANCIAL RELATIONS
+// ============================================
+export const bookingsFinancialRelations = relations(
+  bookingsFinancial,
+  ({ one }) => ({
+    booking: one(bookings, {
+      fields: [bookingsFinancial.bookingId],
+      references: [bookings.id],
+    }),
+    customer: one(user, {
+      fields: [bookingsFinancial.customerId],
+      references: [user.id],
+    }),
+    provider: one(providers, {
+      fields: [bookingsFinancial.providerId],
+      references: [providers.id],
+    }),
+    product: one(products, {
+      fields: [bookingsFinancial.productId],
+      references: [products.id],
+    }),
+    plan: one(plans, {
+      fields: [bookingsFinancial.planId],
+      references: [plans.id],
+    }),
+  }),
+);

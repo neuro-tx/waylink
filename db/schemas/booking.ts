@@ -14,6 +14,7 @@ import { products, productVariants } from "./product";
 import { bookingStatusEnums, timestamps } from "./enums";
 import { sql } from "drizzle-orm";
 import { providers } from "./provider";
+import { plans } from "./plan";
 
 export const bookings = pgTable(
   "bookings",
@@ -87,5 +88,52 @@ export const bookingItems = pgTable(
       "booking_item_total_price_matches",
       sql`${t.totalPrice} = ${t.unitPrice} * ${t.quantity}`,
     ),
+  ],
+);
+
+export const bookingsFinancial = pgTable(
+  "bookings_financial",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookingId: uuid("booking_id")
+      .notNull()
+      .references(() => bookings.id, { onDelete: "restrict" }),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    providerId: uuid("provider_id")
+      .notNull()
+      .references(() => providers.id, { onDelete: "restrict" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "restrict" }),
+
+    // bookings snapshot
+    totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
+    currency: text("currency").notNull(),
+    orderNumber: text("order_number").notNull(),
+
+    // plan snapshot
+    planPrice: integer("plan_price").notNull(),
+    commission: numeric("commission", { precision: 5, scale: 2 }).notNull(),
+
+    // main fields
+    platformFee: numeric("platform_fee", { precision: 5, scale: 2 }).notNull(),
+    providerFee: numeric("provider_fee", { precision: 5, scale: 2 }).notNull(),
+    netAmount: numeric("net_amount", { precision: 12, scale: 2 }).notNull(),
+
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("financial_booking_id_idx").on(t.bookingId),
+    index("financial_customer_id_idx").on(t.customerId),
+    index("financial_provider_id_idx").on(t.providerId),
+    index("financial_product_id_idx").on(t.productId),
+    index("financial_plan_id_idx").on(t.planId),
+    // for provider reports over time
+    index("financial_provider_created_idx").on(t.providerId, t.createdAt),
   ],
 );
