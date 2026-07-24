@@ -19,6 +19,7 @@ import type {
   ProviderKPIs,
   DateRange,
 } from "@/lib/panel-types";
+import { getDateRange } from "@/lib/utils";
 import {
   and,
   between,
@@ -30,23 +31,6 @@ import {
   getTableColumns,
 } from "drizzle-orm";
 
-function getDateRange(range: DateRange): { from: Date; to: Date } {
-  const to = new Date();
-  const from = new Date();
-
-  const days: Record<DateRange, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-    "1y": 365,
-  };
-
-  from.setDate(from.getDate() - days[range]);
-  from.setHours(0, 0, 0, 0);
-  to.setHours(23, 59, 59, 999);
-
-  return { from, to };
-}
 async function getProviderStats(providerId: string): Promise<ProviderStats> {
   try {
     const [row] = await db

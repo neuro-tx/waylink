@@ -115,6 +115,7 @@ export const bookingsFinancial = pgTable(
     totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
     currency: text("currency").notNull(),
     orderNumber: text("order_number").notNull(),
+    bookingStatus: bookingStatusEnums("booking_status").notNull().default("pending"),
 
     // plan snapshot
     planPrice: integer("plan_price").notNull(),

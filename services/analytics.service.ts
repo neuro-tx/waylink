@@ -9,6 +9,7 @@ import {
   RevenueOverTime,
   StatusItem,
 } from "@/lib/panel-types";
+import { getDateRange } from "@/lib/utils";
 import { and, eq, sql, gte, lte, inArray, sum, count } from "drizzle-orm";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -30,23 +31,8 @@ function getNextPayoutDate(): Date {
   return next;
 }
 
-function getPeriodRange(period: DateRange): { from: Date; to: Date } {
-  const to = new Date();
-  const from = new Date();
-
-  const daysMap: Record<DateRange, number> = {
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-    "1y": 365,
-  };
-
-  from.setDate(from.getDate() - daysMap[period]);
-  return { from, to };
-}
-
 function getPreviousPeriodRange(period: DateRange): { from: Date; to: Date } {
-  const current = getPeriodRange(period);
+  const current = getDateRange(period);
   const durationMs = current.to.getTime() - current.from.getTime();
   return {
     from: new Date(current.from.getTime() - durationMs),
@@ -58,7 +44,7 @@ export async function getPayoutSummary(
   providerId: string,
   period: DateRange = "90d",
 ): Promise<PayoutSummary> {
-  const { from, to } = getPeriodRange(period);
+  const { from, to } = getDateRange(period);
   const prev = getPreviousPeriodRange(period);
 
   const [sub, [currentRevRow], [prevRevRow], [pendingRow]] = await Promise.all([
@@ -141,7 +127,7 @@ export async function getPeakBookingHours(
   providerId: string,
   period: DateRange = "30d",
 ): Promise<PeakBookingHours> {
-  const { from } = getPeriodRange(period);
+  const { from } = getDateRange(period);
 
   const rows = await db
     .select({
@@ -222,7 +208,7 @@ export async function getRevenueOverTime(
   providerId: string,
   period: DateRange = "30d",
 ): Promise<RevenueOverTime> {
-  const { from, to } = getPeriodRange(period);
+  const { from, to } = getDateRange(period);
   const prev = getPreviousPeriodRange(period);
 
   async function fetchSeries(start: Date, end: Date) {

@@ -1,6 +1,7 @@
 import { LocationType } from "@/validations";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { DateRange } from "./panel-types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -277,4 +278,22 @@ export function getDistanceFromLocations(locs: LocationPoint[]) {
     Number(end.lat),
     Number(end.lon),
   );
+}
+
+export function getDateRange(range: DateRange): { from: Date; to: Date } {
+  const to = new Date();
+  const from = new Date();
+
+  const days: Record<DateRange, number> = {
+    "7d": 7,
+    "30d": 30,
+    "90d": 90,
+    "1y": 365,
+  };
+
+  from.setDate(from.getDate() - days[range]);
+  from.setHours(0, 0, 0, 0);
+  to.setHours(23, 59, 59, 999);
+
+  return { from, to };
 }

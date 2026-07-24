@@ -1,0 +1,1 @@
+ALTER TABLE "bookings_financial" ADD COLUMN "booking_status" "booking_status" DEFAULT 'pending' NOT NULL;
