@@ -45,7 +45,7 @@ const getCachedTopProducts = unstable_cache(
 
 const getCachedTimeSeries = unstable_cache(
   async (providerId: string, range: DateRange) =>
-    getRevenueTimeSeries(providerId, range),
+    getRevenueTimeSeries(range, providerId),
   ["provider-timeseries"],
   { revalidate: CHARTS_TTL, tags: ["timeseries"] },
 );

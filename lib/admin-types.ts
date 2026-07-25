@@ -6,7 +6,7 @@ import {
   ServiceType,
   SubscriptionStatus,
 } from "./all-types";
-import { StatusType } from "./panel-types";
+import { GrowthMetric, StatusType } from "./panel-types";
 
 export interface SubscriptionRow {
   id: string;
@@ -151,11 +151,11 @@ export interface UserStatsData {
 
 export type DashboardKpis = {
   totalRevenue: number;
-  revenueTrendPct: number;
+  revenueTrend: GrowthMetric;
   activeSubscriptions: number;
   mrr: number;
   totalBookings: number;
-  bookingsTrendPct: number;
+  bookingsTrend: GrowthMetric;
   activeProviders: number;
   pendingProviderApprovals: number;
   productsLive: number;
@@ -174,7 +174,7 @@ export interface TopProvider {
   totalBookings: number;
   totalProducts: number;
   totalReviews: number;
-  avgRating: number;
+  avgRating: string;
   joinedAt: Date | string;
 }
 

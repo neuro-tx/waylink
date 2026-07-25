@@ -71,7 +71,7 @@ async function getRecentBookings(
 }
 
 async function getTopProducts(
-  providerId: string,
+  providerId?: string,
   limit = 5,
 ): Promise<TopProduct[]> {
   try {
@@ -87,7 +87,7 @@ async function getTopProducts(
       })
       .from(products)
       .innerJoin(productStats, eq(products.id, productStats.productId))
-      .where(eq(products.providerId, providerId))
+      .where(providerId ? eq(products.providerId, providerId) : undefined)
       .groupBy(
         products.id,
         productStats.totalRevenue,
@@ -103,8 +103,8 @@ async function getTopProducts(
 }
 
 async function getRevenueTimeSeries(
-  providerId: string,
   range: DateRange,
+  providerId?: string,
 ): Promise<RevenueDataPoint[]> {
   const { from, to } = getDateRange(range);
 
@@ -118,7 +118,7 @@ async function getRevenueTimeSeries(
       .from(bookings)
       .where(
         and(
-          eq(bookings.providerId, providerId),
+          providerId ? eq(bookings.providerId, providerId): undefined,
           between(bookings.createdAt, from, to),
         ),
       )
@@ -131,7 +131,7 @@ async function getRevenueTimeSeries(
 }
 
 async function getBookingStatusBreakdown(
-  providerId: string,
+  providerId?: string,
 ): Promise<BookingStatusBreakdown[]> {
   try {
     return await db
@@ -141,7 +141,7 @@ async function getBookingStatusBreakdown(
         percentage: sql<number>`round(count(*) * 100.0 / sum(count(*)) over (),1)::float`,
       })
       .from(bookings)
-      .where(eq(bookings.providerId, providerId))
+      .where(providerId ? eq(bookings.providerId, providerId): undefined)
       .groupBy(bookings.status);
   } catch (error) {
     console.error("[ProviderService] getBookingStatusBreakdown:", error);

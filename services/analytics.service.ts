@@ -205,7 +205,7 @@ export async function getPeakBookingHours(
 }
 
 export async function getRevenueOverTime(
-  providerId: string,
+  providerId?: string,
   period: DateRange = "30d",
 ): Promise<RevenueOverTime> {
   const { from, to } = getDateRange(period);
@@ -221,7 +221,7 @@ export async function getRevenueOverTime(
       .from(bookings)
       .where(
         and(
-          eq(bookings.providerId, providerId),
+          providerId ? eq(bookings.providerId, providerId) : undefined,
           inArray(bookings.status, ["confirmed", "completed"]),
           gte(bookings.createdAt, start),
           lte(bookings.createdAt, end),
@@ -301,7 +301,7 @@ export async function getRevenueOverTime(
 }
 
 export async function getServicesStatus(
-  providerId: string,
+  providerId?: string,
 ): Promise<StatusItem[]> {
   return await db
     .select({
@@ -310,6 +310,6 @@ export async function getServicesStatus(
       percentage: sql<number>`round(count(*) * 100.0 / sum(count(*)) over (),1)::float`,
     })
     .from(products)
-    .where(eq(products.providerId, providerId))
+    .where(providerId ? eq(products.providerId, providerId) : undefined)
     .groupBy(products.status);
 }
