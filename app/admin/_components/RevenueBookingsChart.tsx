@@ -16,29 +16,14 @@ import {
   YAxis,
 } from "recharts";
 import { CardContent } from "@/components/ui/card";
-import { DateRange, RevenueDataPoint } from "@/lib/panel-types";
+import { RevenueDataPoint } from "@/lib/panel-types";
 import { useMemo } from "react";
 import { Calendar } from "lucide-react";
 
-export function RevenueBookingsChart({ range }: { range: DateRange }) {
+export function RevenueBookingsChart({ data }: { data: RevenueDataPoint[] }) {
   const baseColr = "#12cfdc";
   const COLOR_REVENUE = "#0ea5e9";
   const COLOR_BOOKINGS = "#10b981";
-
-  const data: RevenueDataPoint[] = [
-    { date: "2025-08", revenue: 18450, bookings: 132 },
-    { date: "2025-09", revenue: 20120, bookings: 146 },
-    { date: "2025-10", revenue: 21980, bookings: 158 },
-    { date: "2025-11", revenue: 24750, bookings: 171 },
-    { date: "2025-12", revenue: 31840, bookings: 228 },
-    { date: "2026-01", revenue: 27420, bookings: 194 },
-    { date: "2026-02", revenue: 29680, bookings: 206 },
-    { date: "2026-03", revenue: 33590, bookings: 233 },
-    { date: "2026-04", revenue: 36210, bookings: 251 },
-    { date: "2026-05", revenue: 39850, bookings: 276 },
-    { date: "2026-06", revenue: 42160, bookings: 291 },
-    { date: "2026-07", revenue: 45780, bookings: 315 },
-  ];
 
   const formattedData = useMemo(() => {
     return data.map((d) => {

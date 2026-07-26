@@ -12,40 +12,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { DashboardKpis } from "@/lib/admin-types";
-import { DateRange } from "@/lib/panel-types";
+import { GrowthMetric } from "@/lib/panel-types";
 import CountUpMotion from "@/components/CountUpMotion";
 
 type Tone = "default" | "warning";
 
-export function KpiStatsRow({ range }: { range: DateRange }) {
-  const kpis: DashboardKpis = {
-    // Revenue
-    totalRevenue: 248750.45,
-    revenueTrendPct: 18.6,
-
-    // Subscriptions
-    activeSubscriptions: 187,
-    mrr: 32450,
-
-    // Bookings
-    totalBookings: 1432,
-    bookingsTrendPct: 12.3,
-
-    // Providers
-    activeProviders: 96,
-    pendingProviderApprovals: 14,
-
-    // Products
-    productsLive: 328,
-    productsPendingModeration: 21,
-  };
-
+export function KpiStatsRow({ kpis }: { kpis: DashboardKpis }) {
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
       <StatCard
         label="Revenue"
         value={kpis.totalRevenue}
-        trendPct={kpis.revenueTrendPct}
+        trendPct={kpis.revenueTrend}
         icon={DollarSign}
       />
       <StatCard
@@ -57,7 +35,7 @@ export function KpiStatsRow({ range }: { range: DateRange }) {
       <StatCard
         label="Bookings"
         value={kpis.totalBookings}
-        trendPct={kpis.bookingsTrendPct}
+        trendPct={kpis.bookingsTrend}
         icon={CalendarCheck}
       />
       <StatCard
@@ -112,7 +90,7 @@ function StatCard({
   value: number;
   sublabel?: string;
   sublabelTone?: Tone;
-  trendPct?: number;
+  trendPct?: GrowthMetric;
   icon: LucideIcon;
   tone?: Tone;
 }) {
@@ -140,18 +118,21 @@ function StatCard({
           <CountUpMotion value={value} />
         </div>
 
-        {(sublabel || typeof trendPct === "number") && (
+        {(sublabel || trendPct) && (
           <div className="flex items-center gap-1.5 text-xs">
             {trendPct && (
               <span
                 className={cn(
-                  trendPct >= 0 ? "text-emerald-500" : "text-red-500",
+                  trendPct.direction === "up" && "text-emerald-500",
+                  trendPct.direction === "down" && "text-red-500",
+                  trendPct.direction === "flat" && "text-muted-foreground",
+                  trendPct.direction === "n/a" && "text-muted-foreground",
                 )}
               >
-                {trendPct >= 0 ? "+" : ""}
-                {trendPct.toFixed(1)}%
+                {trendPct.formatted}
               </span>
             )}
+
             {sublabel && (
               <span
                 className={cn(

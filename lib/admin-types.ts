@@ -6,7 +6,14 @@ import {
   ServiceType,
   SubscriptionStatus,
 } from "./all-types";
-import { GrowthMetric, StatusType } from "./panel-types";
+import {
+  BookingStatusBreakdown,
+  GrowthMetric,
+  RevenueDataPoint,
+  StatusItem,
+  StatusType,
+  TopProduct,
+} from "./panel-types";
 
 export interface SubscriptionRow {
   id: string;
@@ -217,4 +224,23 @@ export interface SubscriptionOverview {
     tier: PlanTier;
     value: number;
   }[];
+}
+
+export type PlanTierData = {
+  tier: PlanTier;
+  totalRevenue: number;
+  totalCommission: number;
+  bookingsCount: number;
+};
+
+export interface DashboardResponse {
+  kpis: DashboardKpis;
+  revenueSeries: RevenueDataPoint[];
+  topProducts: TopProduct[];
+  servicesStatus: StatusItem[];
+  analysis: {
+    topProviders: TopProvider[];
+    planTier: PlanTierData[];
+  };
+  bookingStatus: BookingStatusBreakdown[];
 }

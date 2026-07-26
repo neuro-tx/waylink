@@ -26,74 +26,7 @@ const fmtCompact = (val: number) =>
     maximumFractionDigits: 1,
   }).format(val);
 
-const MOCK: TopProvider[] = [
-  {
-    id: "1",
-    name: "Elevate Cleaning Solutions",
-    slug: "elevate-cleaning",
-    logo: "https://i.pravatar.cc/150?u=1",
-    serviceType: "experience",
-    businessType: "company",
-    isVerified: true,
-    totalRevenue: 145200,
-    totalBookings: 1240,
-    totalProducts: 12,
-    totalReviews: 845,
-    avgRating: 4.9,
-    joinedAt: "2023-01-15",
-  },
-  {
-    id: "2",
-    name: "Sarah Jenkins Design",
-    slug: "sarah-jenkins-design",
-    logo: "https://i.pravatar.cc/150?u=2",
-    serviceType: "transport",
-    businessType: "individual",
-    isVerified: true,
-    totalRevenue: 98500,
-    totalBookings: 320,
-    totalProducts: 5,
-    totalReviews: 156,
-    avgRating: 4.7,
-    joinedAt: "2023-06-22",
-  },
-  {
-    id: "3",
-    name: "Nexus Tech Repair",
-    slug: "nexus-tech",
-    logo: null, // Testing the fallback avatar
-    serviceType: "transport",
-    businessType: "agency",
-    isVerified: false,
-    totalRevenue: 76400,
-    totalBookings: 890,
-    totalProducts: 24,
-    totalReviews: 432,
-    avgRating: 4.5,
-    joinedAt: "2024-02-10",
-  },
-  {
-    id: "4",
-    name: "GreenThumb Landscaping",
-    slug: "greenthumb",
-    logo: "https://i.pravatar.cc/150?u=4",
-    serviceType: "experience",
-    businessType: "company",
-    isVerified: true,
-    totalRevenue: 52100,
-    totalBookings: 410,
-    totalProducts: 8,
-    totalReviews: 210,
-    avgRating: 4.8,
-    joinedAt: "2024-04-05",
-  },
-];
-
-export function TopProviders({
-  providers = MOCK,
-}: {
-  providers?: TopProvider[];
-}) {
+export function TopProviders({ providers }: { providers: TopProvider[] }) {
   return (
     <Card className="border bg-card/50 h-full p-0 flex flex-col">
       <CardHeader className="p-0">

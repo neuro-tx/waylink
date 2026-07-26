@@ -30,30 +30,8 @@ const TIER_COLORS: Record<PlanTier, { label: string; fill: string }> = {
   },
 };
 
-const subscriptionOverview: SubscriptionOverview = {
-  totalSubs: 246,
-  tierDistribution: [
-    {
-      tier: "pro",
-      value: 92,
-    },
-    {
-      tier: "business",
-      value: 42,
-    },
-    {
-      tier: "enterprise",
-      value: 26,
-    },
-    {
-      tier: "free",
-      value: 18,
-    },
-  ],
-};
-
-export function PlanSubscriptions() {
-  const { tierDistribution, totalSubs } = subscriptionOverview;
+export function PlanSubscriptions({ data }: { data: SubscriptionOverview }) {
+  const { tierDistribution, totalSubs } = data;
   const formatted = tierDistribution.map((item) => ({
     ...item,
     label: TIER_COLORS[item.tier].label,
