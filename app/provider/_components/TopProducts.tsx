@@ -26,20 +26,31 @@ export function TopProducts({ products }: { products: TopProduct[] }) {
 
       <CardContent className="flex-1">
         {products.length === 0 ? (
-          <div className="flex h-full min-h-62.5 flex-col items-center justify-center space-y-3 rounded-xl border border-dashed border-border p-6 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <PackageOpen
-                className="size-6 text-muted-foreground"
-                aria-hidden="true"
-              />
+          <div className="flex min-h-55 flex-col items-center justify-center rounded-md bg-linear-to-br from-muted/30 via-transparent to-muted/10 px-3">
+            <div className="relative mb-6 flex items-center justify-center">
+              <div className="absolute -left-12 -rotate-12 rounded-lg border border-primary/15 bg-primary/5 p-2">
+                <PackageOpen className="size-5 text-primary/40" />
+              </div>
+
+              <div className="absolute -right-12 rotate-12 rounded-lg border border-amber-500/15 bg-amber-500/5 p-2">
+                <Star className="size-5 fill-amber-500/30 text-amber-500/40" />
+              </div>
+
+              <div className="absolute -top-5 left-1 h-2 w-2 rounded-full bg-primary/30" />
+              <div className="absolute -bottom-4 -left-5 h-1.5 w-1.5 rounded-full bg-emerald-500/30" />
+              <div className="absolute top-2 -right-5 h-2 w-2 rounded-full bg-amber-500/30" />
+
+              <div className="relative flex size-12 items-center justify-center rounded-full bg-transparent">
+                <PackageOpen className="size-6 text-primary" />
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold">No assets found</p>
-              <p className="text-xs text-muted-foreground max-w-50 mt-1">
-                Your top performing assets will appear here once you have
-                bookings.
-              </p>
-            </div>
+
+            <h3 className="mt-3 text-base font-semibold">No products yet</h3>
+
+            <p className="mt-2 max-w-xs text-center text-sm text-muted-foreground">
+              Your highest-performing products will appear here once customers
+              begin making bookings.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">

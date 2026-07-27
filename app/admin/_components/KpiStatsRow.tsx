@@ -19,24 +19,27 @@ type Tone = "default" | "warning";
 
 export function KpiStatsRow({ kpis }: { kpis: DashboardKpis }) {
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
       <StatCard
         label="Revenue"
         value={kpis.totalRevenue}
         trendPct={kpis.revenueTrend}
         icon={DollarSign}
+        format="currency"
       />
       <StatCard
         label="MRR"
         value={kpis.mrr}
         sublabel={`${kpis.activeSubscriptions} active subs`}
         icon={Repeat}
+        format="currency"
       />
       <StatCard
         label="Bookings"
         value={kpis.totalBookings}
         trendPct={kpis.bookingsTrend}
         icon={CalendarCheck}
+        format="value"
       />
       <StatCard
         label="Providers"
@@ -48,6 +51,7 @@ export function KpiStatsRow({ kpis }: { kpis: DashboardKpis }) {
         }
         sublabelTone={kpis.pendingProviderApprovals > 0 ? "warning" : "default"}
         icon={Users}
+        format="value"
       />
       <StatCard
         label="Products live"
@@ -61,6 +65,7 @@ export function KpiStatsRow({ kpis }: { kpis: DashboardKpis }) {
           kpis.productsPendingModeration > 0 ? "warning" : "default"
         }
         icon={Package}
+        format="value"
       />
       <StatCard
         label="Needs attention"
@@ -72,6 +77,7 @@ export function KpiStatsRow({ kpis }: { kpis: DashboardKpis }) {
             ? "warning"
             : "default"
         }
+        format="value"
       />
     </div>
   );
@@ -85,6 +91,7 @@ function StatCard({
   trendPct,
   icon: Icon,
   tone = "default",
+  format
 }: {
   label: string;
   value: number;
@@ -93,6 +100,7 @@ function StatCard({
   trendPct?: GrowthMetric;
   icon: LucideIcon;
   tone?: Tone;
+  format?: "value" | "currency";
 }) {
   return (
     <Card
@@ -115,7 +123,7 @@ function StatCard({
         </div>
 
         <div className="text-xl md:text-2xl font-semibold tracking-tight">
-          <CountUpMotion value={value} />
+          <CountUpMotion value={value} format={format} />
         </div>
 
         {(sublabel || trendPct) && (

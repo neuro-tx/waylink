@@ -13,6 +13,7 @@ import {
   Building2,
   User,
   Briefcase,
+  Users,
 } from "lucide-react";
 import { TopProvider } from "@/lib/admin-types";
 import { fmtCurrency } from "@/lib/helpers";
@@ -27,35 +28,68 @@ const fmtCompact = (val: number) =>
   }).format(val);
 
 export function TopProviders({ providers }: { providers: TopProvider[] }) {
+  const isEmpty = providers.length === 0;
+
   return (
-    <Card className="border bg-card/50 h-full p-0 flex flex-col">
+    <Card className="border bg-background h-full p-0 flex flex-col">
       <CardHeader className="p-0">
-        <div className="flex items-center justify-between px-4 pt-4">
+        <div className="flex items-center justify-between px-5 pt-5">
           <div>
-            <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+            <CardTitle className="font-bold tracking-tight text-foreground">
               Top Providers
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground mt-1">
               Highest earning partners in the platform
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-emerald-500/10 text-emerald-500 text-sm font-medium">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-emerald-500/10 text-emerald-500 text-xs font-medium">
             <TrendingUp className="h-4 w-4" />
             <span>Revenue</span>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 flex-1 overflow-auto">
-        <div className="flex flex-col divide-y divide-border">
-          {providers.map((provider, index) => (
-            <ProviderRow
-              key={provider.id}
-              provider={provider}
-              rank={index + 1}
-            />
-          ))}
-        </div>
+      <CardContent
+        className={cn("flex-1 overflow-auto", isEmpty ? "p-5" : "p-0")}
+      >
+        {isEmpty ? (
+          <div className="flex min-h-55 flex-col items-center justify-center rounded-md bg-linear-to-br from-muted/30 via-transparent to-muted/10 px-6">
+            <div className="relative mb-6 flex items-center justify-center">
+              <div className="absolute -left-12 rounded-full border border-blue-500/15 bg-blue-500/5 p-2">
+                <Users className="size-5 text-blue-500/40" />
+              </div>
+
+              <div className="absolute -right-12 rounded-full border border-emerald-500/15 bg-emerald-500/5 p-2">
+                <TrendingUp className="size-5 text-emerald-500/40" />
+              </div>
+
+              <div className="absolute -top-5 left-1 h-2 w-2 rounded-full bg-blue-500/30" />
+              <div className="absolute -bottom-4 -left-5 h-1.5 w-1.5 rounded-full bg-emerald-500/30" />
+              <div className="absolute top-2 -right-5 h-2 w-2 rounded-full bg-violet-500/30" />
+
+              <div className="relative flex size-12 items-center justify-center rounded-full bg-transparent">
+                <Users className="size-6 text-emerald-500" />
+              </div>
+            </div>
+
+            <h3 className="mt-3 text-base font-semibold">No providers yet</h3>
+
+            <p className="mt-2 max-w-xs text-center text-sm text-muted-foreground">
+              Provider rankings will appear once businesses join your platform
+              and begin receiving bookings.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-border">
+            {providers.map((provider, index) => (
+              <ProviderRow
+                key={provider.id}
+                provider={provider}
+                rank={index + 1}
+              />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

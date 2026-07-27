@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { PlanTier } from "@/lib/all-types";
 import { SubscriptionOverview } from "@/lib/admin-types";
+import { CreditCard } from "lucide-react";
 
 const TIER_COLORS: Record<PlanTier, { label: string; fill: string }> = {
   free: {
@@ -39,11 +40,11 @@ export function PlanSubscriptions({ data }: { data: SubscriptionOverview }) {
   }));
 
   return (
-    <Card className="border bg-card/50 shadow-sm h-full flex flex-col">
+    <Card className="border bg-background shadow-sm h-full flex flex-col">
       <CardHeader>
         <div>
-          <CardTitle className="text-base font-bold tracking-tight">
-            Plans & Subscriptions
+          <CardTitle className="font-bold tracking-tight">
+            Subscriptions overview
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
             Distribution across all tiers
@@ -53,9 +54,58 @@ export function PlanSubscriptions({ data }: { data: SubscriptionOverview }) {
 
       <CardContent className="flex-1 flex flex-col justify-between pt-6">
         {totalSubs === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No subscriptions yet.
-          </p>
+          <div className="flex h-50 flex-col items-center justify-center rounded-md bg-linear-to-br from-muted/30 via-transparent to-muted/10 px-6">
+            <div className="relative mb-6 flex items-center justify-center">
+              <div className="absolute -left-12 -rotate-12 rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-2">
+                <div className="h-7 w-5 rounded bg-indigo-500/30" />
+              </div>
+
+              <div className="absolute -right-12 rotate-12 rounded-lg border border-amber-500/15 bg-amber-500/5 p-2">
+                <div className="h-7 w-5 rounded bg-amber-500/30" />
+              </div>
+
+              <div className="absolute -top-4 left-2 h-2 w-2 rounded-full bg-emerald-500/30" />
+              <div className="absolute -bottom-5 -left-4 h-1.5 w-1.5 rounded-full bg-indigo-500/30" />
+              <div className="absolute top-3 -right-5 h-2 w-2 rounded-full bg-amber-500/30" />
+
+              <div className="relative flex size-12 items-center justify-center rounded-full bg-transparent">
+                <CreditCard className="size-6 text-indigo-500" />
+              </div>
+            </div>
+
+            <h3 className="mt-3 text-base font-semibold">
+              No subscriptions yet
+            </h3>
+
+            <p className="mt-2 max-w-xs text-center text-sm text-muted-foreground">
+              Subscription distribution will appear once providers start
+              subscribing to your platform plans.
+            </p>
+
+            <div className="mt-6 flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-gray-400" />
+                <span className="text-xs text-muted-foreground">Free</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-indigo-500" />
+                <span className="text-xs text-muted-foreground">Pro</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-emerald-500" />
+                <span className="text-xs text-muted-foreground">Business</span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-amber-500" />
+                <span className="text-xs text-muted-foreground">
+                  Enterprise
+                </span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="space-y-5">
             <div className="relative mx-auto flex h-50 w-full items-center justify-center">
