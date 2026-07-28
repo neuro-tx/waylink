@@ -10,8 +10,8 @@ import {
   providerStats,
   subscriptions,
 } from "@/db/schemas";
-import { DashboardKpis } from "@/lib/admin-types";
-import { BookingStatus } from "@/lib/all-types";
+import { DashboardKpis, SubscriptionOverview } from "@/lib/admin-types";
+import { BookingStatus, PlanTier } from "@/lib/all-types";
 import { calculateGrowthMetric } from "@/lib/helpers";
 import { DateRange } from "@/lib/panel-types";
 import { getDateRange } from "@/lib/utils";
@@ -82,43 +82,71 @@ async function dashboardKpis(range: DateRange = "30d"): Promise<DashboardKpis> {
 }
 
 async function dahsboardAnalysis() {
-  const [topProviders, planTier] = await Promise.all([
-    db
-      .select({
-        id: providers.id,
-        name: providers.name,
-        slug: providers.slug,
-        logo: providers.logo,
-        serviceType: providers.serviceType,
-        businessType: providers.businessType,
-        isVerified: providers.isVerified,
-        joinedAt: providers.createdAt,
-        totalRevenue: providerStats.totalRevenue,
-        totalBookings: providerStats.totalBookings,
-        totalProducts: providerStats.totalProducts,
-        totalReviews: providerStats.totalReviews,
-        avgRating: providerStats.avgRating,
-      })
-      .from(providers)
-      .innerJoin(providerStats, eq(providers.id, providerStats.providerId))
-      .limit(10),
-    
-    db
-      .select({
-        tier: plans.tier,
-        totalRevenue: sql<number>`SUM(${bookingsFinancial.totalAmount})::float`,
-        totalCommission: sql<number>`SUM(${bookingsFinancial.totalAmount} * ${bookingsFinancial.commission} / 100)::float`,
-        bookingsCount: sql<number>`COUNT(*)::int`,
-      })
-      .from(bookingsFinancial)
-      .innerJoin(plans, eq(bookingsFinancial.planId, plans.id))
-      .groupBy(plans.tier)
-      .orderBy(sql`SUM(${bookingsFinancial.totalAmount}) DESC`),
-  ]);
+  const [topProviders, planTier, subsAnalysis, totalSubsResult] =
+    await Promise.all([
+      db
+        .select({
+          id: providers.id,
+          name: providers.name,
+          slug: providers.slug,
+          logo: providers.logo,
+          serviceType: providers.serviceType,
+          businessType: providers.businessType,
+          isVerified: providers.isVerified,
+          joinedAt: providers.createdAt,
+          totalRevenue: providerStats.totalRevenue,
+          totalBookings: providerStats.totalBookings,
+          totalProducts: providerStats.totalProducts,
+          totalReviews: providerStats.totalReviews,
+          avgRating: providerStats.avgRating,
+        })
+        .from(providers)
+        .innerJoin(providerStats, eq(providers.id, providerStats.providerId))
+        .limit(10),
+
+      db
+        .select({
+          tier: plans.tier,
+          totalRevenue: sql<number>`SUM(${bookingsFinancial.totalAmount})::float`,
+          totalCommission: sql<number>`SUM(${bookingsFinancial.totalAmount} * ${bookingsFinancial.commission} / 100)::float`,
+          bookingsCount: sql<number>`COUNT(*)::int`,
+        })
+        .from(bookingsFinancial)
+        .innerJoin(plans, eq(bookingsFinancial.planId, plans.id))
+        .groupBy(plans.tier)
+        .orderBy(sql`SUM(${bookingsFinancial.totalAmount}) DESC`),
+
+      db
+        .select({
+          tier: plans.tier,
+          value: sql<number>`COUNT(${subscriptions.id})::int`,
+        })
+        .from(plans)
+        .leftJoin(subscriptions, eq(plans.id, subscriptions.planId))
+        .groupBy(plans.tier),
+
+      db
+        .select({
+          totalSubs: sql<number>`COUNT(${subscriptions.id})::int`,
+        })
+        .from(subscriptions),
+    ]);
+
+  const ALL_TIERS: PlanTier[] = ["free", "pro", "business", "enterprise"];
+  const subsMap = new Map(subsAnalysis.map((item) => [item.tier, item.value]));
+
+  const subscriptionOverview: SubscriptionOverview = {
+    totalSubs: totalSubsResult[0]?.totalSubs ?? 0,
+    tierDistribution: ALL_TIERS.map((tier) => ({
+      tier,
+      value: subsMap.get(tier) ?? 0,
+    })),
+  };
 
   return {
     topProviders,
     planTier,
+    subscriptionOverview,
   };
 }
 

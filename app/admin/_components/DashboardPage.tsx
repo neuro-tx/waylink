@@ -11,6 +11,7 @@ import { BookingsStatusChart } from "./BookingsStatusChart";
 import { Loader } from "lucide-react";
 import { ErrorState } from "./ErrorState";
 import { DashboardResponse } from "@/lib/admin-types";
+import { ServiceStatusChart } from "./ServiceStatusChart";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -59,6 +60,8 @@ export default function DashboardPage() {
 
   if (!result) return null;
 
+  const { planTier, topProviders, subscriptionOverview } = result.analysis;
+
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
       <div>
@@ -75,13 +78,14 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3 items-baseline">
         <div className="flex flex-col gap-6 xl:col-span-2">
           <RevenueBookingsChart data={result.revenueSeries} />
+          <ServiceStatusChart data={result.servicesStatus} />
           <TopProducts products={result.topProducts} />
-          <TopProviders providers={result.analysis.topProviders} />
+          <TopProviders providers={topProviders} />
         </div>
 
         <div className="flex flex-col gap-6">
-          <PlanTierChart data={result.analysis.planTier} />
-          {/* <PlanSubscriptions data={} /> */}
+          <PlanTierChart data={planTier} />
+          <PlanSubscriptions data={subscriptionOverview} />
           <BookingsStatusChart data={result.bookingStatus} />
         </div>
       </div>
@@ -91,7 +95,7 @@ export default function DashboardPage() {
 
 function DashboardLoader() {
   return (
-    <div className="flex h-[70vh] flex-col items-center justify-center gap-4">
+    <div className="flex h-[90vh] flex-col items-center justify-center gap-4">
       <Loader className="size-8 animate-spin text-primary" />
 
       <div className="text-center">

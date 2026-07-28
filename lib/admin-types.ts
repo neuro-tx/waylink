@@ -241,6 +241,7 @@ export interface DashboardResponse {
   analysis: {
     topProviders: TopProvider[];
     planTier: PlanTierData[];
+    subscriptionOverview: SubscriptionOverview;
   };
   bookingStatus: BookingStatusBreakdown[];
 }
