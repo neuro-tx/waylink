@@ -109,21 +109,30 @@ async function getRevenueTimeSeries(
   const { from, to } = getDateRange(range);
 
   try {
-    return await db
-      .select({
-        date: sql<string | Date>`date(${bookings.createdAt})`,
-        revenue: sql<number>`coalesce(sum(${bookings.totalAmount}) ,0)::float`,
-        bookings: sql<number>`count(${bookings.id})`,
-      })
-      .from(bookings)
-      .where(
-        and(
-          providerId ? eq(bookings.providerId, providerId): undefined,
-          between(bookings.createdAt, from, to),
-        ),
-      )
-      .groupBy(sql`date(${bookings.createdAt})`)
-      .orderBy(sql`date(${bookings.createdAt})`);
+    const result = await db.execute(
+      sql`
+    SELECT
+        d.day::date AS date,
+        COALESCE(SUM(b.total_amount), 0)::float AS revenue,
+        COUNT(b.id)::int AS bookings
+    FROM generate_series(
+        ${from}::date,
+        ${to}::date,
+        interval '1 day'
+    ) AS d(day)
+    LEFT JOIN ${bookings} b
+        ON DATE(b.created_at) = d.day
+        ${providerId ? sql`AND b.provider_id = ${providerId}` : sql``}
+    GROUP BY d.day
+    ORDER BY d.day;
+    `,
+    );
+
+    return result.rows.map((row) => ({
+      date: row.date as string,
+      revenue: Number(row.revenue),
+      bookings: Number(row.bookings),
+    }));
   } catch (error) {
     console.error("[ProviderService] getRevenueTimeSeries:", error);
     throw error;
@@ -141,7 +150,7 @@ async function getBookingStatusBreakdown(
         percentage: sql<number>`round(count(*) * 100.0 / sum(count(*)) over (),1)::float`,
       })
       .from(bookings)
-      .where(providerId ? eq(bookings.providerId, providerId): undefined)
+      .where(providerId ? eq(bookings.providerId, providerId) : undefined)
       .groupBy(bookings.status);
   } catch (error) {
     console.error("[ProviderService] getBookingStatusBreakdown:", error);
