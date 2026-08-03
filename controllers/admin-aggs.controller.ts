@@ -4,6 +4,7 @@ import { DateRange } from "@/lib/panel-types";
 import {
   dashboardKpis,
   dahsboardAnalysis,
+  getInsights,
 } from "@/services/admin-analysis.service";
 import { getServicesStatus } from "@/services/analytics.service";
 import { providerDashboard } from "@/services/providerBoard.service";
@@ -102,4 +103,14 @@ export async function dashboardData(range: DateRange = "90d") {
       bookingStatus,
     },
   };
+}
+
+export async function getDashboardInsights(range?: DateRange) {
+  const { admin, status } = await adminAuth();
+
+  if (!admin || status !== "ok") {
+    throw new Error("Access denied.");
+  }
+
+  return await getInsights(range);
 }

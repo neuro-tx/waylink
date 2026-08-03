@@ -297,3 +297,86 @@ export function getDateRange(range: DateRange): { from: Date; to: Date } {
 
   return { from, to };
 }
+
+export function getComparisonDateRange(range: DateRange) {
+  const now = new Date();
+
+  switch (range) {
+    case "7d":
+      return {
+        current: {
+          from: shiftDate("day", 6),
+          to: now,
+        },
+        previous: {
+          from: shiftDate("day", 13),
+          to: shiftDate("day", 7),
+        },
+      };
+
+    case "30d":
+      return {
+        current: {
+          from: shiftDate("day", 29),
+          to: now,
+        },
+        previous: {
+          from: shiftDate("day", 59),
+          to: shiftDate("day", 30),
+        },
+      };
+
+    case "90d":
+      return {
+        current: {
+          from: shiftDate("day", 89),
+          to: now,
+        },
+        previous: {
+          from: shiftDate("day", 179),
+          to: shiftDate("day", 90),
+        },
+      };
+
+    case "1y":
+      return {
+        current: {
+          from: shiftDate("year", 1),
+          to: now,
+        },
+        previous: {
+          from: shiftDate("year", 2),
+          to: shiftDate("year", 1),
+        },
+      };
+  }
+}
+
+type DateUnit = "day" | "week" | "month" | "year";
+export function shiftDate(
+  unit: DateUnit,
+  amount: number,
+  from: Date = new Date(),
+): Date {
+  const date = new Date(from);
+
+  switch (unit) {
+    case "day":
+      date.setDate(date.getDate() + amount);
+      break;
+
+    case "week":
+      date.setDate(date.getDate() + amount * 7);
+      break;
+
+    case "month":
+      date.setMonth(date.getMonth() + amount);
+      break;
+
+    case "year":
+      date.setFullYear(date.getFullYear() + amount);
+      break;
+  }
+
+  return date;
+}

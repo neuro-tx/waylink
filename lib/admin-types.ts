@@ -245,3 +245,12 @@ export interface DashboardResponse {
   };
   bookingStatus: BookingStatusBreakdown[];
 }
+
+export type InsightVariant = "success" | "warning" | "critical" | "info";
+export type DashboardInsight = {
+  id: string;
+  variant: InsightVariant;
+  title: string;
+  description: string;
+  value?: string;
+};
