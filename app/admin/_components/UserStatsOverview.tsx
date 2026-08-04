@@ -14,16 +14,6 @@ import {
 } from "lucide-react";
 import { UserStatsData } from "@/lib/admin-types";
 
-const DEFAULT_DATA: UserStatsData = {
-  total: 4820,
-  activeCount: 4512,
-  bannedCount: 308,
-  admins: 14,
-  providers: 963,
-  permanentBans: 121,
-  temporaryBans: 187,
-};
-
 const COLORS = {
   admin: "#a78bfa",
   provider: "#f59e0b",
@@ -193,11 +183,14 @@ function Donut({
 }
 
 export default function UserStatsOverview({
-  data ,
+  data,
 }: {
-  data: UserStatsData;
+  data: UserStatsData | null;
 }) {
   const reduceMotion = useReducedMotion();
+
+  if (!data) return <UserStatsEmptyIllustration />;
+
   const total = Math.max(data.total, 1);
 
   const members = Math.max(total - data.admins - data.providers, 0);
@@ -373,6 +366,118 @@ export default function UserStatsOverview({
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function UserStatsEmptyIllustration() {
+  return (
+    <div className="flex min-h-100 flex-col items-center justify-center rounded-lg border border-dashed bg-linear-to-b from-muted/40 via-background to-background px-6 text-center">
+      <svg
+        viewBox="0 0 220 170"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-35 w-52"
+      >
+        <defs>
+          <linearGradient id="users-gradient" x1="40" y1="35" x2="180" y2="130">
+            <stop offset="0%" stopColor="#A78BFA" />
+            <stop offset="55%" stopColor="#60A5FA" />
+            <stop offset="100%" stopColor="#34D399" />
+          </linearGradient>
+        </defs>
+
+        <rect
+          x="30"
+          y="25"
+          width="160"
+          height="110"
+          rx="18"
+          className="fill-muted stroke-border"
+          strokeWidth="1.5"
+        />
+
+        <rect
+          x="48"
+          y="42"
+          width="54"
+          height="8"
+          rx="4"
+          className="fill-muted-foreground/15"
+        />
+
+        <circle
+          cx="110"
+          cy="78"
+          r="20"
+          stroke="url(#users-gradient)"
+          strokeWidth="4"
+        />
+
+        <circle cx="110" cy="72" r="6" fill="url(#users-gradient)" />
+
+        <path
+          d="M98 91C101 84 107 81 110 81C113 81 119 84 122 91"
+          stroke="url(#users-gradient)"
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+
+        <circle cx="72" cy="84" r="10" className="fill-muted-foreground/15" />
+        <circle cx="148" cy="84" r="10" className="fill-muted-foreground/15" />
+
+        <rect
+          x="60"
+          y="113"
+          width="20"
+          height="6"
+          rx="3"
+          fill="#A78BFA"
+          opacity=".9"
+        />
+
+        <rect
+          x="88"
+          y="113"
+          width="44"
+          height="6"
+          rx="3"
+          fill="#60A5FA"
+          opacity=".9"
+        />
+
+        <rect
+          x="140"
+          y="113"
+          width="18"
+          height="6"
+          rx="3"
+          fill="#34D399"
+          opacity=".9"
+        />
+
+        <path
+          d="M22 52L25 46L28 52L34 55L28 58L25 64L22 58L16 55L22 52Z"
+          fill="#A78BFA"
+        />
+
+        <path
+          d="M185 30L187 26L189 30L193 32L189 34L187 38L185 34L181 32L185 30Z"
+          fill="#F59E0B"
+        />
+
+        <circle cx="180" cy="125" r="4" fill="#34D399" opacity=".85" />
+        <circle cx="40" cy="130" r="3" fill="#60A5FA" opacity=".8" />
+      </svg>
+
+      <h3 className="text-lg font-semibold tracking-tight">
+        No user statistics yet
+      </h3>
+
+      <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+        User analytics will appear here once your platform starts collecting
+        account activity and registration data.
+      </p>
     </div>
   );
 }

@@ -16,7 +16,6 @@ import {
   Users,
   LucideIcon,
   Package,
-  PieChart,
   BellPlus,
   Layers,
   SlidersHorizontal,
@@ -39,12 +38,6 @@ export const adminNav: AdminNavItem[] = [
     icon: LayoutDashboard,
     iconColor: "text-rose-500",
     exact: true,
-  },
-  {
-    title: "Analytics",
-    url: "/admin/nnalytics",
-    icon: PieChart,
-    iconColor: "text-green-500",
   },
   {
     title: "Products Moderation",
