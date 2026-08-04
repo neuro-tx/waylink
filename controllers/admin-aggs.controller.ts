@@ -105,6 +105,17 @@ export async function dashboardData(range: DateRange = "90d") {
   };
 }
 
+const getCachedInsights = unstable_cache(
+  async (range?: DateRange) => {
+    return getInsights();
+  },
+  ["dashboard-insights"],
+  {
+    revalidate: DASHBOARD_TTL,
+    tags: ["all"],
+  },
+);
+
 export async function getDashboardInsights(range?: DateRange) {
   const { admin, status } = await adminAuth();
 
@@ -112,5 +123,5 @@ export async function getDashboardInsights(range?: DateRange) {
     throw new Error("Access denied.");
   }
 
-  return await getInsights(range);
+  return await getCachedInsights(range);
 }

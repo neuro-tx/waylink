@@ -20,7 +20,9 @@ import { DashboardInsight, InsightVariant } from "@/lib/admin-types";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 const variantStyles: Record<
   InsightVariant,
@@ -103,6 +105,49 @@ function InsightsPanel({
   onOpenChange: (open: boolean) => void;
 }) {
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!open || status === "success") return;
+
+    const controller = new AbortController();
+
+    const load = async () => {
+      setStatus("loading");
+      setError(null);
+
+      try {
+        const res = await fetch("/api/admin/insights", {
+          signal: controller.signal,
+        });
+        const json = await res.json();
+
+        if (!res.ok) throw new Error("Failed to load insights.");
+
+        setInsights(json.data);
+        setStatus("success");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        setStatus("error");
+        const errMess =
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.";
+        setError(errMess);
+      }
+    };
+
+    load();
+
+    return () => controller.abort();
+  }, [open, retryKey]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -121,7 +166,47 @@ function InsightsPanel({
           </div>
         </SheetHeader>
 
-        <InsightsView insights={insights} />
+        <AnimatePresence mode="wait" initial={false}>
+          {status === "loading" && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <InsightsSkeleton />
+            </motion.div>
+          )}
+
+          {status === "error" && error && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <InsightsErrorState
+                error={error}
+                onRetry={() => setRetryKey((k) => k + 1)}
+              />
+            </motion.div>
+          )}
+
+          {status === "success" && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="h-full"
+            >
+              <InsightsView insights={insights} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </SheetContent>
     </Sheet>
   );
@@ -131,13 +216,72 @@ function InsightsView({ insights }: { insights: DashboardInsight[] }) {
   const shouldReduceMotion = useReducedMotion();
   const isEmpty = insights.length === 0;
 
+  const summary = useMemo(() => {
+    return insights.reduce(
+      (acc, insight) => {
+        acc.total++;
+        acc[insight.variant]++;
+        return acc;
+      },
+      {
+        total: 0,
+        success: 0,
+        warning: 0,
+        critical: 0,
+        info: 0,
+      },
+    );
+  }, [insights]);
+
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 overflow-y-auto px-4 py-4",
+        "flex flex-col h-full gap-2 overflow-y-auto p-4",
         isEmpty && "h-[calc(100dvh-200px)] justify-center",
       )}
     >
+      {!isEmpty && (
+        <div className="mb-2 border-b pb-2">
+          <div className="flex flex-nowrap gap-1.5">
+            {summary.critical > 0 && (
+              <Badge
+                variant="outline"
+                className="border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+              >
+                {summary.critical} Critical
+              </Badge>
+            )}
+
+            {summary.warning > 0 && (
+              <Badge
+                variant="outline"
+                className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+              >
+                {summary.warning} Warning
+              </Badge>
+            )}
+
+            {summary.success > 0 && (
+              <Badge
+                variant="outline"
+                className="border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+              >
+                {summary.success} Success
+              </Badge>
+            )}
+
+            {summary.info > 0 && (
+              <Badge
+                variant="outline"
+                className="border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+              >
+                {summary.info} Info
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+
       <AnimatePresence mode="popLayout">
         {isEmpty ? (
           <div className="flex min-h-75 flex-col items-center justify-center rounded-xl border border-dashed bg-linear-to-b from-muted/40 via-background to-background px-6 py-12 text-center">
@@ -271,6 +415,82 @@ function InsightsView({ insights }: { insights: DashboardInsight[] }) {
           })
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function InsightsSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 px-4 py-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-lg border p-4">
+          <div className="flex items-start gap-3">
+            <Skeleton className="mt-1 h-5 w-5 rounded-full" />
+
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-4/5" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InsightsErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex min-h-100 flex-col items-center justify-center rounded-xl border border-dashed px-6 text-center">
+      <svg viewBox="0 0 180 140" className="h-36 w-44" fill="none">
+        <rect
+          x="35"
+          y="20"
+          width="110"
+          height="80"
+          rx="12"
+          className="fill-muted stroke-border"
+          strokeWidth="1.5"
+        />
+
+        <path
+          d="M55 78L78 60L96 69L120 45"
+          stroke="#ef4444"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+
+        <circle cx="120" cy="45" r="5" fill="#ef4444" />
+
+        <path
+          d="M150 25l8 8m0-8l-8 8"
+          stroke="#f59e0b"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+
+        <circle cx="42" cy="110" r="3" fill="#f59e0b" />
+      </svg>
+
+      <h3 className="mt-6 text-lg font-semibold">Couldn't load insights</h3>
+
+      <p className="mt-2 max-w-sm text-sm text-muted-foreground">{error}</p>
+
+      {onRetry && (
+        <Button className="mt-6" variant="outline" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
     </div>
   );
 }
