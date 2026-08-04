@@ -9,6 +9,7 @@ import { ProviderSidebar } from "./_components/Sidebar";
 import { ProviderHeader } from "./_components/Sidebar";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/require-role";
 
 export const metadata: Metadata = {
   title: "Provider Dashboard | Waylink Travel & Experiences",
@@ -27,11 +28,8 @@ export default async function ProviderLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await requireRole(["provider"] ,"/unauthorized");
   const { status, provider, role, user } = await getCurrentProvider();
-
-  if (status === "unauthorized") {
-    redirect("/");
-  }
 
   if (!provider || !user) {
     redirect("/");
@@ -66,9 +64,7 @@ export default async function ProviderLayout({
                 <ProviderSidebar />
                 <SidebarInset className="flex flex-col min-w-0 flex-1">
                   <ProviderHeader />
-                  <main className="flex-1 w-full relative">
-                    {children}
-                  </main>
+                  <main className="flex-1 w-full relative">{children}</main>
                 </SidebarInset>
               </div>
             </SidebarProvider>

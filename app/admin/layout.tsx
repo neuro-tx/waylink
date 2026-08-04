@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemedToaster } from "@/components/themed-toaster";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import AdminHeader from "./_components/AdminHeader";
+import { requireRole } from "@/lib/require-role";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +24,13 @@ export const metadata: Metadata = {
   description: "Manage and controll the platform with some actions",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await requireRole(["admin"], "/not-found");
+
   return (
     <html lang="en">
       <body

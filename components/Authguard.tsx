@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
-import LoadingAuth from "./LoadingAuth";
+import { RoleCheckLoader } from "./RoleCheckLoader";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -16,7 +16,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [loading, user, router]);
 
   if (loading) {
-    return <LoadingAuth />;
+    return <RoleCheckLoader />;
   }
 
   if (!user) {

@@ -19,6 +19,14 @@ export const auth = betterAuth({
     maxPasswordLength: 20,
   },
 
+  session: {
+    cookieCache: {
+      enabled: true ,
+      maxAge: 5 * 60 ,
+      strategy: "compact"
+    }
+  } ,
+
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
