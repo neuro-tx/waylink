@@ -371,6 +371,21 @@ async function changeProviderStatus(
       .where(eq(providers.id, provider.id))
       .returning();
 
+    // If the provider is approved, update the owner's role to "provider" and add them to the providerMembers table as "owner"
+    if (action === "approved") {
+      await tx
+        .update(user)
+        .set({ role: "provider" })
+        .where(eq(user.id, provider.ownerId))
+        .returning();
+
+      await tx.insert(providerMembers).values({
+        providerId: provider.id,
+        userId: provider.ownerId,
+        role: "owner",
+      });
+    }
+
     await tx.insert(notifications).values([
       {
         recipientType: "provider",
@@ -697,5 +712,5 @@ export const providerService = {
   changeMemberRole,
   removeMember,
   providerInvitesMembers,
-  setProviderMember
+  setProviderMember,
 };

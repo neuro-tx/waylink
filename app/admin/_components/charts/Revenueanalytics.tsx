@@ -19,77 +19,6 @@ import { cn, fmtDate } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { fmtCurrency } from "@/lib/helpers";
 
-const MOCK: RevenueOverTime = {
-  totalRevenue: 184500,
-  totalBookings: 341,
-  avgDailyRevenue: 6150,
-  peakDay: { date: "2024-11-15", revenue: 14200, bookings: 22 },
-  current: [
-    { date: "Nov 01", revenue: 4200, bookings: 7 },
-    { date: "Nov 02", revenue: 3800, bookings: 6 },
-    { date: "Nov 03", revenue: 6100, bookings: 9 },
-    { date: "Nov 04", revenue: 5400, bookings: 8 },
-    { date: "Nov 05", revenue: 7800, bookings: 12 },
-    { date: "Nov 06", revenue: 9200, bookings: 15 },
-    { date: "Nov 07", revenue: 8600, bookings: 13 },
-    { date: "Nov 08", revenue: 6900, bookings: 10 },
-    { date: "Nov 09", revenue: 5200, bookings: 8 },
-    { date: "Nov 10", revenue: 7100, bookings: 11 },
-    { date: "Nov 11", revenue: 11400, bookings: 18 },
-    { date: "Nov 12", revenue: 10800, bookings: 17 },
-    { date: "Nov 13", revenue: 9600, bookings: 15 },
-    { date: "Nov 14", revenue: 12300, bookings: 19 },
-    { date: "Nov 15", revenue: 14200, bookings: 22 },
-    { date: "Nov 16", revenue: 8900, bookings: 14 },
-    { date: "Nov 17", revenue: 7400, bookings: 11 },
-    { date: "Nov 18", revenue: 6800, bookings: 10 },
-    { date: "Nov 19", revenue: 5900, bookings: 9 },
-    { date: "Nov 20", revenue: 8200, bookings: 13 },
-    { date: "Nov 21", revenue: 9800, bookings: 15 },
-    { date: "Nov 22", revenue: 11200, bookings: 17 },
-    { date: "Nov 23", revenue: 10400, bookings: 16 },
-    { date: "Nov 24", revenue: 7600, bookings: 12 },
-    { date: "Nov 25", revenue: 6200, bookings: 10 },
-    { date: "Nov 26", revenue: 8800, bookings: 14 },
-    { date: "Nov 27", revenue: 13100, bookings: 20 },
-    { date: "Nov 28", revenue: 12600, bookings: 19 },
-    { date: "Nov 29", revenue: 9400, bookings: 15 },
-    { date: "Nov 30", revenue: 7800, bookings: 12 },
-  ],
-  previous: [
-    { date: "Oct 01", revenue: 3600, bookings: 6 },
-    { date: "Oct 02", revenue: 4100, bookings: 7 },
-    { date: "Oct 03", revenue: 5200, bookings: 8 },
-    { date: "Oct 04", revenue: 4800, bookings: 7 },
-    { date: "Oct 05", revenue: 6400, bookings: 10 },
-    { date: "Oct 06", revenue: 7900, bookings: 12 },
-    { date: "Oct 07", revenue: 7200, bookings: 11 },
-    { date: "Oct 08", revenue: 5800, bookings: 9 },
-    { date: "Oct 09", revenue: 4600, bookings: 7 },
-    { date: "Oct 10", revenue: 6200, bookings: 9 },
-    { date: "Oct 11", revenue: 9800, bookings: 15 },
-    { date: "Oct 12", revenue: 9100, bookings: 14 },
-    { date: "Oct 13", revenue: 8300, bookings: 13 },
-    { date: "Oct 14", revenue: 10600, bookings: 16 },
-    { date: "Oct 15", revenue: 11900, bookings: 18 },
-    { date: "Oct 16", revenue: 7600, bookings: 12 },
-    { date: "Oct 17", revenue: 6400, bookings: 10 },
-    { date: "Oct 18", revenue: 5800, bookings: 9 },
-    { date: "Oct 19", revenue: 5100, bookings: 8 },
-    { date: "Oct 20", revenue: 7100, bookings: 11 },
-    { date: "Oct 21", revenue: 8400, bookings: 13 },
-    { date: "Oct 22", revenue: 9700, bookings: 15 },
-    { date: "Oct 23", revenue: 8900, bookings: 14 },
-    { date: "Oct 24", revenue: 6500, bookings: 10 },
-    { date: "Oct 25", revenue: 5400, bookings: 8 },
-    { date: "Oct 26", revenue: 7600, bookings: 12 },
-    { date: "Oct 27", revenue: 11200, bookings: 17 },
-    { date: "Oct 28", revenue: 10800, bookings: 16 },
-    { date: "Oct 29", revenue: 8100, bookings: 13 },
-    { date: "Oct 30", revenue: 6700, bookings: 10 },
-  ],
-};
-
 const COLORS = {
   current: { line: "#a78bfa", fill: "#7c3aed", glow: "rgba(167,139,250,0.15)" },
   previous: { line: "#475569", fill: "#334155", glow: "rgba(71,85,105,0.08)" },
@@ -252,11 +181,7 @@ function StatPill({
   );
 }
 
-interface Props {
-  data?: RevenueOverTime;
-}
-
-export function RevenueAnalytics({ data = MOCK }: Props) {
+export function RevenueAnalytics({ data }: { data: RevenueOverTime }) {
   const [showPrevious, setShowPrevious] = useState(true);
 
   const mergedRevenue = useMemo(() => {
