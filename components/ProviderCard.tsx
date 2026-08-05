@@ -181,7 +181,7 @@ export function ProviderCard({
             { label: "Products", value: `${provider.totalProducts}` },
             {
               label: "Bookings",
-              value: `${provider.totalBookings.toLocaleString()}+`,
+              value: `${Number(provider.totalBookings).toLocaleString()}+`,
             },
             { label: "Rating", value: provider.avgRating },
           ].map(({ label, value }) => (
