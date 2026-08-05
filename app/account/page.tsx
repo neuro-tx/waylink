@@ -9,6 +9,7 @@ import { ProfileIdentityCard } from "@/components/profile/ProfileIdentityCard";
 import { redirect } from "next/navigation";
 import { ProviderRequest } from "@/components/provider/ProviderRequest";
 import { User } from "@/lib/all-types";
+import { PreferenceCard } from "@/components/PreferenceCard";
 
 const Page = async () => {
   const session = await getAuthSession();
@@ -54,6 +55,8 @@ const Page = async () => {
 
               <ProfileMetadata user={user} />
             </div>
+
+            <PreferenceCard role={user.role} />
 
             <ProfileDangerZone />
           </TabsContent>
