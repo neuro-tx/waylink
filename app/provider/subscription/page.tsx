@@ -3,6 +3,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSubscriptionHistory, getActivePlans } from "@/actions/plans.action";
 import { SubscriptionClient } from "../_components/Subscriptionclient";
 import { Subscription, Plan } from "@/lib/all-types";
+import { Metadata } from "next";
+
+export const metadata:Metadata = {
+  title: "Subscription",
+  description:
+    "View your full subscription history, track usage, and manage billing — cancel, resume, or renew from any subscription below.",
+};
 
 function SubscriptionSkeleton() {
   return (
@@ -72,6 +79,8 @@ async function SubscriptionContent() {
       plan: planMap.get(sub.planId),
     }),
   );
+
+  console.log(subscriptions)
 
   return <SubscriptionClient subscriptions={subscriptions} />;
 }

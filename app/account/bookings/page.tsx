@@ -4,6 +4,13 @@ import { bookingsService } from "@/services/bookings.service";
 import { BookingCard, BookingsPagination } from "../_components/BookingCom";
 import { getAuthSession } from "@/lib/auth-server";
 import { CalendarDays, Clock3, XCircle } from "lucide-react";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "My Bookings",
+  description:
+    "View your full booking history, track usage, and manage your bookings — cancel, confirm, or reschedule from any booking below.",
+};
 
 type BookingStatsBoxProps = {
   total: number;

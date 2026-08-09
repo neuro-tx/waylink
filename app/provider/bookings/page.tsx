@@ -1,4 +1,11 @@
+import { Metadata } from "next";
 import { BookingsTable } from "../_components/BookingTable";
+
+export const metadata: Metadata = {
+  title: "Bookings Board",
+  description:
+    "Track, confirm, and manage all customer bookings.",
+};
 
 export default async function BookingsPage() {
   return (
