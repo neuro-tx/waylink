@@ -380,3 +380,16 @@ export function shiftDate(
 
   return date;
 }
+
+export function calculateFees(totalAmount: string, commissionRate: string) {
+  const totalCents = Math.round(Number(totalAmount) * 100);
+  const rateBasisPoints = Math.round(Number(commissionRate) * 100);
+  const platformFeeCents = Math.round((totalCents * rateBasisPoints) / 10_000);
+
+  const providerFeeCents = totalCents - platformFeeCents;
+
+  return {
+    platformFee: (platformFeeCents / 100).toFixed(2),
+    providerFee: (providerFeeCents / 100).toFixed(2),
+  };
+}

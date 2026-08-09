@@ -4,9 +4,12 @@ import { db } from "@/db";
 import {
   bookingItems,
   bookings,
+  bookingsFinancial,
   location,
+  plans,
   products,
   productVariants,
+  subscriptions,
 } from "@/db/schemas";
 import { inngest } from "@/inngest/client";
 import { protectAction } from "@/lib/aj-actions";
@@ -14,7 +17,8 @@ import { PassengerType } from "@/lib/all-types";
 import { getAuthSession } from "@/lib/auth-server";
 import { Role } from "@/lib/policies";
 import { getCurrentProvider } from "@/lib/provider-auth";
-import { and, eq, inArray } from "drizzle-orm";
+import { calculateFees } from "@/lib/utils";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 
 export type ActionResult<T = void> =
@@ -414,27 +418,77 @@ export async function confirmBookingAction(
   try {
     const result = await db.transaction(async (tx) => {
       // verify ownership and get data for the event
-      const booking = await tx.query.bookings.findFirst({
-        where: (b, { eq, and }) => eq(b.id, bookingId),
-        columns: {
-          id: true,
-          status: true,
-          productId: true,
-          variantId: true,
-          totalAmount: true,
-          orderNumber: true,
-          participantsCount: true,
-        },
-      });
+      const [booking] = await tx
+        .select()
+        .from(bookings)
+        .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)))
+        .for("update")
+        .limit(1);
 
       if (!booking) throw new Error("Booking not found");
       if (booking.status !== "pending")
         throw new Error(`Cannot confirm a ${booking.status} booking`);
 
+      // verify plan data
+      const [planData] = await tx
+        .select({
+          plan: plans,
+          subscription: subscriptions,
+        })
+        .from(subscriptions)
+        .innerJoin(plans, eq(subscriptions.planId, plans.id))
+        .where(
+          and(
+            eq(subscriptions.providerId, booking.providerId),
+            inArray(subscriptions.status, ["active", "trialing"]),
+          ),
+        )
+        .orderBy(desc(subscriptions.createdAt))
+        .limit(1);
+
+      if (!planData)
+        throw new Error("Provider does not have an active subscription.");
+      const { plan } = planData;
+
+      const { platformFee, providerFee } = calculateFees(
+        booking.totalAmount,
+        plan.commissionRate,
+      );
+
       await tx
         .update(bookings)
         .set({ status: "confirmed" })
         .where(eq(bookings.id, bookingId));
+
+      const financialData = await tx
+        .insert(bookingsFinancial)
+        .values({
+          bookingId: booking.id,
+          customerId: userId,
+          providerId: booking.providerId,
+          productId: booking.productId,
+          planId: plan.id,
+
+          totalAmount: booking.totalAmount,
+          currency: booking.currency,
+          orderNumber: booking.orderNumber,
+          bookingStatus: "confirmed",
+
+          planPrice: plan.price,
+          commissionRate: plan.commissionRate,
+          planName: plan.name,
+          planTier: plan.tier,
+
+          platformFee,
+          providerFee,
+        })
+        .returning({
+          id: bookingsFinancial.id,
+          bookingId: bookingsFinancial.bookingId,
+        });
+
+      if (!financialData.length)
+        throw new Error("Transaction failed: financial data not completed");
 
       return booking;
     });
@@ -532,6 +586,13 @@ export async function completeBookingAction(bookingId: string) {
         .where(eq(bookings.id, bookingId))
         .returning();
 
+      if (!updated) throw new Error("Failed to complete booking");
+
+      await tx
+        .update(bookingsFinancial)
+        .set({ bookingStatus: "completed" })
+        .where(eq(bookingsFinancial.bookingId, bookingId));
+
       return updated;
     });
 
@@ -610,6 +671,11 @@ async function cancelBookingCore(bookingId: string) {
       .update(productVariants)
       .set({ bookedCount: newBookedCount, status: newVariantStatus })
       .where(eq(productVariants.id, booking.variantId));
+
+    await tx
+      .update(bookingsFinancial)
+      .set({ bookingStatus: "cancelled" })
+      .where(eq(bookingsFinancial.bookingId, bookingId));
 
     return {
       bookingId,

@@ -184,39 +184,6 @@ When contributing to Waylink, code should prioritize:
 - Consistency with existing project structure and conventions
 - Production-ready solutions over quick fixes
 
-## Getting Started
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/waylink.git
-cd waylink
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment variables
-cp .env.example .env.local
-
-# 4. Run database migrations
-npm run db:migrate
-
-# 5. Start the development server
-npm run dev
-```
-
-## Environment Variables
-
-| Variable              | Description                                       |
-| --------------------- | ------------------------------------------------- |
-| `DATABASE_URL`        | Neon PostgreSQL connection string                 |
-| `BETTER_AUTH_SECRET`  | Secret used to sign auth sessions                 |
-| `BETTER_AUTH_URL`     | Base URL for Better Auth callbacks                |
-| `NEXT_PUBLIC_APP_URL` | Public base URL of the app                        |
-| `INNGEST_EVENT_KEY`   | Inngest event key for triggering background jobs  |
-| `INNGEST_SIGNING_KEY` | Inngest signing key for verifying incoming events |
-
-> Update this table to match your actual `.env.example`.
-
 ## Roadmap
 
 - [ ] Public booking checkout flow
@@ -229,6 +196,6 @@ npm run dev
 
 <div align="center">
 
-Built and maintained as a solo, full-stack project.
+Built and maintained as a solo, full-stack project by nero-tx.
 
 </div>
