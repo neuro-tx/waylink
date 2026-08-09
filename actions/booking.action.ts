@@ -15,6 +15,7 @@ import { getAuthSession } from "@/lib/auth-server";
 import { Role } from "@/lib/policies";
 import { getCurrentProvider } from "@/lib/provider-auth";
 import { and, eq, inArray } from "drizzle-orm";
+import { customAlphabet } from "nanoid";
 
 export type ActionResult<T = void> =
   | { success: true; data: T }
@@ -31,12 +32,20 @@ export interface CreateBookingInput {
 }
 
 function generateOrderNumber(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const random = Array.from(
-    { length: 10 },
-    () => chars[Math.floor(Math.random() * chars.length)],
-  ).join("");
-  return `ORD-${random}`;
+  const orderCode = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 8);
+  const orderReference = customAlphabet(
+    "abcdefghijklmnopqrstuvwxyz0123456789",
+    9,
+  );
+
+  const ORDER_SIGNATURES = [
+    11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83,
+    89, 97,
+  ];
+  const signature =
+    ORDER_SIGNATURES[Math.floor(Math.random() * ORDER_SIGNATURES.length)];
+
+  return `ORD-${orderCode()}-${orderReference()}-${signature}`;
 }
 
 export async function createBookingAction(
@@ -58,50 +67,58 @@ export async function createBookingAction(
 
   try {
     const result = await db.transaction(async (tx) => {
-      const existing = await tx
-        .select()
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.userId, userId),
-            eq(bookings.variantId, input.variantId),
-            eq(bookings.productId, input.productId),
-            inArray(bookings.status, ["pending", "confirmed"]),
-          ),
-        )
-        .limit(1);
+      if (!input.items.length)
+        throw new Error("Booking items can not be empty.");
 
-      if (existing.length > 0) {
-        throw new Error("You already have a booking for this slot");
+      const mergedItems = new Map<PassengerType, number>();
+      for (const item of input.items) {
+        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+          throw new Error("Invalid passenger quantity.");
+        }
+
+        const current = mergedItems.get(item.passengerType) ?? 0;
+
+        mergedItems.set(item.passengerType, current + item.quantity);
       }
 
-      // Step 1: validate variant
-      const variant = await tx.query.productVariants.findFirst({
-        where: (v, { eq }) => eq(v.id, input.variantId),
-        with: { product: { columns: { currency: true, status: true } } },
-      });
+      const items = [...mergedItems.entries()].map(
+        ([passengerType, quantity]) => ({
+          passengerType,
+          quantity,
+        }),
+      );
 
-      if (!variant) throw new Error("Variant not found");
+      // Step 1: validate variant
+      const [target] = await tx
+        .select({
+          variant: productVariants,
+          product: products,
+        })
+        .from(productVariants)
+        .innerJoin(products, eq(productVariants.productId, products.id))
+        .where(eq(productVariants.id, input.variantId))
+        .for("update");
+
+      if (!target) throw new Error("Variant not found");
+
+      const { variant, product } = target;
+
       if (variant.status !== "available")
         throw new Error("This slot is no longer available");
       if (variant.productId !== input.productId)
-        throw new Error("Variant does not belong to this product");
-      if (variant.product.status !== "active")
+        throw new Error("Invalid product variant.");
+      if (product.status !== "active")
         throw new Error("This product is not available for booking");
 
-      if (!input.items.length) throw new Error("empty items not valid");
-
-      const infantsCount = input.items
-        .filter((i) => i.passengerType === "infant")
-        .reduce((acc, i) => acc + i.quantity, 0);
-
+      const infantsCount =
+        items.find((i) => i.passengerType === "infant")?.quantity ?? 0;
       if (infantsCount > 6) {
         throw new Error("Maximum 6 infants allowed");
       }
 
-      const totalParticipants = input.items.reduce((acc, i) => {
-        if (i.passengerType === "infant") return acc; // if infants don't consume capacity (max 6)
-        return acc + i.quantity;
+      const totalParticipants = items.reduce((total, item) => {
+        if (item.passengerType === "infant") return total;
+        return total + item.quantity;
       }, 0);
 
       const remainingCapacity = variant.capacity - variant.bookedCount;
@@ -113,27 +130,33 @@ export async function createBookingAction(
       }
 
       // Step 2: compute totals
-      const pricing: Record<PassengerType, number> = {
-        adult: Number(variant.adultPrice),
-        child: Number(variant.childPrice),
-        infant: Number(variant.infantPrice),
+      const pricing: Record<PassengerType, string> = {
+        adult: variant.adultPrice,
+        child: variant.childPrice,
+        infant: variant.infantPrice,
       };
 
-      const totalAmount = input.items.reduce(
-        (acc, i) => acc + pricing[i.passengerType] * i.quantity,
-        0,
-      );
+      let totalAmount = 0;
+      for (const item of items) {
+        const unitPrice = Number(pricing[item.passengerType]);
+
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          throw new Error("Invalid product pricing.");
+        }
+
+        totalAmount += unitPrice * item.quantity;
+      }
 
       const orderNumber = generateOrderNumber();
-      const currency = variant.product.currency ?? "USD";
+      const currency = product.currency ?? "USD";
 
       // Step 3: insert booking
       const [booking] = await tx
         .insert(bookings)
         .values({
           userId,
-          productId: input.productId,
-          providerId: input.providerId,
+          productId: variant.productId,
+          providerId: product.providerId,
           variantId: input.variantId,
           orderNumber,
           participantsCount: totalParticipants,
@@ -143,10 +166,12 @@ export async function createBookingAction(
         })
         .returning({ id: bookings.id, orderNumber: bookings.orderNumber });
 
+      if (!booking) throw new Error("Failed to create booking.");
+
       // Step 4: insert booking items
       const bookingItemsData = input.items.map((item) => {
         const unitPrice = pricing[item.passengerType];
-        const totalPrice = unitPrice * item.quantity;
+        const totalPrice = (Number(unitPrice) * item.quantity).toFixed(2);
 
         return {
           bookingId: booking.id,
@@ -177,10 +202,47 @@ export async function createBookingAction(
     });
 
     return { success: true, data: result };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to create booking";
-    return { success: false, error: message };
+  } catch (error) {
+    const cause =
+      typeof error === "object" && error !== null && "cause" in error
+        ? error.cause
+        : error;
+
+    if (typeof cause === "object" && cause !== null && "code" in cause) {
+      const dbError = cause as {
+        code?: string;
+        constraint?: string;
+        detail?: string;
+      };
+
+      if (
+        dbError.code === "23505" &&
+        dbError.constraint === "active_user_booking_idx"
+      ) {
+        return {
+          success: false,
+          error:
+            "You already have an active booking for this slot ,check your bookings.",
+        };
+      }
+
+      return {
+        success: false,
+        error: "Unable to create booking. Please try again.",
+      };
+    }
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      error: "Unable to create booking. Please try again.",
+    };
   }
 }
 

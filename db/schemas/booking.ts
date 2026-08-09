@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./public";
 import { products, productVariants } from "./product";
-import { bookingStatusEnums, timestamps } from "./enums";
+import { bookingStatusEnums, planTierEnum, timestamps } from "./enums";
 import { sql } from "drizzle-orm";
 import { providers } from "./provider";
 import { plans } from "./plan";
@@ -56,6 +56,9 @@ export const bookings = pgTable(
     uniqueIndex("booking_order_number_idx").on(t.orderNumber),
     index("booking_provider_id_idx").on(t.providerId),
     index("booking_provider_stats_idx").on(t.providerId, t.status),
+    uniqueIndex("active_user_booking_idx")
+      .on(t.userId, t.variantId)
+      .where(sql`${t.status} IN ('pending', 'confirmed')`),
   ],
 );
 
@@ -107,24 +110,30 @@ export const bookingsFinancial = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "restrict" }),
-    planId: uuid("plan_id")
-      .notNull()
-      .references(() => plans.id, { onDelete: "restrict" }),
+    planId: uuid("plan_id").references(() => plans.id, {
+      onDelete: "set null",
+    }),
 
     // bookings snapshot
     totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
     currency: text("currency").notNull(),
     orderNumber: text("order_number").notNull(),
-    bookingStatus: bookingStatusEnums("booking_status").notNull().default("pending"),
+    bookingStatus: bookingStatusEnums("booking_status")
+      .notNull()
+      .default("pending"),
 
     // plan snapshot
     planPrice: integer("plan_price").notNull(),
-    commission: numeric("commission", { precision: 5, scale: 2 }).notNull(),
+    commissionRate: numeric("commission_rate", {
+      precision: 5,
+      scale: 2,
+    }).notNull(),
+    planName: text("plan_name").notNull(),
+    planTier: planTierEnum("tier").notNull(),
 
     // main fields
-    platformFee: numeric("platform_fee", { precision: 5, scale: 2 }).notNull(),
-    providerFee: numeric("provider_fee", { precision: 5, scale: 2 }).notNull(),
-    netAmount: numeric("net_amount", { precision: 12, scale: 2 }).notNull(),
+    platformFee: numeric("platform_fee", { precision: 12, scale: 2 }).notNull(),
+    providerFee: numeric("provider_fee", { precision: 12, scale: 2 }).notNull(),
 
     ...timestamps,
   },
@@ -136,5 +145,6 @@ export const bookingsFinancial = pgTable(
     index("financial_plan_id_idx").on(t.planId),
     // for provider reports over time
     index("financial_provider_created_idx").on(t.providerId, t.createdAt),
+    index("financial_created_idx").on(t.createdAt),
   ],
 );

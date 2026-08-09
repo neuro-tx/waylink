@@ -113,7 +113,7 @@ async function dahsboardAnalysis() {
         .select({
           tier: plans.tier,
           totalRevenue: sql<number>`SUM(${bookingsFinancial.totalAmount})::float`,
-          totalCommission: sql<number>`SUM(${bookingsFinancial.totalAmount} * ${bookingsFinancial.commission} / 100)::float`,
+          totalCommission: sql<number>`SUM(${bookingsFinancial.totalAmount} * ${bookingsFinancial.commissionRate} / 100)::float`,
           bookingsCount: sql<number>`COUNT(*)::int`,
         })
         .from(bookingsFinancial)
